@@ -1,0 +1,26 @@
+# JimuReport 后端开发环境 Dockerfile
+FROM golang:1.22-alpine
+
+# 安装依赖
+RUN apk add --no-cache git gcc musl-dev
+
+# 设置工作目录
+WORKDIR /app
+
+# 安装 air（热重载工具）
+RUN go install github.com/cosmtrek/air@latest
+
+# 复制 go.mod 和 go.sum
+COPY go.mod go.sum ./
+
+# 下载依赖
+RUN go mod download
+
+# 复制源代码
+COPY . .
+
+# 暴露端口
+EXPOSE 8085
+
+# 使用 air 启动（支持热重载）
+CMD ["air", "-c", ".air.toml"]
