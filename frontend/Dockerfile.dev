@@ -2,7 +2,7 @@
 FROM node:20-alpine
 
 # 设置工作目录
-WORKDIR /app
+WORKDIR /app/frontend
 
 # 安装依赖
 RUN apk add --no-cache git
@@ -14,7 +14,7 @@ COPY package*.json ./
 RUN npm install
 
 # 复制源代码
-COPY . .
+COPY frontend/ .
 
 # 暴露端口
 EXPOSE 3000

@@ -6,7 +6,9 @@ import (
 
 	"github.com/jeecg/jimureport-go/internal/auth"
 	"github.com/jeecg/jimureport-go/internal/config"
+	"github.com/jeecg/jimureport-go/internal/dashboard"
 	"github.com/jeecg/jimureport-go/internal/httpserver/handlers"
+	"github.com/jeecg/jimureport-go/internal/middleware"
 	"github.com/jeecg/jimureport-go/internal/render"
 	"github.com/jeecg/jimureport-go/internal/report"
 	"gorm.io/gorm"
@@ -29,6 +31,8 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 	// 全局中间件
 	r.Use(gin.Recovery())
 	r.Use(gin.Logger())
+	r.Use(middleware.ErrorHandler())
+	r.Use(middleware.RecoveryHandler())
 	r.Use(auth.AuthMiddleware())
 
 	// 健康检查
@@ -68,6 +72,19 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 		reports.POST("/update", reportHandler.Update)
 		reports.DELETE("/delete", reportHandler.Delete)
 		reports.POST("/preview", reportHandler.Preview)
+	}
+
+	// 仪表盘路由
+	dashboardRepo := dashboard.NewRepository(db)
+	dashboardService := dashboard.NewService(dashboardRepo)
+	dashboardHandler := dashboard.NewHandler(dashboardService)
+	dashboards := r.Group("/api/v1/dashboard")
+	{
+		dashboards.GET("/list", dashboardHandler.List)
+		dashboards.POST("/create", dashboardHandler.Create)
+		dashboards.GET("/:id", dashboardHandler.Get)
+		dashboards.PUT("/:id", dashboardHandler.Update)
+		dashboards.DELETE("/:id", dashboardHandler.Delete)
 	}
 
 	srv := &http.Server{

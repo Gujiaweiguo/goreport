@@ -11,47 +11,66 @@
       </div>
     </el-card>
 
-    <div class="preview-content" v-loading="loading">
-      <div v-if="!renderedHTML" class="preview-empty">
-        <el-empty description="暂无预览内容" />
-      </div>
-      <div v-else class="preview-html" v-html="renderedHTML"></div>
-    </div>
+     <ErrorState
+       v-if="loadError"
+       type="api"
+       title="加载预览失败"
+       :message="errorMessage"
+       :canRetry="true"
+       :onRetry="handleRefresh"
+     />
+
+     <div v-else class="preview-content">
+       <LoadingState :loading="loading" text="加载预览..." />
+       <div v-if="!renderedHTML" class="preview-empty">
+         <el-empty description="暂无预览内容" />
+       </div>
+       <div v-else class="preview-html" v-html="renderedHTML"></div>
+     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { reportApi } from '@/api/report'
+ import { computed, onMounted, ref } from 'vue'
+ import { useRoute } from 'vue-router'
+ import { ElMessage } from 'element-plus'
+ import { reportApi } from '@/api/report'
+ import LoadingState from '@/components/common/LoadingState.vue'
+ import ErrorState from '@/components/common/ErrorState.vue'
 
-const route = useRoute()
-const renderedHTML = ref('')
-const loading = ref(false)
+
+ const route = useRoute()
+ const renderedHTML = ref('')
+ const loading = ref(false)
+ const loadError = ref(false)
+ const errorMessage = ref('')
 
 const reportId = computed(() => route.query.id as string | undefined)
 
-async function handleRefresh() {
-  if (!reportId.value) {
-    ElMessage.warning('未指定报表 ID')
-    return
-  }
+ async function handleRefresh() {
+   if (!reportId.value) {
+     ElMessage.warning('未指定报表 ID')
+     return
+   }
 
-  loading.value = true
-  try {
-    const response = await reportApi.preview({ id: reportId.value })
-    if (response.data.success) {
-      renderedHTML.value = response.data.result?.html || ''
-    } else {
-      ElMessage.error(response.data.message || '预览加载失败')
-    }
-  } catch (error: any) {
-    ElMessage.error('预览加载失败')
-  } finally {
-    loading.value = false
-  }
-}
+   loadError.value = false
+   errorMessage.value = ''
+   loading.value = true
+   try {
+     const response = await reportApi.preview({ id: reportId.value })
+     if (response.data.success) {
+       renderedHTML.value = response.data.result?.html || ''
+     } else {
+       loadError.value = true
+       errorMessage.value = response.data.message || '预览加载失败'
+     }
+   } catch (error: any) {
+     loadError.value = true
+     errorMessage.value = error.message || '预览加载失败'
+   } finally {
+     loading.value = false
+   }
+ }
 
 function handleExport() {
   ElMessage.info('导出功能开发中')

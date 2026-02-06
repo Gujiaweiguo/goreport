@@ -219,6 +219,13 @@ make clean        # 清理容器和卷
 
 - [TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md) - 技术选型对比
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - 系统架构设计
+- [docs/USER_GUIDE.md](./docs/USER_GUIDE.md) - 用户指南
+- [docs/DEVELOPMENT_GUIDE.md](./docs/DEVELOPMENT_GUIDE.md) - 开发指南
+- [docs/MIGRATION_GUIDE.md](./docs/MIGRATION_GUIDE.md) - 迁移指南
+- [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) - 贡献指南
+- [docs/BROWSER_COMPATIBILITY_TEST.md](./docs/BROWSER_COMPATIBILITY_TEST.md) - 浏览器兼容性测试指南
+- [docs/UX_OPTIMIZATION_GUIDE.md](./docs/UX_OPTIMIZATION_GUIDE.md) - 用户体验优化指南
+- [docs/UAT_GUIDE.md](./docs/UAT_GUIDE.md) - 用户验收测试指南
 - [openspec/](./openspec/) - 需求规范（OpenSpec）
 
 ## 贡献
