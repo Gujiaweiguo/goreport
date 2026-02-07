@@ -2,7 +2,7 @@
 
 ## 1. 概述
 
-JimuReport 的前端 UI 主要由 `jimureport-spring-boot3-starter` 依赖提供，包括报表设计器、仪表盘设计器等。Go 后端需要正确处理静态资源的访问和服务。
+goReport 的前端 UI 主要由 `jimureport-spring-boot3-starter` 依赖提供，包括报表设计器、仪表盘设计器等。Go 后端需要正确处理静态资源的访问和服务。
 
 ## 2. 静态资源位置
 

@@ -1,7 +1,7 @@
 <template>
   <div class="home">
-    <h1>JimuReport</h1>
-    <p>欢迎使用 JimuReport 报表系统</p>
+    <h1>goReport</h1>
+    <p>欢迎使用 goReport 报表系统</p>
     <el-button type="primary" @click="testConnection">测试连接</el-button>
     <p v-if="healthStatus">
       状态: {{ healthStatus }}

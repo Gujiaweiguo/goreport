@@ -1,4 +1,4 @@
-# JimuReport 生产环境监控配置
+# goReport 生产环境监控配置
 
 本目录包含生产环境监控相关的配置文件。
 
@@ -69,7 +69,7 @@ open http://localhost:3000
 
 ## 自定义仪表板
 
-参考 `dashboards/jimureport-dashboard.json` 创建自定义仪表板。
+参考 `dashboards/goreport-dashboard.json` 创建自定义仪表板。
 
 ## 维护
 

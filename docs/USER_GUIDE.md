@@ -1,4 +1,4 @@
-# JimuReport 用户指南
+# goReport 用户指南
 
 ## 目录
 

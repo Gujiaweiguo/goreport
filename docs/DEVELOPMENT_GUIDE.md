@@ -1,4 +1,4 @@
-# JimuReport 开发指南
+# goReport 开发指南
 
 ## 目录
 

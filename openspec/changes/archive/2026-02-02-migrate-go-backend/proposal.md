@@ -1,4 +1,4 @@
-# Change: Migrate JimuReport backend to Go
+# Change: Migrate goReport backend to Go
 
 ## Why
 The current integration relies on a Java Spring Boot backend. We need a Go-native backend to align with the existing Go system, reduce cross-stack operational overhead, and enable consistent JWT-based SSO.

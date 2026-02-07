@@ -1,8 +1,8 @@
-# JimuReport 数据库表结构
+# goReport 数据库表结构
 
 ## 1. 概述
 
-JimuReport 使用 MySQL 5.7+ 作为数据存储，支持多租户模式。核心表分为以下几类：
+goReport 使用 MySQL 5.7+ 作为数据存储，支持多租户模式。核心表分为以下几类：
 
 - 报表相关表 (`jimu_report*`)
 - 仪表盘/大屏相关表 (`onl_drag_*`)

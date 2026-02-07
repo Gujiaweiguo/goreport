@@ -1,7 +1,7 @@
 {
-  "name": "jimureport-frontend",
+  "name": "goreport",
   "version": "0.1.0",
-  "description": "JimuReport Frontend",
+  "description": "goReport Frontend",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

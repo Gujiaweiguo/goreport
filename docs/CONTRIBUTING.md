@@ -1,6 +1,6 @@
-# JimuReport 贡献指南
+# goReport 贡献指南
 
-感谢您对 JimuReport 项目的关注！我们欢迎任何形式的贡献。
+感谢您对 goReport 项目的关注！我们欢迎任何形式的贡献。
 
 ## 目录
 

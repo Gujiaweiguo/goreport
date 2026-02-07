@@ -1,5 +1,5 @@
 ## Context
-JimuReport is currently delivered through a Spring Boot example app that bundles the report designer, rendering endpoints, printing/export, and dashboard capabilities. The goal is to provide the same capabilities from a Go service that integrates with an existing JWT-based authentication system.
+goReport is currently delivered through a Spring Boot example app that bundles the report designer, rendering endpoints, printing/export, and dashboard capabilities. The goal is to provide the same capabilities from a Go service that integrates with an existing JWT-based authentication system.
 
 ## Goals / Non-Goals
 - Goals:
@@ -28,7 +28,7 @@ JimuReport is currently delivered through a Spring Boot example app that bundles
   - Rationale: Maintains parity with existing embedding patterns and avoids blocking iframe usage.
 - Decision: Resolve tokens in this order: `Authorization: Bearer <token>`, `X-Access-Token`, then query parameter `token`.
   - Rationale: Prioritizes standard auth headers while preserving legacy compatibility.
-- Decision: Reuse the current JimuReport designer UI assets without redesign.
+- Decision: Reuse the current goReport designer UI assets without redesign.
   - Rationale: Avoids UI reimplementation during backend migration.
 
 ## Risks / Trade-offs

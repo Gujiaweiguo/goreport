@@ -2,7 +2,7 @@
 
 ## 1. 概述
 
-本文档定义了 JimuReport Go 后端各个模块的接口契约。每个模块包含 Handler（HTTP 层）、Service（业务逻辑层）、Repository（数据访问层）和 Models（数据模型）。
+本文档定义了 goReport Go 后端各个模块的接口契约。每个模块包含 Handler（HTTP 层）、Service（业务逻辑层）、Repository（数据访问层）和 Models（数据模型）。
 
 ## 2. Auth 模块
 

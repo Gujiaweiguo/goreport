@@ -3,7 +3,7 @@
     <NoPermission v-if="showNoPermission" />
     <aside v-else class="layout-sidebar">
       <div class="sidebar-header">
-        <h2 class="app-title">JimuReport</h2>
+        <h2 class="app-title">goReport</h2>
       </div>
       <el-menu
         :default-active="activeMenu"

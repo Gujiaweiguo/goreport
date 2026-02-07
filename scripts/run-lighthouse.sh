@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Lighthouse 性能测试脚本
-# 用于测试 JimuReport 前端性能
+# 用于测试 goReport 前端性能
 
 set -e
 
 echo "================================"
-echo "JimuReport 性能测试脚本"
+echo "goReport 性能测试脚本"
 echo "================================"
 echo ""
 
@@ -80,7 +80,7 @@ echo ""
 echo "生成汇总报告..."
 
 cat > "$OUTPUT_DIR/$TIMESTAMP/summary.md" << EOF
-# JimuReport 性能测试报告
+# goReport 性能测试报告
 
 **测试时间**: $(date '+%Y-%m-%d %H:%M:%S')  
 **测试版本**: v1.0.0  

@@ -1,7 +1,7 @@
 # Project Context
 
 ## Purpose
-JimuReport 是一个基于 OpenSpec 驱动开发的报表与可视化系统，覆盖报表设计、预览渲染、导出、仪表盘与大屏能力。
+goReport 是一个基于 OpenSpec 驱动开发的报表与可视化系统，覆盖报表设计、预览渲染、导出、仪表盘与大屏能力。
 当前仓库以 Go 后端 + Vue 前端实现为主，同时保留 `jimureport-example/` 作为 Java 生态兼容与参考示例。
 
 ## Tech Stack
@@ -43,7 +43,7 @@ JimuReport 是一个基于 OpenSpec 驱动开发的报表与可视化系统，�
 
 ## Domain Context
 - 核心能力包括：报表设计器、报表渲染器、报表导出、Dashboard 与图表编辑
-- API 与 UI 实现面向 JimuReport/JimuBI 兼容场景
+- API 与 UI 实现面向 goReport/JimuBI 兼容场景
 - 目标是先保证核心流程可用，再逐步补齐高级能力与兼容性
 
 ## Important Constraints
@@ -56,4 +56,4 @@ JimuReport 是一个基于 OpenSpec 驱动开发的报表与可视化系统，�
 - MySQL（必需）
 - Redis（可选）
 - Docker / Docker Compose（推荐本地联调）
-- 官方文档：https://help.jimureport.com
+- 官方文档：https://help.goreport.dev

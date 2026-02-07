@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# JimuReport 生产部署脚本
+# goReport 生产部署脚本
 # 用于自动化生产环境部署
 
 set -e

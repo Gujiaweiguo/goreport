@@ -1,11 +1,11 @@
-# JimuReport Makefile
+# goReport Makefile
 # 提供常用开发命令
 
 .PHONY: help dev dev-down dev-logs dev-ps build build-frontend build-backend build-prod test test-frontend test-backend test-coverage clean db-shell redis-cli docs
 
 # 默认目标
 help:
-	@echo "JimuReport 开发命令:"
+	@echo "goReport 开发命令:"
 	@echo ""
 	@echo "  make dev         - 启动开发环境 (Docker Compose)"
 	@echo "  make dev-down    - 停止开发环境"
@@ -85,7 +85,7 @@ clean:
 
 # 数据库
 db-shell:
-	docker-compose exec mysql mysql -uroot -proot jimureport
+	docker-compose exec mysql mysql -uroot -proot goreport
 
 redis-cli:
 	docker-compose exec redis redis-cli

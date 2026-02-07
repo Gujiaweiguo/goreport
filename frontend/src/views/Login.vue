@@ -2,7 +2,7 @@
   <div class="login-container">
     <el-card class="login-card">
       <template #header>
-        <h2>JimuReport 登录</h2>
+        <h2>goReport 登录</h2>
       </template>
 
       <el-form

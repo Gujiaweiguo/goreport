@@ -1,8 +1,8 @@
-# Change: Build Custom JimuReport Frontend
+# Change: Build Custom goReport Frontend
 
 ## Why
 
-JimuReport 官方前端是闭源的，无法通过开源方式获取。为了让 Go 后端成为完整的解决方案，需要开发自定义前端来替代官方前端，提供报表设计器、渲染器和大屏设计器等核心功能。
+goReport 官方前端是闭源的，无法通过开源方式获取。为了让 Go 后端成为完整的解决方案，需要开发自定义前端来替代官方前端，提供报表设计器、渲染器和大屏设计器等核心功能。
 
 ## What Changes
 
@@ -40,7 +40,7 @@ JimuReport 官方前端是闭源的，无法通过开源方式获取。为了让
 - **总计**: 550-850 人日（约 2.5-4 人年）
 
 **Risks**:
-- UI 专利风险：可能与 JimuReport 有专利冲突
+- UI 专利风险：可能与 goReport 有专利冲突
 - 功能兼容性：难以保证与官方版本完全兼容
 - 维护成本高：需要持续维护和更新
 - 开发周期长：可能影响项目交付时间
@@ -53,7 +53,7 @@ JimuReport 官方前端是闭源的，无法通过开源方式获取。为了让
 
 ## Dependencies
 
-- 需要 JimuReport Go 后端 API 完整实现
+- 需要 goReport Go 后端 API 完整实现
 - 需要 UI/UX 设计师参与
 - 需要前端开发团队
 - 需要测试团队

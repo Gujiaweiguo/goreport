@@ -8,7 +8,7 @@
 import { onMounted } from 'vue'
 
 onMounted(() => {
-  console.log('JimuReport Frontend Started')
+  console.log('goReport Frontend Started')
 })
 </script>
 

@@ -1,8 +1,8 @@
-# Design: Custom JimuReport Frontend
+# Design: Custom goReport Frontend
 
 ## Context
 
-JimuReport 官方前端是闭源的，包含以下核心功能：
+goReport 官方前端是闭源的，包含以下核心功能：
 1. 报表设计器 - 拖拽式报表设计，类似 Excel 操作
 2. 报表渲染器 - 报表预览、分页、打印
 3. 大屏设计器 - 可视化大屏设计，支持多种组件
@@ -33,9 +33,9 @@ JimuReport 官方前端是闭源的，包含以下核心功能：
 - 支持多租户和权限管理
 
 **Non-Goals**:
-- 完全复制 JimuReport 官方 UI（避免专利冲突）
-- 实现 JimuReport 的所有高级功能（如 AI 辅助）
-- 支持所有 JimuReport 的高级特性（如复杂的联动规则）
+- 完全复制 goReport 官方 UI（避免专利冲突）
+- 实现 goReport 的所有高级功能（如 AI 辅助）
+- 支持所有 goReport 的高级特性（如复杂的联动规则）
 - 实现移动端适配（后续迭代）
 
 ## Decisions
@@ -122,7 +122,7 @@ JimuReport 官方前端是闭源的，包含以下核心功能：
 **Choice**: ECharts 5.x
 
 **Why**:
-- 官方 JimuReport 使用 ECharts，兼容性好
+- 官方 goReport 使用 ECharts，兼容性好
 - 功能强大，支持 28 种图表类型
 - 文档完善，社区活跃
 - 性能优秀
@@ -385,7 +385,7 @@ frontend/
 ### Risk 1: UI 专利冲突
 
 **Description**:
-自定义前端可能与 JimuReport 官方 UI 存在专利冲突。
+自定义前端可能与 goReport 官方 UI 存在专利冲突。
 
 **Mitigation**:
 - 不完全复制官方 UI 设计
@@ -396,7 +396,7 @@ frontend/
 ### Risk 2: 功能兼容性问题
 
 **Description**:
-用户习惯使用官方 JimuReport，自定义前端可能不兼容。
+用户习惯使用官方 goReport，自定义前端可能不兼容。
 
 **Mitigation**:
 - 优先实现核心功能
@@ -555,7 +555,7 @@ frontend/
 
 ## Open Questions
 
-1. **UI 设计风格**: 是否需要完全模仿 JimuReport 官方 UI，还是采用自己的设计风格？
+1. **UI 设计风格**: 是否需要完全模仿 goReport 官方 UI，还是采用自己的设计风格？
 
 2. **功能优先级**: 是否所有功能都需要在第一阶段实现，还是可以分阶段交付？
 

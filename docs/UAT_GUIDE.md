@@ -1,6 +1,6 @@
 # 用户验收测试 (UAT) 指南
 
-本文档提供 JimuReport 用户验收测试 (UAT) 的详细指南和流程。
+本文档提供 goReport 用户验收测试 (UAT) 的详细指南和流程。
 
 ## 目录
 
@@ -128,7 +128,7 @@ python scripts/import_test_data.py --source test_data.csv
 **测试用例文档**：
 
 ```markdown
-# JimuReport UAT 测试用例
+# goReport UAT 测试用例
 
 ## 用户认证
 
@@ -477,13 +477,13 @@ python scripts/import_test_data.py --source test_data.csv
 ## 验收报告模板
 
 ```markdown
-# JimuReport v1.0.0 UAT 验收报告
+# goReport v1.0.0 UAT 验收报告
 
 ## 基本信息
 
 | 项目 | 信息 |
 |------|------|
-| 项目名称 | JimuReport |
+| 项目名称 | goReport |
 | 版本 | v1.0.0 |
 | UAT 开始日期 | 2024-02-01 |
 | UAT 结束日期 | 2024-02-14 |

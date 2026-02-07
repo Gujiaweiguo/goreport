@@ -117,7 +117,7 @@ func GetTenantID(r *http.Request) string {
 
 ### 5.1 内置角色
 
-JimuReport 内置三个角色，JWT 中的 `roles` claim 应包含以下值：
+goReport 内置三个角色，JWT 中的 `roles` claim 应包含以下值：
 
 | 角色 | 说明 |
 |------|------|

@@ -1,4 +1,4 @@
-# JimuReport 技术选型决策文档
+# goReport 技术选型决策文档
 
 > **版本**：v1.0
 > **日期**：2026-02-03
@@ -134,7 +134,7 @@
 **本项目推荐：Gin**
 
 理由：
-1. JimuReport需要大量RESTful API（报表CRUD、数据源管理、仪表盘等）
+1. goReport需要大量RESTful API（报表CRUD、数据源管理、仪表盘等）
 2. 需要中间件链（JWT认证 -> CORS -> 日志 -> 业务Handler）
 3. 需要参数绑定和验证（JSON请求体、Query参数、Path参数）
 4. 团队熟悉度高（国内Go社区Gin最流行）
@@ -242,7 +242,7 @@
 **本项目推荐：GORM**
 
 理由：
-1. JimuReport有大量实体（Report、Datasource、Dashboard、Cell等）
+1. goReport有大量实体（Report、Datasource、Dashboard、Cell等）
 2. 需要关联查询（Report -> Datasource -> Tables）
 3. 需要软删除（报表删除后保留数据）
 4. 需要自动迁移（开发迭代快）

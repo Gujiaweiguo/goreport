@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# JimuReport UAT 测试数据准备脚本
+# goReport UAT 测试数据准备脚本
 # 用于生成 UAT 环境所需的测试数据
 
 set -e
 
 echo "================================"
-echo "JimuReport UAT 测试数据准备"
+echo "goReport UAT 测试数据准备"
 echo "================================"
 echo ""
 

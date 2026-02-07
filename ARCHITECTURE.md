@@ -1,4 +1,4 @@
-# JimuReport 系统架构设计
+# goReport 系统架构设计
 
 > **版本**：v1.0
 > **日期**：2026-02-03
@@ -76,7 +76,7 @@
 ### 2.1 目录结构
 
 ```
-jimureport-go/
+goreport/
 ├── cmd/
 │   └── server/
 │       └── main.go                 # 应用入口

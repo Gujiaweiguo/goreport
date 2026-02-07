@@ -1,4 +1,4 @@
-# JimuReport 前端开发环境 Dockerfile
+# goReport 前端开发环境 Dockerfile
 FROM node:20-alpine
 
 # 设置工作目录

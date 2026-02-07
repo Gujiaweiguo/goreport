@@ -1,4 +1,4 @@
-# JimuReport v1.0.0 UAT 执行检查清单
+# goReport v1.0.0 UAT 执行检查清单
 
 本清单用于指导 UAT 测试的完整执行流程。
 

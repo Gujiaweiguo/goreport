@@ -1,22 +1,22 @@
 [中文](./README.md) | English
 
 
-# JimuReport (Free Report Tool)
+# goReport (Free Report Tool)
 
 v2.3.0 | 2025-12-22
 
 
 [![](https://img.shields.io/badge/Author-北京国炬信息技术有限公司-orange.svg)](https://guojusoft.com)
-[![](https://img.shields.io/badge/version-2.3.0-brightgreen.svg)](https://github.com/jeecgboot/JimuReport)
-[![](https://img.shields.io/badge/Blog-积木报表官网-blue.svg)](http://jimureport.com)
-[![GitHub stars](https://img.shields.io/github/stars/zhangdaiscott/JimuReport.svg?style=social&label=Stars)](https://github.com/jeecgboot/JimuReport)
-[![GitHub forks](https://img.shields.io/github/forks/zhangdaiscott/JimuReport.svg?style=social&label=Fork)](https://github.com/jeecgboot/JimuReport)
+[![](https://img.shields.io/badge/version-2.3.0-brightgreen.svg)](https://github.com/jeecgboot/goReport)
+[![](https://img.shields.io/badge/Blog-goReport官网-blue.svg)](http://jimureport.com)
+[![GitHub stars](https://img.shields.io/github/stars/zhangdaiscott/goReport.svg?style=social&label=Stars)](https://github.com/jeecgboot/goReport)
+[![GitHub forks](https://img.shields.io/github/forks/zhangdaiscott/goReport.svg?style=social&label=Fork)](https://github.com/jeecgboot/goReport)
 
 
-JimuReport is a free data visualization reporting tool that includes reports, printing, dashboards, and data screens. Design completely online like building blocks! Features include: complex reports, print design, chart reports, portal design, dashboard design, etc.!
-It consists of two main modules: JimuReport focuses on traditional complex reports and printing, while JimuBI focuses on data dashboard and dashboard visualization design!
+goReport is a free data visualization reporting tool that includes reports, printing, dashboards, and data screens. Design completely online like building blocks! Features include: complex reports, print design, chart reports, portal design, dashboard design, etc.!
+It consists of two main modules: goReport focuses on traditional complex reports and printing, while JimuBI focuses on data dashboard and dashboard visualization design!
 
--   JimuReport uses a Web-based report designer with Excel-like operation style, completing report design through drag-and-drop, what you see is what you get.
+-   goReport uses a Web-based report designer with Excel-like operation style, completing report design through drag-and-drop, what you see is what you get.
 -   Leading enterprise-level Web reports, supporting various complex reports, focusing on solving enterprise reporting challenges.
 -   JimuBI is a tool focused on digital twins and data visualization, aiming to present real-time business data in an intuitive, dynamic and visually appealing way, especially good at creating interactive dashboards and data screens.
 -   JimuBI is the only one in the industry that achieves full-scenario coverage: supports dashboards (cool dynamics), data screens (professional analysis), portals (interactive business dashboards), and mobile (view anytime, anywhere), truly achieving "develop once, adapt to multiple terminals".
@@ -35,17 +35,17 @@ Technical Documentation
 
 - Official Website: http://jimureport.com
 - Online Demo: http://jimureport.com/login
-- Quick Start: [Quick Integration of JimuReport](https://help.jimureport.com/quick.html) | [Development Documentation](https://help.jimureport.com) | [Video Tutorials](http://jimureport.com/doc/video)
-- Technical Support: [Found a bug? Please report an issue on GitHub](https://github.com/jeecgboot/JimuReport/issues/new)
+- Quick Start: [Quick Integration of goReport](https://help.jimureport.com/quick.html) | [Development Documentation](https://help.jimureport.com) | [Video Tutorials](http://jimureport.com/doc/video)
+- Technical Support: [Found a bug? Please report an issue on GitHub](https://github.com/jeecgboot/goReport/issues/new)
 - QQ Groups: 854804538、③596660273(full)、①212391162(full)、②929646317(full)
 
 
 
-Quick Integration of JimuReport
+Quick Integration of goReport
 -----------------------------------
 > Supports quick integration into SpringBoot scaffold projects. SpringBoot3 requires JDK17+, SpringBoot2 requires JDK8+
 
-#### Step 1: Add JimuReport Dependencies
+#### Step 1: Add goReport Dependencies
 
 
 -   springboot3
@@ -130,7 +130,7 @@ jimureport-example Environment Requirements
 Green Installation-Free Version
 -----------------------------------
 
-- [Integrated Source Code Run](https://github.com/jeecgboot/JimuReport/tree/master/jimureport-example)
+- [Integrated Source Code Run](https://github.com/jeecgboot/goReport/tree/master/jimureport-example)
 - [Docker Quick Run](https://help.jimureport.com/docker.html)
 - [Green Installation-Free Version](https://pan.baidu.com/s/1z9VmMz4HCc7GMVbzugetLQ?pwd=xafr)
 
@@ -141,7 +141,7 @@ Green Installation-Free Version
 License Agreement
 -----------------------------------
 
-The open source version is released under the LGPL license. If you cannot accept LGPL and need to use this project for commercial purposes without retaining copyright information (preview "Powered by JimuReport", "JimuReport Logo" and other copyright and links), you need to purchase [commercial license](http://jimureport.com/vip) to protect your legal rights.
+The open source version is released under the LGPL license. If you cannot accept LGPL and need to use this project for commercial purposes without retaining copyright information (preview "Powered by goReport", "goReport Logo" and other copyright and links), you need to purchase [commercial license](http://jimureport.com/vip) to protect your legal rights.
 
 
 Background
@@ -151,7 +151,7 @@ What kind of report should we make? With the rise of the low-code concept, the p
 
 
 
-Why Choose JimuReport?
+Why Choose goReport?
 -----------------------------------
 >    Permanently free, supports various complex reports, and features fool-proof online design, very intelligent. In the era of low-code, this is your first choice!
 
@@ -167,7 +167,7 @@ Why Choose JimuReport?
 - Can design various types of documents and large screens, such as inventory receipts, sales orders, financial reports, contracts, monitoring screens, tourism data screens, etc.
 - Large screen designer supports dozens of chart styles, can be freely spliced and combined to design cool large screens
 - Data visualization, open source alternative to DataV and FineReport, with better experience and simpler usage than FineReport
-- [JimuReport Official Website](http://jimureport.com/login) allows you to create reports and large screens online for free. One-click registration with mobile number for permanent use. Large screens adopt Word-like style, you can drag components freely and design however you want, creating cool visual screens like Baidu and Alibaba! The important thing is: Free! Free! Free!
+- [goReport Official Website](http://jimureport.com/login) allows you to create reports and large screens online for free. One-click registration with mobile number for permanent use. Large screens adopt Word-like style, you can drag components freely and design however you want, creating cool visual screens like Baidu and Alibaba! The important thing is: Free! Free! Free!
 
 
 Database Compatibility

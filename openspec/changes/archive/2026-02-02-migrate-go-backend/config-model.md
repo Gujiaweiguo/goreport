@@ -2,7 +2,7 @@
 
 ## 1. 概述
 
-本文档定义了 JimuReport Go 后端的配置模型，确保与现有 Java Spring Boot 配置的兼容性，并支持环境变量覆盖。
+本文档定义了 goReport Go 后端的配置模型，确保与现有 Java Spring Boot 配置的兼容性，并支持环境变量覆盖。
 
 ## 2. 配置文件结构
 
@@ -150,7 +150,7 @@ jmreport:
     export:
       enable_auto_export: true          # 是否开启自动导出
       expired: 30                      # 文件过期时间（天）
-      jimu_view_path:                  # 积木报表 view 页面地址
+      jimu_view_path:                  # goReport view 页面地址
       download_path: /opt/download      # 下载的报表存放目录
 
   # AI 配置
@@ -292,7 +292,7 @@ type Config struct {
     Logging   LoggingConfig   `mapstructure:"logging"`
     CORS       CORSConfig       `mapstructure:"cors"`
     Upload     UploadConfig     `mapstructure:"upload"`
-    JimuReport JimuReportConfig `mapstructure:"jmreport"`
+    goReport goReportConfig `mapstructure:"jmreport"`
     Storage    StorageConfig    `mapstructure:"storage"`
     Tenant     TenantConfig     `mapstructure:"tenant"`
     Redis      RedisConfig      `mapstructure:"redis"`
@@ -391,8 +391,8 @@ type UploadConfig struct {
     AllowedTypes   []string `mapstructure:"allowed_types"`
 }
 
-// JimuReportConfig 报表配置
-type JimuReportConfig struct {
+// goReportConfig 报表配置
+type goReportConfig struct {
     SignatureSecret string              `mapstructure:"signature_secret"`
     Firewall       FirewallConfig       `mapstructure:"firewall"`
     Col            int                 `mapstructure:"col"`

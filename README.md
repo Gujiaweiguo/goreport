@@ -1,4 +1,4 @@
-# JimuReport 积木报表
+# goReport
 
 基于 OpenSpec 规范构建的新一代报表系统。
 
@@ -24,7 +24,7 @@
 ## 项目结构
 
 ```
-jimureport/
+goreport/
 ├── backend/                    # Go 后端
 │   ├── cmd/server/            # 应用入口
 │   ├── internal/              # 内部代码
@@ -257,4 +257,4 @@ LGPL-3.0
 ## 联系方式
 
 - 问题反馈：GitHub Issues
-- 技术支持：<support@jimureport.com>
+- 技术支持：<support@goreport.dev>

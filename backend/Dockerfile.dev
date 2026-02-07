@@ -1,4 +1,4 @@
-# JimuReport 后端开发环境 Dockerfile
+# goReport 后端开发环境 Dockerfile
 FROM golang:1.22-alpine
 
 # 安装依赖

@@ -1,6 +1,6 @@
-# JimuReport 迁移指南
+# goReport 迁移指南
 
-本指南帮助您从旧版本或其他报表系统迁移到 JimuReport。
+本指南帮助您从旧版本或其他报表系统迁移到 goReport。
 
 ## 目录
 
@@ -64,9 +64,9 @@ SELECT * FROM users INTO OUTFILE '/tmp/users.csv';
 
 #### 2. 转换数据格式
 
-JimuReport 使用 JSON 格式存储配置，需要转换：
+goReport 使用 JSON 格式存储配置，需要转换：
 
-| 旧系统字段 | JimuReport 字段 | 转换规则 |
+| 旧系统字段 | goReport 字段 | 转换规则 |
 |-----------|-----------------|---------|
 | report_xml | config | XML → JSON |
 | template | config | 模板语法适配 |
@@ -117,7 +117,7 @@ EOF
 
 ### 数据源配置
 
-将旧数据源配置映射到 JimuReport 格式：
+将旧数据源配置映射到 goReport 格式：
 
 **旧格式示例：**
 
@@ -131,7 +131,7 @@ EOF
 }
 ```
 
-**JimuReport 格式：**
+**goReport 格式：**
 
 ```json
 {
@@ -146,9 +146,9 @@ EOF
 
 ### 用户权限
 
-映射旧系统的角色到 JimuReport 角色：
+映射旧系统的角色到 goReport 角色：
 
-| 旧角色 | JimuReport 角色 | 权限 |
+| 旧角色 | goReport 角色 | 权限 |
 |-------|--------------|--------|
 | Administrator | admin | 全部权限 |
 | Developer | developer | 设计、编辑 |
@@ -180,7 +180,7 @@ reportApi.get(reportId)
 
 ### 前端组件迁移
 
-JimuReport 使用 Vue 3 + Element Plus，需要适配：
+goReport 使用 Vue 3 + Element Plus，需要适配：
 
 ```javascript
 // 旧组件 (Vue 2)
@@ -202,7 +202,7 @@ const handleClick = () => {
 
 ### 表达式语法
 
-JimuReport 表达式语法：
+goReport 表达式语法：
 
 | 类型 | 语法 | 示例 |
 |-----|------|------|
@@ -364,7 +364,7 @@ JOIN user_tenants ut ON u.id = ut.user_id;
 ### 数据导入工具
 
 ```bash
-# 导入到 JimuReport
+# 导入到 goReport
 ./tools/import --input jimureport.json --validate
 ```
 

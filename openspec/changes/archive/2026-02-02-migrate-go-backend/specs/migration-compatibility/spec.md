@@ -1,9 +1,9 @@
 ## ADDED Requirements
 ### Requirement: MySQL Schema Compatibility
-The Go backend SHALL reuse the existing JimuReport MySQL schema without requiring destructive migrations.
+The Go backend SHALL reuse the existing goReport MySQL schema without requiring destructive migrations.
 
 #### Scenario: Existing database reuse
-- **WHEN** the Go service starts against an existing JimuReport database
+- **WHEN** the Go service starts against an existing goReport database
 - **THEN** existing reports and dashboards remain available
 
 ### Requirement: Route Compatibility

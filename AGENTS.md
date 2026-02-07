@@ -22,7 +22,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 ## Scope and layout
 - Primary runnable project lives in `jimureport-example/`.
-- Main Spring Boot entrypoint in code: `com.jeecg.JimuReportApplication`.
+- Main Spring Boot entrypoint in code: `com.jeecg.goReportApplication`.
 - Docs reference running from `jimureport-example` and Docker usage.
 
 ## Build, lint, test, run
@@ -33,8 +33,8 @@ Keep this managed block so 'openspec update' can refresh the instructions.
   - Source: `jimureport-example/README.md`
 - Run app (documented as IDE run):
   - Run main class from IDE.
-  - README mentions `org.jeecg.modules.JimuReportApplication`, but actual class is `com.jeecg.JimuReportApplication`.
-  - Sources: `jimureport-example/README.md`, `jimureport-example/src/main/java/com/jeecg/JimuReportApplication.java`.
+  - README mentions `org.jeecg.modules.goReportApplication`, but actual class is `com.jeecg.goReportApplication`.
+  - Sources: `jimureport-example/README.md`, `jimureport-example/src/main/java/com/jeecg/goReportApplication.java`.
 - Test (standard Maven, not documented in repo):
   - `mvn test`
   - `mvn -Dtest=TestClassName test`
@@ -66,7 +66,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 - Common package areas:
   - `controller` for MVC controllers.
   - `config` for configuration classes.
-  - `extend` for JimuReport extension implementations.
+  - `extend` for goReport extension implementations.
   - `satoken` for auth/session utilities.
 
 ### Imports
@@ -102,7 +102,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 ### Error handling
 - Prefer explicit exception handling with logging.
-- Custom runtime exception used: `JimuReportException`.
+- Custom runtime exception used: `goReportException`.
 - Exception handler classes exist but are commented out.
 - Avoid empty catch blocks; if swallowing, add a comment or log.
 
@@ -162,9 +162,9 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 - `jimureport-example/README.md`
 - `jimureport-example/README.en-US.md`
 - `jimureport-example/pom.xml`
-- `jimureport-example/src/main/java/com/jeecg/JimuReportApplication.java`
+- `jimureport-example/src/main/java/com/jeecg/goReportApplication.java`
 - `jimureport-example/src/main/java/com/jeecg/modules/jmreport/controller/LoginController.java`
-- `jimureport-example/src/main/java/com/jeecg/modules/jmreport/extend/JimuReportTokenServiceImpl.java`
+- `jimureport-example/src/main/java/com/jeecg/modules/jmreport/extend/goReportTokenServiceImpl.java`
 - `jimureport-example/src/main/java/com/jeecg/modules/jmreport/satoken/util/AjaxRequestUtils.java`
 - `jimureport-example/src/main/java/com/jeecg/modules/jmreport/config/CustomCorsConfiguration.java`
 - `jimureport-example/src/main/resources/application.yml`

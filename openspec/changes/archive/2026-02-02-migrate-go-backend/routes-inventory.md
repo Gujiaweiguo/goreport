@@ -1,4 +1,4 @@
-# JimuReport 路由清单
+# goReport 路由清单
 
 ## 1. 发现的路由
 
@@ -12,7 +12,7 @@
 | `/logout` | GET | 退出登录 | `LoginController.java` |
 | `/login/login.html` | GET | 登录页面 | 静态资源 |
 
-### 1.2 JimuReport 报表路由 (由 starter 提供)
+### 1.2 goReport 报表路由 (由 starter 提供)
 
 | 路由前缀 | 描述 | 功能 |
 |----------|------|------|
@@ -30,7 +30,7 @@
 
 ### 2.1 认证接口 (JmReportTokenServiceI)
 
-JimuReport 通过 `JmReportTokenServiceI` 接口进行认证集成：
+goReport 通过 `JmReportTokenServiceI` 接口进行认证集成：
 
 | 方法 | 描述 |
 |------|------|
@@ -41,7 +41,7 @@ JimuReport 通过 `JmReportTokenServiceI` 接口进行认证集成：
 | `verifyToken(String token)` | 验证 token 有效性 |
 | `getTenantId()` | 获取租户 ID |
 
-### 2.2 当前实现 (JimuReportTokenServiceImpl.java)
+### 2.2 当前实现 (goReportTokenServiceImpl.java)
 
 **Token 获取优先级**：
 1. 从 Sa-Token 上下文获取 (`StpUtil.getTokenValue()`)
@@ -137,5 +137,5 @@ spring:
 ## 6. 下一步行动
 
 1. [ ] 启动 jimureport-example，访问 `/actuator/mappings` 查看完整的路由映射
-2. [ ] 浏览 JimuReport 官方文档，获取完整的 API 文档
+2. [ ] 浏览 goReport 官方文档，获取完整的 API 文档
 3. [ ] 通过抓包工具分析 UI 调用的实际 API 路由
