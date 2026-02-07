@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/jeecg/jimureport-go/internal/auth"
+	"github.com/jeecg/jimureport-go/internal/cache"
 	"github.com/jeecg/jimureport-go/internal/config"
 	"github.com/jeecg/jimureport-go/internal/dashboard"
 	"github.com/jeecg/jimureport-go/internal/httpserver/handlers"
@@ -20,11 +21,17 @@ import (
 type Server struct {
 	Engine *gin.Engine
 	Server *http.Server
+	Cache  *cache.Cache
 }
 
 // NewServer 创建新的 HTTP 服务器
-func NewServer(cfg *config.Config, db *gorm.DB) *Server {
+func NewServer(cfg *config.Config, db *gorm.DB) (*Server, error) {
 	auth.InitJWT(&cfg.JWT)
+
+	cache, err := cache.New(cfg.Cache)
+	if err != nil {
+		return nil, err
+	}
 
 	r := gin.Default()
 
@@ -48,7 +55,7 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 	}
 
 	// 数据源路由
-	datasourceHandler := handlers.NewDataSourceHandler(db)
+	datasourceHandler := handlers.NewDataSourceHandler(db, cache)
 	datasources := r.Group("/api/v1/datasource")
 	{
 		datasources.GET("/list", datasourceHandler.ListDatasources)
@@ -60,9 +67,13 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 		datasources.DELETE("/:id", datasourceHandler.DeleteDatasource)
 	}
 
+	// 缓存指标路由
+	cacheHandler := handlers.NewCacheHandler(cache)
+	r.GET("/api/v1/cache/metrics", cacheHandler.GetMetrics)
+
 	reportRepo := report.NewRepository(db)
-	reportEngine := render.NewEngine(db)
-	reportService := report.NewService(reportRepo, reportEngine)
+	reportEngine := render.NewEngine(db, cache)
+	reportService := report.NewService(reportRepo, reportEngine, cache)
 	reportHandler := report.NewHandler(reportService)
 	reports := r.Group("/api/v1/jmreport")
 	{
@@ -95,7 +106,8 @@ func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 	return &Server{
 		Engine: r,
 		Server: srv,
-	}
+		Cache:  cache,
+	}, nil
 }
 
 // Run 启动 HTTP 服务器
@@ -106,6 +118,9 @@ func (s *Server) Run(addr string) error {
 
 // Shutdown 关闭 HTTP 服务器
 func (s *Server) Shutdown(ctx context.Context) error {
+	if s.Cache != nil {
+		_ = s.Cache.Close()
+	}
 	return s.Server.Shutdown(ctx)
 }
 

@@ -28,10 +28,11 @@ type DatabaseConfig struct {
 
 // CacheConfig 缓存配置
 type CacheConfig struct {
-	Enabled  bool
-	Addr     string
-	Password string
-	DB       int
+	Enabled    bool
+	Addr       string
+	Password   string
+	DB         int
+	DefaultTTL int // 默认 TTL（秒）
 }
 
 // JWTConfig JWT 配置
@@ -59,10 +60,11 @@ func Load() (*Config, error) {
 			Audience: getEnv("JWT_AUDIENCE", "jimureport"),
 		},
 		Cache: CacheConfig{
-			Enabled:  getBoolEnv("CACHE_ENABLED", false),
-			Addr:     getEnv("CACHE_ADDR", "localhost:6379"),
-			Password: getEnv("CACHE_PASSWORD", ""),
-			DB:       getIntEnv("CACHE_DB", 0),
+			Enabled:    getBoolEnv("CACHE_ENABLED", false),
+			Addr:       getEnv("CACHE_ADDR", "localhost:6379"),
+			Password:   getEnv("CACHE_PASSWORD", ""),
+			DB:         getIntEnv("CACHE_DB", 0),
+			DefaultTTL: getIntEnv("CACHE_DEFAULT_TTL", 3600), // 默认 1 小时
 		},
 	}, nil
 }

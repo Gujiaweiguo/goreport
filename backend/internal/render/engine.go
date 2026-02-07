@@ -4,18 +4,23 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/jeecg/jimureport-go/internal/cache"
 	"gorm.io/gorm"
 )
 
 type Engine struct {
-	db *gorm.DB
+	db    *gorm.DB
+	cache *cache.Cache
 }
 
-func NewEngine(db *gorm.DB) *Engine {
-	return &Engine{db: db}
+func NewEngine(db *gorm.DB, cache *cache.Cache) *Engine {
+	return &Engine{
+		db:    db,
+		cache: cache,
+	}
 }
 
-func (e *Engine) Render(ctx context.Context, configJSON string, params map[string]interface{}) (string, error) {
+func (e *Engine) Render(ctx context.Context, configJSON string, params map[string]interface{}, tenantID string) (string, error) {
 	var config ReportConfig
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
 		return "", err
@@ -28,7 +33,7 @@ func (e *Engine) Render(ctx context.Context, configJSON string, params map[strin
 			value = cell.Text
 		}
 		if cell.DatasourceID != nil && cell.TableName != nil && cell.FieldName != nil {
-			result, err := e.fetchCellValue(ctx, cell)
+			result, err := e.fetchCellValue(ctx, cell, tenantID)
 			if err == nil && result != "" {
 				value = result
 			}

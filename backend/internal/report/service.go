@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jeecg/jimureport-go/internal/cache"
 	"github.com/jeecg/jimureport-go/internal/render"
 )
 
@@ -24,10 +25,11 @@ type Service interface {
 type service struct {
 	repo   Repository
 	render *render.Engine
+	cache  *cache.Cache
 }
 
-func NewService(repo Repository, engine *render.Engine) Service {
-	return &service{repo: repo, render: engine}
+func NewService(repo Repository, engine *render.Engine, cache *cache.Cache) Service {
+	return &service{repo: repo, render: engine, cache: cache}
 }
 
 type CreateRequest struct {
@@ -71,6 +73,11 @@ func (s *service) Create(ctx context.Context, req *CreateRequest) (*Report, erro
 	if err := s.repo.Create(ctx, report); err != nil {
 		return nil, err
 	}
+
+	if s.cache != nil {
+		_ = s.cache.Invalidate(ctx, req.TenantID, "report:data")
+	}
+
 	return report, nil
 }
 
@@ -96,6 +103,11 @@ func (s *service) Update(ctx context.Context, req *UpdateRequest) (*Report, erro
 	if err := s.repo.Update(ctx, report); err != nil {
 		return nil, err
 	}
+
+	if s.cache != nil {
+		_ = s.cache.Invalidate(ctx, req.TenantID, "report:data")
+	}
+
 	return report, nil
 }
 
@@ -124,7 +136,7 @@ func (s *service) Preview(ctx context.Context, req *PreviewRequest) (*PreviewRes
 		return nil, ErrNotFound
 	}
 
-	html, err := s.render.Render(ctx, report.Config, req.Params)
+	html, err := s.render.Render(ctx, report.Config, req.Params, req.TenantID)
 	if err != nil {
 		return nil, err
 	}
