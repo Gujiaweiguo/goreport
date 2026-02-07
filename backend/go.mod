@@ -1,4 +1,4 @@
-module github.com/jeecg/jimureport-go
+module github.com/gujiaweiguo/goreport
 
 go 1.22
 

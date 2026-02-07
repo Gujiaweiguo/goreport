@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jeecg/jimureport-go/internal/auth"
-	"github.com/jeecg/jimureport-go/internal/cache"
-	"github.com/jeecg/jimureport-go/internal/datasource"
-	"github.com/jeecg/jimureport-go/internal/models"
-	"github.com/jeecg/jimureport-go/internal/repository"
+	"github.com/gujiaweiguo/goreport/internal/auth"
+	"github.com/gujiaweiguo/goreport/internal/cache"
+	"github.com/gujiaweiguo/goreport/internal/datasource"
+	"github.com/gujiaweiguo/goreport/internal/models"
+	"github.com/gujiaweiguo/goreport/internal/repository"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )

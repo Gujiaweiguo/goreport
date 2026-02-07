@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/jeecg/jimureport-go/internal/config"
-	"github.com/jeecg/jimureport-go/internal/models"
+	"github.com/gujiaweiguo/goreport/internal/config"
+	"github.com/gujiaweiguo/goreport/internal/models"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )

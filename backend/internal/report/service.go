@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jeecg/jimureport-go/internal/cache"
-	"github.com/jeecg/jimureport-go/internal/render"
+	"github.com/gujiaweiguo/goreport/internal/cache"
+	"github.com/gujiaweiguo/goreport/internal/render"
 )
 
 var ErrNotFound = errors.New("report not found")

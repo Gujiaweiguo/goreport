@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/jeecg/jimureport-go/internal/config"
+	"github.com/gujiaweiguo/goreport/internal/config"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

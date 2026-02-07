@@ -3,7 +3,7 @@ package dashboard
 import (
 	"errors"
 
-	"github.com/jeecg/jimureport-go/internal/models"
+	"github.com/gujiaweiguo/goreport/internal/models"
 	"gorm.io/gorm"
 )
 

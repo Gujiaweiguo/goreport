@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jeecg/jimureport-go/internal/cache"
+	"github.com/gujiaweiguo/goreport/internal/cache"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )

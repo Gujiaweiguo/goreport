@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jeecg/jimureport-go/internal/auth"
-	"github.com/jeecg/jimureport-go/internal/models"
+	"github.com/gujiaweiguo/goreport/internal/auth"
+	"github.com/gujiaweiguo/goreport/internal/models"
 	"gorm.io/gorm"
 )
 

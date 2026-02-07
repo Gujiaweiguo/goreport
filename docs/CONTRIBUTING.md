@@ -47,7 +47,7 @@ cd jimureport-go
 
 ```bash
 # 添加上游仓库
-git remote add upstream https://github.com/jeecg/jimureport-go.git
+git remote add upstream https://github.com/gujiaweiguo/goreport.git
 
 # 同步最新代码
 git fetch upstream

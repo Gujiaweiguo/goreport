@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jeecg/jimureport-go/internal/auth"
+	"github.com/gujiaweiguo/goreport/internal/auth"
 )
 
 type Handler struct {

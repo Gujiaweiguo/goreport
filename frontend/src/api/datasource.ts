@@ -1,4 +1,4 @@
-import axios from 'axios'
+import apiClient from './client'
 
 export interface DataSource {
   id: string
@@ -41,30 +41,30 @@ export interface ApiResponse<T = any> {
 
 export const datasourceApi = {
   list: () => {
-    return axios.get<ApiResponse<DataSource[]>>('/api/v1/datasource/list')
+    return apiClient.get<ApiResponse<DataSource[]>>('/api/v1/datasource/list')
   },
 
   create: (data: CreateDataSourceRequest) => {
-    return axios.post<ApiResponse<DataSource>>('/api/v1/datasource/create', data)
+    return apiClient.post<ApiResponse<DataSource>>('/api/v1/datasource/create', data)
   },
 
   update: (id: string, data: UpdateDataSourceRequest) => {
-    return axios.put<ApiResponse<DataSource>>(`/api/v1/datasource/${id}`, data)
+    return apiClient.put<ApiResponse<DataSource>>(`/api/v1/datasource/${id}`, data)
   },
 
   delete: (id: string) => {
-    return axios.delete<ApiResponse<null>>(`/api/v1/datasource/${id}`)
+    return apiClient.delete<ApiResponse<null>>(`/api/v1/datasource/${id}`)
   },
 
   test: (data: CreateDataSourceRequest) => {
-    return axios.post<ApiResponse<null>>('/api/v1/datasource/test', data)
+    return apiClient.post<ApiResponse<null>>('/api/v1/datasource/test', data)
   },
 
   getTables: (id: string) => {
-    return axios.get<ApiResponse<string[]>>(`/api/v1/datasource/${id}/tables`)
+    return apiClient.get<ApiResponse<string[]>>(`/api/v1/datasource/${id}/tables`)
   },
 
   getFields: (id: string, table: string) => {
-    return axios.get<ApiResponse<any[]>>(`/api/v1/datasource/${id}/tables/${table}/fields`)
+    return apiClient.get<ApiResponse<any[]>>(`/api/v1/datasource/${id}/tables/${table}/fields`)
   }
 }

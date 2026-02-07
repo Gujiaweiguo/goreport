@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/jeecg/jimureport-go/internal/models"
+	"github.com/gujiaweiguo/goreport/internal/models"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )

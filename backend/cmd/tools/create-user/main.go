@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jeecg/jimureport-go/internal/auth"
-	"github.com/jeecg/jimureport-go/internal/config"
-	"github.com/jeecg/jimureport-go/internal/database"
-	"github.com/jeecg/jimureport-go/internal/models"
+	"github.com/gujiaweiguo/goreport/internal/auth"
+	"github.com/gujiaweiguo/goreport/internal/config"
+	"github.com/gujiaweiguo/goreport/internal/database"
+	"github.com/gujiaweiguo/goreport/internal/models"
 	"gorm.io/gorm"
 )
 

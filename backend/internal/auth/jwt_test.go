@@ -3,8 +3,8 @@ package auth
 import (
 	"testing"
 
-	"github.com/jeecg/jimureport-go/internal/config"
-	"github.com/jeecg/jimureport-go/internal/models"
+	"github.com/gujiaweiguo/goreport/internal/config"
+	"github.com/gujiaweiguo/goreport/internal/models"
 )
 
 func TestHashPasswordAndCheckPassword(t *testing.T) {

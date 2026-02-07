@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jeecg/jimureport-go/internal/config"
+	"github.com/gujiaweiguo/goreport/internal/config"
 )
 
 type Provider interface {

@@ -284,7 +284,7 @@
 ### 快速链接
 
 - UAT环境: http://localhost
-- GitHub: https://github.com/jeecg/jimureport-go
+- GitHub: https://github.com/gujiaweiguo/goreport
 - 文档中心: [待配置]
 
 ---

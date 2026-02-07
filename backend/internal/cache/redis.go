@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jeecg/jimureport-go/internal/config"
+	"github.com/gujiaweiguo/goreport/internal/config"
 	"github.com/redis/go-redis/v9"
 )
 

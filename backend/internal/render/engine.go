@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/jeecg/jimureport-go/internal/cache"
+	"github.com/gujiaweiguo/goreport/internal/cache"
 	"gorm.io/gorm"
 )
 

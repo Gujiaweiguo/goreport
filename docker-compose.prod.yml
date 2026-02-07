@@ -27,6 +27,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: jimureport-backend-prod
+    ports:
+      - "8085:8085"
     environment:
       DB_DSN: root:${DB_PASSWORD:-your-strong-password}@tcp(mysql:3306)/jimureport?charset=utf8mb4&parseTime=True&loc=Local
       CACHE_ADDR: redis:6379

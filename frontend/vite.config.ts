@@ -19,15 +19,12 @@ export default defineConfig(({ mode }) => {
       minify: 'esbuild',
       sourcemap: mode === 'development',
       rollupOptions: {
-        external: ['echarts'],
         output: {
           manualChunks: {
             'vendor': ['vue', 'vue-router', 'pinia'],
             'element-plus': ['element-plus'],
+            'echarts': ['echarts'],
             'common': ['lodash-es']
-          },
-          globals: {
-            echarts: 'echarts'
           }
         }
       },

@@ -24,7 +24,7 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/jeecg/jimureport-go.git
+git clone https://github.com/gujiaweiguo/goreport.git
 cd jimureport-go
 
 # 启动开发环境

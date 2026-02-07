@@ -1,4 +1,4 @@
-import axios from 'axios'
+import apiClient from './client'
 
 export interface Dashboard {
   id: string
@@ -44,22 +44,22 @@ export interface ApiResponse<T = any> {
 
 export const dashboardApi = {
   list: () => {
-    return axios.get<ApiResponse<Dashboard[]>>('/api/v1/dashboard/list')
+    return apiClient.get<ApiResponse<Dashboard[]>>('/api/v1/dashboard/list')
   },
 
   create: (data: CreateDashboardRequest) => {
-    return axios.post<ApiResponse<Dashboard>>('/api/v1/dashboard/create', data)
+    return apiClient.post<ApiResponse<Dashboard>>('/api/v1/dashboard/create', data)
   },
 
   update: (id: string, data: UpdateDashboardRequest) => {
-    return axios.put<ApiResponse<Dashboard>>(`/api/v1/dashboard/${id}`, data)
+    return apiClient.put<ApiResponse<Dashboard>>(`/api/v1/dashboard/${id}`, data)
   },
 
   delete: (id: string) => {
-    return axios.delete<ApiResponse<null>>(`/api/v1/dashboard/${id}`)
+    return apiClient.delete<ApiResponse<null>>(`/api/v1/dashboard/${id}`)
   },
 
   get: (id: string) => {
-    return axios.get<ApiResponse<Dashboard>>(`/api/v1/dashboard/${id}`)
+    return apiClient.get<ApiResponse<Dashboard>>(`/api/v1/dashboard/${id}`)
   }
 }

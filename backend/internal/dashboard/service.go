@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jeecg/jimureport-go/internal/models"
+	"github.com/gujiaweiguo/goreport/internal/models"
 )
 
 type Service interface {

@@ -45,13 +45,20 @@
  const loadError = ref(false)
  const errorMessage = ref('')
 
-const reportId = computed(() => route.query.id as string | undefined)
+const reportId = computed(() => {
+  const fromQuery = route.query.id as string | undefined
+  if (fromQuery) {
+    localStorage.setItem('lastReportId', fromQuery)
+    return fromQuery
+  }
+  return localStorage.getItem('lastReportId') || undefined
+})
 
- async function handleRefresh() {
-   if (!reportId.value) {
-     ElMessage.warning('未指定报表 ID')
-     return
-   }
+  async function handleRefresh() {
+    if (!reportId.value) {
+      ElMessage.warning('未指定报表 ID，请先在报表设计器中保存报表')
+      return
+    }
 
    loadError.value = false
    errorMessage.value = ''
