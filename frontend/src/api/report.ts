@@ -1,4 +1,4 @@
-import axios from 'axios'
+import apiClient from './client'
 
 export interface Report {
   id: string
@@ -44,30 +44,30 @@ export interface ApiResponse<T = any> {
 
 export const reportApi = {
   list: () => {
-    return axios.get<ApiResponse<Report[]>>('/api/v1/jmreport/list')
+    return apiClient.get<ApiResponse<Report[]>>('/api/v1/jmreport/list')
   },
 
   get: (id: string) => {
-    return axios.get<ApiResponse<Report>>('/api/v1/jmreport/get', {
+    return apiClient.get<ApiResponse<Report>>('/api/v1/jmreport/get', {
       params: { id }
     })
   },
 
   create: (data: CreateReportRequest) => {
-    return axios.post<ApiResponse<Report>>('/api/v1/jmreport/create', data)
+    return apiClient.post<ApiResponse<Report>>('/api/v1/jmreport/create', data)
   },
 
   update: (data: UpdateReportRequest) => {
-    return axios.post<ApiResponse<Report>>('/api/v1/jmreport/update', data)
+    return apiClient.post<ApiResponse<Report>>('/api/v1/jmreport/update', data)
   },
 
   delete: (id: string) => {
-    return axios.delete<ApiResponse<null>>('/api/v1/jmreport/delete', {
+    return apiClient.delete<ApiResponse<null>>('/api/v1/jmreport/delete', {
       params: { id }
     })
   },
 
   preview: (data: PreviewReportRequest) => {
-    return axios.post<ApiResponse<PreviewReportResponse>>('/api/v1/jmreport/preview', data)
+    return apiClient.post<ApiResponse<PreviewReportResponse>>('/api/v1/jmreport/preview', data)
   }
 }

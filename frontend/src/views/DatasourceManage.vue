@@ -1,12 +1,22 @@
 <template>
   <div class="datasource-manage">
-    <el-card class="page-header">
-      <el-button type="primary" @click="showCreateDialog">创建数据源</el-button>
-    </el-card>
+     <ErrorState
+       v-if="loadError"
+       type="network"
+       title="加载数据源失败"
+       :message="errorMessage"
+       :canRetry="true"
+       :onRetry="loadDatasources"
+     />
 
-    <el-card class="table-container">
-      <el-table :data="datasources" style="width: 100%" v-loading="loading">
-        <el-table-column prop="name" label="名称" width="180" />
+     <el-card v-else class="page-header">
+       <el-button type="primary" @click="showCreateDialog">创建数据源</el-button>
+     </el-card>
+
+      <el-card v-if="!loadError" class="table-container">
+        <LoadingState v-if="loading" :loading="loading" text="加载数据源..." />
+        <el-table v-else :data="datasources" style="width: 100%">
+          <el-table-column prop="name" label="名称" width="180" />
         <el-table-column prop="type" label="类型" width="100" />
         <el-table-column label="连接地址" width="250">
           <template #default="{ row }">
@@ -108,20 +118,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import type { FormInstance, FormRules } from 'element-plus'
-import { datasourceApi, type DataSource, type CreateDataSourceRequest } from '@/api/datasource'
+ import { ref, reactive, onMounted } from 'vue'
+ import { ElMessage, ElMessageBox } from 'element-plus'
+ import type { FormInstance, FormRules } from 'element-plus'
+ import { datasourceApi, type DataSource, type CreateDataSourceRequest } from '@/api/datasource'
+ import LoadingState from '@/components/common/LoadingState.vue'
+ import ErrorState from '@/components/common/ErrorState.vue'
 
-const dialogVisible = ref(false)
-const testDialogVisible = ref(false)
-const dialogTitle = ref('创建数据源')
-const loading = ref(false)
-const submitting = ref(false)
-const testing = ref(false)
-const isEdit = ref(false)
-const currentEditId = ref('')
-const formRef = ref<FormInstance>()
+
+ const dialogVisible = ref(false)
+ const testDialogVisible = ref(false)
+ const dialogTitle = ref('创建数据源')
+ const loading = ref(false)
+ const submitting = ref(false)
+ const testing = ref(false)
+ const isEdit = ref(false)
+ const currentEditId = ref('')
+ const formRef = ref<FormInstance>()
+ const loadError = ref(false)
+ const errorMessage = ref('')
 
 const datasources = ref<DataSource[]>([])
 const testResult = ref<{ success: boolean; message: string } | null>(null)
@@ -156,21 +171,25 @@ const formRules = reactive<FormRules<DataSourceForm>>({
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 })
 
-async function loadDatasources() {
-  loading.value = true
-  try {
-    const response = await datasourceApi.list()
-    if (response.data.success) {
-      datasources.value = response.data.result || []
-    } else {
-      ElMessage.error(response.data.message || '加载数据源失败')
-    }
-  } catch (error: any) {
-    ElMessage.error('加载数据源失败')
-  } finally {
-    loading.value = false
-  }
-}
+ async function loadDatasources() {
+   loadError.value = false
+   errorMessage.value = ''
+   loading.value = true
+   try {
+     const response = await datasourceApi.list()
+     if (response.data.success) {
+       datasources.value = response.data.result || []
+     } else {
+       loadError.value = true
+       errorMessage.value = response.data.message || '加载数据源失败'
+     }
+   } catch (error: any) {
+     loadError.value = true
+     errorMessage.value = error.message || '加载数据源失败'
+   } finally {
+     loading.value = false
+   }
+ }
 
 function showCreateDialog() {
   isEdit.value = false

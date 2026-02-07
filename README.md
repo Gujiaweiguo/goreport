@@ -99,6 +99,21 @@ make logs
 - MySQL：localhost:3306 (root/root)
 - Redis：localhost:6379
 
+### 缓存配置
+
+系统支持 Redis 缓存，可提升性能。配置参数：
+
+| 参数 | 说明 | 默认值 |
+|------|------|---------|
+| CACHE_ENABLED | 是否启用缓存 | false |
+| CACHE_ADDR | Redis 地址 | localhost:6379 |
+| CACHE_PASSWORD | Redis 密码 | （空） |
+| CACHE_DB | Redis DB | 0 |
+| CACHE_DEFAULT_TTL | 默认 TTL（秒） | 3600 |
+
+缓存观测端点：
+- GET /api/v1/cache/metrics - 查看缓存命中率、失败次数等指标
+
 ### 方式二：本地开发
 
 #### 后端
@@ -191,7 +206,7 @@ make clean        # 清理容器和卷
 - [x] Docker 开发环境
 - [x] 数据库初始化
 - [ ] JWT 认证
-- [ ] Redis 缓存
+- [x] Redis 缓存
 
 ### Phase 2：认证和数据源
 - [ ] 用户/租户管理
@@ -219,6 +234,13 @@ make clean        # 清理容器和卷
 
 - [TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md) - 技术选型对比
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - 系统架构设计
+- [docs/USER_GUIDE.md](./docs/USER_GUIDE.md) - 用户指南
+- [docs/DEVELOPMENT_GUIDE.md](./docs/DEVELOPMENT_GUIDE.md) - 开发指南
+- [docs/MIGRATION_GUIDE.md](./docs/MIGRATION_GUIDE.md) - 迁移指南
+- [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) - 贡献指南
+- [docs/BROWSER_COMPATIBILITY_TEST.md](./docs/BROWSER_COMPATIBILITY_TEST.md) - 浏览器兼容性测试指南
+- [docs/UX_OPTIMIZATION_GUIDE.md](./docs/UX_OPTIMIZATION_GUIDE.md) - 用户体验优化指南
+- [docs/UAT_GUIDE.md](./docs/UAT_GUIDE.md) - 用户验收测试指南
 - [openspec/](./openspec/) - 需求规范（OpenSpec）
 
 ## 贡献

@@ -32,7 +32,11 @@ func GetTables(ctx context.Context, db *gorm.DB, database string) ([]string, err
 
 func GetFields(ctx context.Context, db *gorm.DB, database, tableName string) ([]FieldInfo, error) {
 	query := `
-		SELECT column_name, data_type, is_nullable, column_comment
+		SELECT
+			column_name AS name,
+			data_type AS type,
+			(is_nullable = 'YES') AS nullable,
+			column_comment AS comment
 		FROM information_schema.columns
 		WHERE table_schema = ? AND table_name = ?
 		ORDER BY ordinal_position

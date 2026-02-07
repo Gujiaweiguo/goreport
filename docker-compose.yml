@@ -79,18 +79,19 @@ services:
   # Vue 前端
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: frontend/Dockerfile.dev
     container_name: jimureport-frontend
     restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
     environment:
       - VITE_API_BASE_URL=http://localhost:8085
       - VITE_WS_URL=ws://localhost:8085
+      - VITE_PROXY_TARGET=http://backend:8085
     depends_on:
       - backend
     networks:

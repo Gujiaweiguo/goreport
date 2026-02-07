@@ -254,7 +254,7 @@ async function loadFields() {
       ElMessage.error(response.data.message || '加载字段失败')
     }
   } catch (error: any) {
-    ElMessage.error('加载字段失败')
+    ElMessage.error(error?.response?.data?.message || '加载字段失败')
   } finally {
     fieldsLoading.value = false
   }

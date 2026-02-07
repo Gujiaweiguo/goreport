@@ -1,4 +1,5 @@
 import axios from 'axios'
+import apiClient from './client'
 
 export interface LoginRequest {
   username: string
@@ -27,7 +28,7 @@ export const authApi = {
   },
 
   logout: () => {
-    return axios.post<ApiResponse<null>>('/api/v1/auth/logout')
+    return apiClient.post<ApiResponse<null>>('/api/v1/auth/logout')
   }
 }
 

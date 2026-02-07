@@ -88,6 +88,7 @@ interface DesignerCell {
 
 const reportName = ref('')
 const saving = ref(false)
+const currentReportId = ref('')
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const canvasWrapperRef = ref<HTMLDivElement | null>(null)
 const editorRef = ref<InputInstance>()
@@ -352,6 +353,7 @@ function handleNew() {
   cells.clear()
   selectedCell.value = null
   reportName.value = ''
+  currentReportId.value = ''
   renderGrid()
 }
 
@@ -399,17 +401,29 @@ function serializeConfig() {
 async function handleSave() {
   saving.value = true
   try {
-    const response = await reportApi.create({
+    const payload = {
       name: reportName.value || '未命名报表',
       config: serializeConfig()
-    })
+    }
+    const response = currentReportId.value
+      ? await reportApi.update({
+          id: currentReportId.value,
+          ...payload
+        })
+      : await reportApi.create(payload)
+
     if (response.data.success) {
-      ElMessage.success('报表已保存')
+      const savedId = response.data.result?.id || currentReportId.value
+      if (savedId) {
+        currentReportId.value = savedId
+        localStorage.setItem('lastReportId', savedId)
+      }
+      ElMessage.success(savedId ? `报表已保存（ID: ${savedId}）` : '报表已保存')
     } else {
       ElMessage.error(response.data.message || '保存失败')
     }
   } catch (error: any) {
-    ElMessage.error('保存失败')
+    ElMessage.error(error?.response?.data?.message || '保存失败')
   } finally {
     saving.value = false
   }
