@@ -14,6 +14,14 @@
           <el-icon><Setting /></el-icon>
           <template #title>数据源管理</template>
         </el-menu-item>
+        <el-menu-item index="/report/list">
+          <el-icon><Document /></el-icon>
+          <template #title>报表列表</template>
+        </el-menu-item>
+        <el-menu-item index="/dataset">
+          <el-icon><DataLine /></el-icon>
+          <template #title>数据集管理</template>
+        </el-menu-item>
         <el-menu-item index="/report/designer">
           <el-icon><Edit /></el-icon>
           <template #title>报表设计器</template>
@@ -29,6 +37,10 @@
         <el-menu-item index="/chart/editor">
           <el-icon><PieChart /></el-icon>
           <template #title>图表编辑器</template>
+        </el-menu-item>
+        <el-menu-item index="/dataset">
+          <el-icon><DataLine /></el-icon>
+          <template #title>数据集管理</template>
         </el-menu-item>
       </el-menu>
     </aside>
@@ -49,7 +61,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Setting, Edit, View, Monitor, PieChart } from '@element-plus/icons-vue'
+import { Setting, Edit, View, Monitor, PieChart, Document } from '@element-plus/icons-vue'
 import NoPermission from '@/components/common/NoPermission.vue'
 
 const route = useRoute()
