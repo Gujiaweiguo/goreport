@@ -30,7 +30,8 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 print_info "启动测试环境..."
-docker compose -f "$COMPOSE_FILE" up -d --build
+docker compose -f "$COMPOSE_FILE" build --no-cache
+docker compose -f "$COMPOSE_FILE" up -d
 
 print_info "等待 MySQL 服务就绪..."
 MAX_RETRIES=30
