@@ -24,16 +24,13 @@ print_error() {
 cleanup() {
     print_info "清理测试环境..."
     docker compose -f "$COMPOSE_FILE" down -v
-    # Remove MySQL data volume to ensure fresh database on each run
-    docker volume rm goreport_mysql-test-data goreport_redis-test-data 2>/dev/null || true
     print_info "测试环境已清理"
 }
 
 trap cleanup EXIT INT TERM
 
 print_info "启动测试环境..."
-docker compose -f "$COMPOSE_FILE" build --no-cache
-docker compose -f "$COMPOSE_FILE" up -d
+docker compose -f "$COMPOSE_FILE" up -d --build
 
 print_info "等待 MySQL 服务就绪..."
 MAX_RETRIES=30
@@ -42,32 +39,6 @@ until docker compose -f "$COMPOSE_FILE" exec -T mysql mysqladmin ping -h localho
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
         print_error "MySQL 服务启动超时"
-        exit 1
-    fi
-    echo -n "."
-    sleep 2
-done
-echo ""
-
-print_info "等待后端服务就绪..."
-RETRY_COUNT=0
-until docker compose -f "$COMPOSE_FILE" ps backend | grep -q "healthy"; do
-    RETRY_COUNT=$((RETRY_COUNT + 1))
-    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-        print_error "后端服务启动超时"
-        exit 1
-    fi
-    echo -n "."
-    sleep 2
-done
-echo ""
-
-print_info "等待前端服务就绪..."
-RETRY_COUNT=0
-until docker compose -f "$COMPOSE_FILE" ps frontend | grep -q "healthy"; do
-    RETRY_COUNT=$((RETRY_COUNT + 1))
-    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-        print_error "前端服务启动超时"
         exit 1
     fi
     echo -n "."
