@@ -27,7 +27,7 @@ help:
 
 # 开发环境
 dev:
-	docker-compose up -d
+	docker compose up -d
 	@echo "开发环境已启动:"
 	@echo "  前端: http://localhost:3000"
 	@echo "  后端: http://localhost:8085"
@@ -35,17 +35,17 @@ dev:
 	@echo "  Redis: localhost:6379"
 
 dev-down:
-	docker-compose down
+	docker compose down
 
 dev-logs:
-	docker-compose logs -f
+	docker compose logs -f
 
 dev-ps:
-	docker-compose ps
+	docker compose ps
 
 # 构建
 build:
-	docker-compose -f docker-compose.yml -f docker-compose.prod.yml build
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml build
 
 # 测试
 test:
@@ -82,23 +82,23 @@ build: build-frontend build-backend
 
 # 生产部署
 build-prod:
-	docker-compose -f docker-compose.prod.yml build
-	docker-compose -f docker-compose.prod.yml up -d
+	docker compose -f docker-compose.prod.yml build
+	docker compose -f docker-compose.prod.yml up -d
 	@echo "生产环境已启动:"
 	@echo "  前端: http://localhost"
 	@echo "  后端: http://localhost:8085"
 
 # 清理
 clean:
-	docker-compose down -v
+	docker compose down -v
 	docker system prune -f
 
 # 数据库
 db-shell:
-	docker-compose exec mysql mysql -uroot -proot goreport
+	docker compose exec mysql mysql -uroot -proot goreport
 
 redis-cli:
-	docker-compose exec redis redis-cli
+	docker compose exec redis redis-cli
 
 # 文档
 docs:
