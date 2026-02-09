@@ -24,6 +24,8 @@ print_error() {
 cleanup() {
     print_info "清理测试环境..."
     docker compose -f "$COMPOSE_FILE" down -v
+    # Remove MySQL data volume to ensure fresh database on each run
+    docker volume rm goreport_mysql-test-data goreport_redis-test-data 2>/dev/null || true
     print_info "测试环境已清理"
 }
 
