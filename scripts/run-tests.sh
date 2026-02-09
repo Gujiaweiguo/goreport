@@ -46,6 +46,32 @@ until docker compose -f "$COMPOSE_FILE" exec -T mysql mysqladmin ping -h localho
 done
 echo ""
 
+print_info "等待后端服务就绪..."
+RETRY_COUNT=0
+until docker compose -f "$COMPOSE_FILE" ps backend | grep -q "healthy"; do
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+        print_error "后端服务启动超时"
+        exit 1
+    fi
+    echo -n "."
+    sleep 2
+done
+echo ""
+
+print_info "等待前端服务就绪..."
+RETRY_COUNT=0
+until docker compose -f "$COMPOSE_FILE" ps frontend | grep -q "healthy"; do
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+        print_error "前端服务启动超时"
+        exit 1
+    fi
+    echo -n "."
+    sleep 2
+done
+echo ""
+
 print_info "运行后端测试..."
 BACKEND_RESULT=0
 docker compose -f "$COMPOSE_FILE" exec -T backend go test ./... -v || BACKEND_RESULT=$?

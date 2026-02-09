@@ -83,6 +83,13 @@ services:
         condition: service_healthy
     networks:
       - goreport-test-network
+    # Keep container alive for test execution
+    command: tail -f /dev/null
+    healthcheck:
+      test: ["CMD", "test", "-d", "/app"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
 
   # 测试专用前端服务（提供 vitest 运行环境）
   frontend:
@@ -97,9 +104,16 @@ services:
       - VITE_PROXY_TARGET=http://backend:8085
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
     networks:
       - goreport-test-network
+    # Keep container alive for test execution
+    command: tail -f /dev/null
+    healthcheck:
+      test: ["CMD", "test", "-d", "/app/frontend"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
 
 volumes:
   mysql-test-data:
