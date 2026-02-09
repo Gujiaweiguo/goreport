@@ -81,7 +81,7 @@ goreport/
 ```bash
 # 1. 克隆项目
 git clone <repository>
-cd jimureport
+cd goreport
 
 # 2. 启动开发环境
 make dev
@@ -159,6 +159,10 @@ redis-cli         # 进入 Redis
 # 构建和测试
 make build        # 构建生产镜像
 make test         # 运行测试
+make test-full    # 运行完整测试（独立测试环境）
+make test-frontend # 运行前端测试
+make test-backend  # 运行后端测试
+make test-coverage # 生成测试覆盖率报告
 make clean        # 清理容器和卷
 ```
 
@@ -236,6 +240,7 @@ make clean        # 清理容器和卷
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - 系统架构设计
 - [docs/USER_GUIDE.md](./docs/USER_GUIDE.md) - 用户指南
 - [docs/DEVELOPMENT_GUIDE.md](./docs/DEVELOPMENT_GUIDE.md) - 开发指南
+- [docs/TEST_PLAN.md](./docs/TEST_PLAN.md) - 测试计划
 - [docs/MIGRATION_GUIDE.md](./docs/MIGRATION_GUIDE.md) - 迁移指南
 - [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) - 贡献指南
 - [docs/BROWSER_COMPATIBILITY_TEST.md](./docs/BROWSER_COMPATIBILITY_TEST.md) - 浏览器兼容性测试指南
@@ -257,4 +262,4 @@ LGPL-3.0
 ## 联系方式
 
 - 问题反馈：GitHub Issues
-- 技术支持：<support@goreport.dev>
+- 技术支持：<weiguogu@163.com>
