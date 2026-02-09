@@ -2,17 +2,19 @@
 -- 适用于 MySQL 8.0+
 
 -- 创建数据库（如果不存在）
-CREATE DATABASE IF NOT EXISTS jimureport 
+CREATE DATABASE IF NOT EXISTS goreport 
     CHARACTER SET utf8mb4 
     COLLATE utf8mb4_unicode_ci;
 
-USE jimureport;
+USE goreport;
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(36) PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    role VARCHAR(50),
+    tenant_id VARCHAR(36),
     email VARCHAR(100),
     real_name VARCHAR(50),
     avatar VARCHAR(255),
@@ -21,7 +23,8 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL DEFAULT NULL,
     INDEX idx_username (username),
-    INDEX idx_status (status)
+    INDEX idx_status (status),
+    INDEX idx_tenant_id (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- 租户表
@@ -144,13 +147,13 @@ CREATE TABLE IF NOT EXISTS export_jobs (
 INSERT IGNORE INTO tenants (id, name, code) VALUES 
     ('default', '默认租户', 'default');
 
--- 插入测试用户（密码：admin，BCrypt加密）
-INSERT IGNORE INTO users (id, username, password, email, real_name) VALUES 
-    ('admin', 'admin', '$2a$10$N9qo8uLOickgx2ZMRZoMye1j.d8q5f2Z1F5e1e1e1e1e1e1e1e1e1', 'admin@jimureport.com', '管理员');
+-- 插入测试用户（密码：admin123，BCrypt加密）
+INSERT IGNORE INTO users (id, username, password, role, tenant_id, email, real_name) VALUES
+    ('admin', 'admin', '$2a$10$DQlpTc.jIcYV39kZxItqsOnp7DqF0lTD4EmaoMEOwawk7Ah5ab6CW', 'admin', 'default', 'weiguogu@163.com', '管理员');
 
 INSERT IGNORE INTO user_tenants (id, user_id, tenant_id, role, is_default) VALUES 
     (UUID(), 'admin', 'default', 'admin', 1);
 
 -- 插入测试数据源
 INSERT IGNORE INTO data_sources (id, tenant_id, name, type, host, port, database_name, username, password) VALUES 
-    ('test-mysql', 'default', '测试MySQL', 'mysql', 'mysql', 3306, 'jimureport', 'root', 'root');
+    ('test-mysql', 'default', '测试MySQL', 'mysql', 'mysql', 3306, 'goreport', 'root', 'root');

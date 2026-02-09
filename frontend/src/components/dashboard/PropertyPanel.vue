@@ -79,91 +79,167 @@
         </el-collapse-item>
 
         <el-collapse-item title="Data（数据属性）" name="data">
-          <el-form-item label="Data Source" prop="dataSource">
-            <el-select
-              v-model="formData.dataSource"
-              placeholder="请选择数据源"
-              :loading="loadingDataSources"
-              filterable
-              @change="handleDataSourceChange"
-            >
-              <el-option
-                v-for="source in dataSources"
-                :key="source.value"
-                :label="source.label"
-                :value="source.value"
+          <el-form-item label="绑定类型">
+            <el-radio-group v-model="bindingType" @change="handleBindingTypeChange">
+              <el-radio value="datasource">数据源</el-radio>
+              <el-radio value="dataset">数据集</el-radio>
+            </el-radio-group>
+          </el-form-item>
+
+          <template v-if="bindingType === 'datasource'">
+            <el-form-item label="Data Source" prop="dataSource">
+              <el-select
+                v-model="formData.dataSource"
+                placeholder="请选择数据源"
+                :loading="loadingDataSources"
+                filterable
+                @change="handleDataSourceChange"
+              >
+                <el-option
+                  v-for="source in dataSources"
+                  :key="source.value"
+                  :label="source.label"
+                  :value="source.value"
+                />
+              </el-select>
+              <el-button
+                v-if="formData.dataSource"
+                link
+                type="primary"
+                size="small"
+                :loading="testingConnection"
+                @click="handleTestConnection"
+              >
+                <el-icon><Connection /></el-icon>
+                测试连接
+              </el-button>
+              <el-button
+                v-if="formData.dataSource && formData.field"
+                link
+                type="success"
+                size="small"
+                :loading="previewingData"
+                @click="handlePreviewData"
+              >
+                <el-icon><View /></el-icon>
+                预览数据
+              </el-button>
+            </el-form-item>
+            <el-form-item label="Field" prop="field">
+              <el-select
+                v-model="formData.field"
+                placeholder="请选择数据源后选择字段"
+                :loading="loadingFields"
+                :disabled="!formData.dataSource"
+                filterable
+                @change="handleFieldChange"
+              >
+                <el-option v-for="field in fields" :key="field.value" :label="field.label" :value="field.value" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="SQL Query" prop="sqlQuery">
+              <el-input
+                v-model="formData.sqlQuery"
+                type="textarea"
+                :rows="3"
+                placeholder="SELECT * FROM table_name"
+                @input="emitUpdate"
               />
-            </el-select>
-            <el-button
-              v-if="formData.dataSource"
-              link
-              type="primary"
-              size="small"
-              :loading="testingConnection"
-              @click="handleTestConnection"
-            >
-              <el-icon><Connection /></el-icon>
-              测试连接
-            </el-button>
-            <el-button
-              v-if="formData.dataSource && formData.field"
-              link
-              type="success"
-              size="small"
-              :loading="previewingData"
-              @click="handlePreviewData"
-            >
-              <el-icon><View /></el-icon>
-              预览数据
-            </el-button>
-          </el-form-item>
-          <el-form-item label="Field" prop="field">
-            <el-select
-              v-model="formData.field"
-              placeholder="请选择数据源后选择字段"
-              :loading="loadingFields"
-              :disabled="!formData.dataSource"
-              filterable
-              @change="handleFieldChange"
-            >
-              <el-option v-for="field in fields" :key="field.value" :label="field.label" :value="field.value" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="SQL Query" prop="sqlQuery">
-            <el-input
-              v-model="formData.sqlQuery"
-              type="textarea"
-              :rows="3"
-              placeholder="SELECT * FROM table_name"
-              @input="emitUpdate"
-            />
-            <el-button
-              v-if="formData.dataSource"
-              link
-              type="warning"
-              size="small"
-              @click="handleFormatSQL"
-            >
-              <el-icon><Document /></el-icon>
-              格式化 SQL
-            </el-button>
-          </el-form-item>
-          <div v-if="previewData.length || previewError || connectionError" class="data-preview-section">
-            <div v-if="previewError" class="error-message">
-              <el-icon><Warning /></el-icon>
-              <span>{{ previewError }}</span>
+              <el-button
+                v-if="formData.dataSource"
+                link
+                type="warning"
+                size="small"
+                @click="handleFormatSQL"
+              >
+                <el-icon><Document /></el-icon>
+                格式化 SQL
+              </el-button>
+            </el-form-item>
+            <div v-if="previewData.length || previewError || connectionError" class="data-preview-section">
+              <div v-if="previewError" class="error-message">
+                <el-icon><Warning /></el-icon>
+                <span>{{ previewError }}</span>
+              </div>
+              <div v-if="connectionError" class="error-message">
+                <el-icon><CircleCloseFilled /></el-icon>
+                <span>{{ connectionError }}</span>
+              </div>
+              <div v-if="previewData.length" class="preview-table">
+                <h4>数据预览</h4>
+                <el-table :data="previewData" size="small" max-height="200">
+                  <el-table-column v-for="key in Object.keys(previewData[0])" :key="key" :prop="key" :label="key" />
+                </el-table>
+              </div>
             </div>
-            <div v-if="connectionError" class="error-message">
-              <el-icon><CircleCloseFilled /></el-icon>
-              <span>{{ connectionError }}</span>
-            </div>
-            <div v-if="previewData.length" class="preview-table">
-              <h4>数据预览</h4>
-              <el-table :data="previewData" size="small" max-height="200">
-                <el-table-column v-for="key in Object.keys(previewData[0])" :key="key" :prop="key" :label="key" />
-              </el-table>
-            </div>
-          </div>
+          </template>
+
+          <template v-else>
+            <el-form-item label="数据集" prop="datasetId">
+              <el-select
+                v-model="formData.datasetId"
+                placeholder="请选择数据集"
+                :loading="loadingDatasets"
+                clearable
+                filterable
+                @change="handleDatasetChange"
+              >
+                <el-option v-for="dataset in datasets" :key="dataset.id" :label="dataset.name" :value="dataset.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="维度" prop="dimension">
+              <el-select
+                v-model="formData.dimension"
+                placeholder="请选择维度"
+                :disabled="!formData.datasetId"
+                :loading="loadingDatasetSchema"
+                clearable
+                filterable
+                @change="handleDimensionChange"
+              >
+                <el-option
+                  v-for="dimension in dimensions"
+                  :key="dimension.id"
+                  :label="dimension.displayName || dimension.name"
+                  :value="dimension.name"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="指标" prop="measure">
+              <el-select
+                v-model="formData.measure"
+                placeholder="请选择指标"
+                :disabled="!formData.datasetId"
+                :loading="loadingDatasetSchema"
+                clearable
+                filterable
+                @change="handleMeasureChange"
+              >
+                <el-option
+                  v-for="measure in measures"
+                  :key="measure.id"
+                  :label="measure.displayName || measure.name"
+                  :value="measure.name"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="聚合函数" prop="aggregation">
+              <el-select
+                v-model="formData.aggregation"
+                placeholder="请选择聚合函数"
+                :disabled="!formData.measure"
+                clearable
+                @change="emitUpdate"
+              >
+                <el-option label="无" value="none" />
+                <el-option label="求和 (SUM)" value="SUM" />
+                <el-option label="平均值 (AVG)" value="AVG" />
+                <el-option label="计数 (COUNT)" value="COUNT" />
+                <el-option label="最大值 (MAX)" value="MAX" />
+                <el-option label="最小值 (MIN)" value="MIN" />
+              </el-select>
+            </el-form-item>
+          </template>
         </el-collapse-item>
       </el-collapse>
      </el-form>
@@ -171,16 +247,15 @@
  </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
-import { Pointer, Connection, View, Document, Refresh } from '@element-plus/icons-vue'
+import { Pointer, Connection, View, Document, Warning, CircleCloseFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { datasourceApi, type DataSource, type SelectOption } from '@/api/datasource'
+import { datasourceApi, type SelectOption } from '@/api/datasource'
+import { datasetApi, type Dataset, type DatasetField } from '@/api/dataset'
 
-interface SelectOption {
-  label: string
-  value: string
-}
+type BindingType = 'datasource' | 'dataset'
+type AggregationType = 'SUM' | 'AVG' | 'COUNT' | 'MAX' | 'MIN' | 'none'
 
 export interface DashboardComponent {
   id: string
@@ -205,6 +280,10 @@ export interface DashboardComponent {
     dataSource: string
     field: string
     sqlQuery: string
+    datasetId?: string
+    dimension?: string
+    measure?: string
+    aggregation?: AggregationType
   }
   interaction: {
     linkUrl: string
@@ -229,6 +308,10 @@ interface FormData {
   dataSource: string
   field: string
   sqlQuery: string
+  datasetId: string
+  dimension: string
+  measure: string
+  aggregation: AggregationType
   linkUrl: string
   drilldownConfig: string
 }
@@ -265,13 +348,19 @@ const syncing = ref(false)
 
 const loadingDataSources = ref(false)
 const loadingFields = ref(false)
+const loadingDatasets = ref(false)
+const loadingDatasetSchema = ref(false)
 const tables = ref<string[]>([])
 const fields = ref<SelectOption[]>([])
+const datasets = ref<Dataset[]>([])
+const dimensions = ref<DatasetField[]>([])
+const measures = ref<DatasetField[]>([])
 const testingConnection = ref(false)
 const previewingData = ref(false)
 const previewData = ref<any[]>([])
 const connectionError = ref('')
 const previewError = ref('')
+const bindingType = ref<BindingType>('datasource')
 
 const formData = reactive<FormData>({
   title: '',
@@ -290,6 +379,10 @@ const formData = reactive<FormData>({
   dataSource: '',
   field: '',
   sqlQuery: '',
+  datasetId: '',
+  dimension: '',
+  measure: '',
+  aggregation: 'none',
   linkUrl: '',
   drilldownConfig: ''
 })
@@ -299,8 +392,42 @@ const formRules = reactive<FormRules<FormData>>({
   id: [{ required: true, message: 'ID 为必填项', trigger: 'blur' }],
   width: [{ required: true, message: 'Width 为必填项', trigger: 'change' }],
   height: [{ required: true, message: 'Height 为必填项', trigger: 'change' }],
-  dataSource: [{ required: true, message: 'Data Source 为必填项', trigger: 'change' }],
-  field: [{ required: true, message: 'Field 为必填项', trigger: 'change' }]
+  dataSource: [
+    {
+      validator: (_rule, value, callback) => {
+        if (bindingType.value === 'datasource' && !value) {
+          callback(new Error('Data Source 为必填项'))
+          return
+        }
+        callback()
+      },
+      trigger: 'change'
+    }
+  ],
+  field: [
+    {
+      validator: (_rule, value, callback) => {
+        if (bindingType.value === 'datasource' && !value) {
+          callback(new Error('Field 为必填项'))
+          return
+        }
+        callback()
+      },
+      trigger: 'change'
+    }
+  ],
+  datasetId: [
+    {
+      validator: (_rule, value, callback) => {
+        if (bindingType.value === 'dataset' && !value) {
+          callback(new Error('数据集为必填项'))
+          return
+        }
+        callback()
+      },
+      trigger: 'change'
+    }
+  ]
 })
 
 function applyComponent(component: DashboardComponent | null) {
@@ -322,8 +449,13 @@ function applyComponent(component: DashboardComponent | null) {
   formData.dataSource = component.data.dataSource
   formData.field = component.data.field
   formData.sqlQuery = component.data.sqlQuery
+  formData.datasetId = component.data.datasetId || ''
+  formData.dimension = component.data.dimension || ''
+  formData.measure = component.data.measure || ''
+  formData.aggregation = component.data.aggregation || 'none'
   formData.linkUrl = component.interaction.linkUrl
   formData.drilldownConfig = component.interaction.drilldownConfig
+  bindingType.value = formData.datasetId ? 'dataset' : 'datasource'
   syncing.value = false
 }
 
@@ -349,7 +481,11 @@ async function emitUpdate() {
     data: {
       dataSource: formData.dataSource,
       field: formData.field,
-      sqlQuery: formData.sqlQuery
+      sqlQuery: formData.sqlQuery,
+      datasetId: formData.datasetId,
+      dimension: formData.dimension,
+      measure: formData.measure,
+      aggregation: formData.aggregation
     },
     interaction: {
       linkUrl: formData.linkUrl,
@@ -372,6 +508,7 @@ async function handleDataSourceChange() {
   if (!formData.dataSource) {
     tables.value = []
     fields.value = []
+    emitUpdate()
     return
   }
   loadingFields.value = true
@@ -389,11 +526,94 @@ async function handleDataSourceChange() {
   } finally {
     loadingFields.value = false
   }
+  emitUpdate()
 }
 
 async function handleFieldChange() {
   previewError.value = ''
   previewData.value = []
+  emitUpdate()
+}
+
+function handleBindingTypeChange() {
+  if (bindingType.value === 'dataset') {
+    formData.dataSource = ''
+    formData.field = ''
+    formData.sqlQuery = ''
+    tables.value = []
+    fields.value = []
+    previewData.value = []
+    previewError.value = ''
+    connectionError.value = ''
+  } else {
+    formData.datasetId = ''
+    formData.dimension = ''
+    formData.measure = ''
+    formData.aggregation = 'none'
+    dimensions.value = []
+    measures.value = []
+  }
+  emitUpdate()
+}
+
+async function loadDatasets() {
+  loadingDatasets.value = true
+  try {
+    const response = await datasetApi.list()
+    if (response.data.success) {
+      datasets.value = response.data.result || []
+    } else {
+      ElMessage.error(response.data.message || '加载数据集失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error?.message || '加载数据集失败')
+  } finally {
+    loadingDatasets.value = false
+  }
+}
+
+async function handleDatasetChange(shouldEmit: boolean = true) {
+  formData.dimension = ''
+  formData.measure = ''
+  formData.aggregation = 'none'
+  dimensions.value = []
+  measures.value = []
+  if (!formData.datasetId) {
+    if (shouldEmit) {
+      emitUpdate()
+    }
+    return
+  }
+
+  loadingDatasetSchema.value = true
+  try {
+    const response = await datasetApi.getSchema(formData.datasetId)
+    if (response.data.success) {
+      dimensions.value = response.data.result?.dimensions || []
+      measures.value = response.data.result?.measures || []
+    } else {
+      ElMessage.error(response.data.message || '加载数据集字段失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error?.message || '加载数据集字段失败')
+  } finally {
+    loadingDatasetSchema.value = false
+    if (shouldEmit) {
+      emitUpdate()
+    }
+  }
+}
+
+function handleDimensionChange() {
+  if (!formData.measure) {
+    formData.aggregation = 'none'
+  }
+  emitUpdate()
+}
+
+function handleMeasureChange() {
+  formData.aggregation = formData.measure ? 'SUM' : 'none'
+  emitUpdate()
 }
 
 async function handleTestConnection() {
@@ -411,7 +631,7 @@ async function handleTestConnection() {
       port: 3306,
       database: 'test_db',
       username: 'test',
-      password: 'test'
+      password: ''
     })
     if (response.data.success) {
       ElMessage.success('连接测试成功')
@@ -442,7 +662,7 @@ async function handlePreviewData() {
       port: 3306,
       database: 'test_db',
       username: 'test',
-      password: 'test'
+      password: ''
     })
     if (response.data.success) {
       previewData.value = [
@@ -481,11 +701,22 @@ function handleFormatSQL() {
 
 watch(
   () => props.component,
-  component => {
+  async component => {
     applyComponent(component)
+
+    if (component?.data?.datasetId) {
+      await handleDatasetChange(false)
+      formData.dimension = component.data.dimension || ''
+      formData.measure = component.data.measure || ''
+      formData.aggregation = component.data.aggregation || 'none'
+    }
   },
   { immediate: true, deep: true }
 )
+
+onMounted(() => {
+  loadDatasets()
+})
 </script>
 
 <style scoped>

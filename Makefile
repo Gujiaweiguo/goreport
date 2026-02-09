@@ -1,7 +1,7 @@
 # goReport Makefile
 # 提供常用开发命令
 
-.PHONY: help dev dev-down dev-logs dev-ps build build-frontend build-backend build-prod test test-frontend test-backend test-coverage clean db-shell redis-cli docs
+.PHONY: help dev dev-down dev-logs dev-ps build build-frontend build-backend build-prod test test-frontend test-backend test-backend-docker test-full test-coverage clean db-shell redis-cli docs
 
 # 默认目标
 help:
@@ -12,8 +12,10 @@ help:
 	@echo "  make build       - 构建生产镜像"
 	@echo "  make build-prod  - 启动生产环境"
 	@echo "  make test        - 运行测试"
+	@echo "  make test-full   - 运行完整测试（独立测试环境）"
 	@echo "  make test-frontend - 运行前端测试"
 	@echo "  make test-backend - 运行后端测试"
+	@echo "  make test-backend-docker - 在容器内运行后端测试"
 	@echo "  make test-coverage - 生成测试覆盖率报告"
 	@echo "  make clean       - 清理容器和卷"
 	@echo "  make logs        - 查看日志"
@@ -49,11 +51,19 @@ build:
 test:
 	cd backend && go test ./... -v
 
+test-full:
+	@echo "运行完整测试（使用独立测试环境）..."
+	@./scripts/run-tests.sh
+
 test-frontend:
 	cd frontend && npm test -- --passWithNoTests
 
 test-backend:
 	cd backend && go test ./... -v
+
+test-backend-docker:
+	docker compose up -d mysql backend
+	docker compose exec backend go test ./... -v
 
 test-coverage:
 	cd backend && go test -coverprofile=coverage.out ./...
@@ -95,6 +105,7 @@ docs:
 	@echo "可用文档："
 	@echo "  - 用户指南: docs/USER_GUIDE.md"
 	@echo "  - 开发指南: docs/DEVELOPMENT_GUIDE.md"
+	@echo "  - 测试计划: docs/TEST_PLAN.md"
 	@echo "  - 迁移指南: docs/MIGRATION_GUIDE.md"
 	@echo "  - 贡献指南: docs/CONTRIBUTING.md"
 

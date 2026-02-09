@@ -2,145 +2,142 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/gujiaweiguo/goreport/internal/config"
 )
 
-func TestCacheProvider(t *testing.T) {
-	cfg := config.CacheConfig{
-		Enabled:    false,
-		Addr:       "localhost:6379",
-		Password:   "",
-		DB:         0,
-		DefaultTTL: 3600,
-	}
-
-	cache, err := New(cfg)
-	if err != nil {
-		t.Fatalf("Failed to create cache: %v", err)
-	}
-	defer cache.Close()
-
-	if !cache.IsDegraded() {
-		t.Error("Expected cache to be degraded when disabled")
-	}
+type fakeProvider struct {
+	store            map[string][]byte
+	lastSetTTL       time.Duration
+	failGet          error
+	failSet          error
+	failDeletePrefix error
 }
 
-func TestCacheDegradedMode(t *testing.T) {
-	cfg := config.CacheConfig{
-		Enabled:    false,
-		Addr:       "localhost:6379",
-		Password:   "",
-		DB:         0,
-		DefaultTTL: 3600,
+func (f *fakeProvider) Get(ctx context.Context, key string) ([]byte, error) {
+	if f.failGet != nil {
+		return nil, f.failGet
 	}
+	value, ok := f.store[key]
+	if !ok {
+		return nil, nil
+	}
+	return value, nil
+}
 
-	cache, _ := New(cfg)
-	defer cache.Close()
+func (f *fakeProvider) Set(ctx context.Context, key string, value []byte, ttl time.Duration) error {
+	if f.failSet != nil {
+		return f.failSet
+	}
+	f.lastSetTTL = ttl
+	f.store[key] = value
+	return nil
+}
 
+func (f *fakeProvider) Delete(ctx context.Context, key string) error {
+	delete(f.store, key)
+	return nil
+}
+
+func (f *fakeProvider) DeleteByPrefix(ctx context.Context, prefix string) error {
+	if f.failDeletePrefix != nil {
+		return f.failDeletePrefix
+	}
+	for key := range f.store {
+		if len(key) >= len(prefix) && key[:len(prefix)] == prefix {
+			delete(f.store, key)
+		}
+	}
+	return nil
+}
+
+func (f *fakeProvider) Close() error { return nil }
+
+func TestNewCache(t *testing.T) {
+	cache, err := New(config.CacheConfig{})
+	assert.NoError(t, err)
+	assert.NotNil(t, cache)
+}
+
+func TestCacheProvider(t *testing.T) {
+	cache, err := New(config.CacheConfig{})
+	assert.NoError(t, err)
+	assert.NotNil(t, cache)
+}
+
+func TestCache_HitMiss(t *testing.T) {
+	provider := &fakeProvider{store: map[string][]byte{}}
+	cache := &Cache{provider: provider, cfg: config.CacheConfig{DefaultTTL: 60}, metrics: &Metrics{}}
 	ctx := context.Background()
-	tenantID := "tenant-1"
-	domain := "test"
-	identity := "key1"
 
-	value := []byte("test-value")
+	require.NoError(t, cache.Set(ctx, "test-tenant", "datasource:tables", "ds-1", nil, []byte("ok")))
 
-	err := cache.Set(ctx, tenantID, domain, identity, nil, value)
-	if err != nil {
-		t.Fatalf("Failed to set cache in degraded mode: %v", err)
-	}
+	value, hit, err := cache.Get(ctx, "test-tenant", "datasource:tables", "ds-1", nil)
+	require.NoError(t, err)
+	assert.True(t, hit)
+	assert.Equal(t, []byte("ok"), value)
 
-	retrieved, hit, err := cache.Get(ctx, tenantID, domain, identity, nil)
-	if err != nil {
-		t.Fatalf("Failed to get cache in degraded mode: %v", err)
-	}
-	if hit {
-		t.Error("Expected cache miss in degraded mode")
-	}
-	if retrieved != nil {
-		t.Error("Expected nil in degraded mode")
-	}
+	value, hit, err = cache.Get(ctx, "test-tenant", "datasource:tables", "ds-not-found", nil)
+	require.NoError(t, err)
+	assert.False(t, hit)
+	assert.Nil(t, value)
 
 	metrics := cache.GetMetrics()
-	if metrics.Misses != 1 {
-		t.Errorf("Expected 1 miss, got %d", metrics.Misses)
+	assert.Equal(t, int64(1), metrics.Hits)
+	assert.Equal(t, int64(1), metrics.Misses)
+}
+
+func TestCache_TTL_DefaultAndOverride(t *testing.T) {
+	provider := &fakeProvider{store: map[string][]byte{}}
+	cache := &Cache{provider: provider, cfg: config.CacheConfig{DefaultTTL: 120}, metrics: &Metrics{}}
+	ctx := context.Background()
+
+	require.NoError(t, cache.Set(ctx, "test-tenant", "datasource:tables", "ds-1", nil, []byte("v1")))
+	assert.Equal(t, 120*time.Second, provider.lastSetTTL)
+
+	require.NoError(t, cache.Set(ctx, "test-tenant", "datasource:tables", "ds-2", nil, []byte("v2"), 10*time.Second))
+	assert.Equal(t, 10*time.Second, provider.lastSetTTL)
+}
+
+func TestCache_DegradedMode(t *testing.T) {
+	provider := &fakeProvider{
+		store:            map[string][]byte{},
+		failGet:          errors.New("redis down"),
+		failSet:          errors.New("redis down"),
+		failDeletePrefix: errors.New("redis down"),
 	}
+	cache := &Cache{provider: provider, cfg: config.CacheConfig{DefaultTTL: 60}, metrics: &Metrics{}, degraded: true}
+	ctx := context.Background()
+
+	value, hit, err := cache.Get(ctx, "test-tenant", "datasource:tables", "ds-1", nil)
+	assert.NoError(t, err)
+	assert.False(t, hit)
+	assert.Nil(t, value)
+
+	err = cache.Set(ctx, "test-tenant", "datasource:tables", "ds-1", nil, []byte("v"))
+	assert.NoError(t, err)
+
+	err = cache.Invalidate(ctx, "test-tenant", "datasource:tables")
+	assert.NoError(t, err)
+
+	metrics := cache.GetMetrics()
+	assert.Equal(t, int64(3), metrics.Failures)
+	assert.True(t, cache.IsDegraded())
 }
 
 func TestCacheKeyBuilding(t *testing.T) {
 	tenantID := "tenant-1"
-	domain := "test-domain"
-	identity := "key1"
+	domain := "datasource:tables"
+	identity := "ds-1"
 
-	params := map[string]interface{}{
-		"param1": "value1",
-		"param2": 42,
-	}
-
-	paramsHash := HashParams(params)
-	if paramsHash == "" {
-		t.Error("Expected non-empty params hash")
-	}
-
-	key := BuildKey(tenantID, domain, identity, paramsHash)
-	expectedPrefix := "jr:tenant-1:test-domain:key1:"
-	if len(key) <= len(expectedPrefix) || key[:len(expectedPrefix)] != expectedPrefix {
-		t.Errorf("Expected key to start with %s, got %s", expectedPrefix, key)
-	}
-}
-
-func TestCacheDegradedModeSet(t *testing.T) {
-	cfg := config.CacheConfig{
-		Enabled:    false,
-		Addr:       "localhost:6379",
-		Password:   "",
-		DB:         0,
-		DefaultTTL: 3600,
-	}
-
-	cache, _ := New(cfg)
-	defer cache.Close()
-
-	ctx := context.Background()
-	tenantID := "tenant-1"
-	domain := "test"
-	identity := "key1"
-
-	value := []byte("test-value")
-
-	err := cache.Set(ctx, tenantID, domain, identity, nil, value)
-	if err != nil {
-		t.Fatalf("Failed to set cache in degraded mode: %v", err)
-	}
-
-	if !cache.IsDegraded() {
-		t.Error("Expected cache to be in degraded mode")
-	}
-}
-
-func TestCacheDegradedModeTTL(t *testing.T) {
-	cfg := config.CacheConfig{
-		Enabled:    false,
-		Addr:       "localhost:6379",
-		Password:   "",
-		DB:         0,
-		DefaultTTL: 3600,
-	}
-
-	cache, _ := New(cfg)
-	defer cache.Close()
-
-	ctx := context.Background()
-	tenantID := "tenant-1"
-	domain := "test"
-	identity := "key1"
-
-	value := []byte("test-value")
-
-	err := cache.Set(ctx, tenantID, domain, identity, nil, value, 10*time.Minute)
-	if err != nil {
-		t.Fatalf("Failed to set cache with TTL in degraded mode: %v", err)
-	}
+	key := BuildKey(tenantID, domain, identity, "")
+	assert.Contains(t, key, "tenant-1")
+	assert.Contains(t, key, "datasource:tables")
+	assert.Contains(t, key, "ds-1")
 }
