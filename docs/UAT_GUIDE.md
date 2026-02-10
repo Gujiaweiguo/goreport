@@ -73,7 +73,7 @@ vi .env  # 修改为 UAT 配置
 
 ```bash
 # 导入测试数据
-mysql -uroot -p jimureport < test_data.sql
+mysql -uroot -p goreport < test_data.sql
 
 # 或使用 API 批量导入
 python scripts/import_test_data.py --source test_data.csv
@@ -144,7 +144,7 @@ python scripts/import_test_data.py --source test_data.csv
 ## UAT 环境信息
 
 - **环境名称**：UAT
-- **访问地址**：https://uat.jimureport.com
+- **访问地址**：https://uat.goreport.dev
 - **数据库版本**：MySQL 8.0
 - **后端版本**：v1.0.0
 - **前端版本**：v1.0.0
@@ -638,10 +638,10 @@ python scripts/import_test_data.py --source test_data.csv
 
 如需要 UAT 相关帮助：
 
-- 查看 UAT 文档：`https://docs.jimureport.com/uat`
-- 联系 UAT 协调人：`uat@jimureport.com`
+- 查看 UAT 文档：`https://docs.goreport.dev/uat`
+- 联系 UAT 协调人：`weiguogu@163.com`
 - 提交 UAT 问题：GitHub Issues (标签：uat)
-- 技术支持：`support@jimureport.com`
+- 技术支持：`weiguogu@163.com`
 
 ---
 

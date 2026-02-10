@@ -49,7 +49,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
-		if IsTokenRevoked(tokenString) {
+		if IsTokenRevoked(c.Request.Context(), tokenString) {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"success": false,
 				"message": "token revoked",

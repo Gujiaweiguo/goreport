@@ -25,10 +25,10 @@
 ### 服务部署
 
 ```
-✅ jimureport-frontend-prod   Up   0.0.0.0:80->80/tcp
-✅ jimureport-backend-prod    Up   8085/tcp  
-✅ jimureport-mysql-prod      Up   3306/tcp
-✅ jimureport-redis-prod      Up   6379/tcp
+✅ goreport-frontend-prod   Up   0.0.0.0:80->80/tcp
+✅ goreport-backend-prod    Up   8085/tcp  
+✅ goreport-mysql-prod      Up   3306/tcp
+✅ goreport-redis-prod      Up   6379/tcp
 ```
 
 ### 访问信息

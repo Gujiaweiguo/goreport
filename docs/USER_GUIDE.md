@@ -257,6 +257,6 @@
 
 如遇到问题或需要帮助：
 
-- 查看在线文档：`https://docs.jimureport.com`
+- 查看在线文档：`https://docs.goreport.dev`
 - 提交问题：GitHub Issues
-- 联系支持：`support@jimureport.com`
+- 联系支持：`weiguogu@163.com`

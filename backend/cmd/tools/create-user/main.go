@@ -14,8 +14,8 @@ import (
 )
 
 func main() {
-	username := flag.String("username", "admin", "")
-	password := flag.String("password", "admin123", "")
+	username := flag.String("username", "", "")
+	password := flag.String("password", "", "")
 	role := flag.String("role", "admin", "")
 	tenant := flag.String("tenant", "default-tenant", "")
 	flag.Parse()

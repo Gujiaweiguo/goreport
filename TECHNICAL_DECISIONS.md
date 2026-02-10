@@ -668,7 +668,7 @@ services:
     volumes:
       - ./backend:/app
     environment:
-      - DB_DSN=root:root@tcp(mysql:3306)/jimureport?charset=utf8mb4
+      - DB_DSN=root:root@tcp(mysql:3306)/goreport?charset=utf8mb4
       - REDIS_ADDR=redis:6379
     depends_on:
       - mysql
@@ -680,7 +680,7 @@ services:
       - "3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_DATABASE=jimureport
+      - MYSQL_DATABASE=goreport
     volumes:
       - mysql-data:/var/lib/mysql
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -814,7 +814,7 @@ volumes:
 确认技术选型后，建议目录结构：
 
 ```
-jimureport/
+goreport/
 ├── backend/                    # Go 后端（独立目录）
 │   ├── cmd/server/
 │   │   └── main.go

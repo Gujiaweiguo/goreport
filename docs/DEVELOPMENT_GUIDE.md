@@ -25,7 +25,7 @@
 ```bash
 # 克隆项目
 git clone git@github.com:Gujiaweiguo/goreport.git
-cd jimureport-go
+cd goreport
 
 # 启动开发环境
 make dev
@@ -72,7 +72,7 @@ npm run preview
 ## 项目结构
 
 ```
-jimureport-go/
+goreport/
 ├── backend/                 # Go 后端
 │   ├── cmd/
 │   │   └── server/        # 应用入口
@@ -494,7 +494,7 @@ make build-prod
 创建 `.env` 文件：
 
 ```bash
-DB_DSN=root:password@tcp(mysql:3306)/jimureport?charset=utf8mb4&parseTime=True&loc=Local
+DB_DSN=root:password@tcp(mysql:3306)/goreport?charset=utf8mb4&parseTime=True&loc=Local
 JWT_SECRET=your-secret-key
 CACHE_ENABLED=true
 ```

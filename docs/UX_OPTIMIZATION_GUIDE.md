@@ -570,8 +570,8 @@ render(visibleItems)
 
 如需要 UX 设计帮助：
 
-- 查看文档：`https://docs.jimureport.com/ux`
-- 联系 UX 团队：`ux@jimureport.com`
+- 查看文档：`https://docs.goreport.dev/ux`
+- 联系 UX 团队：`weiguogu@163.com`
 - 提交建议：GitHub Issues (标签：ux-improvement)
 
 ---

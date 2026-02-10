@@ -2,7 +2,7 @@
 
 ## Purpose
 goReport 是一个基于 OpenSpec 驱动开发的报表与可视化系统，覆盖报表设计、预览渲染、导出、仪表盘与大屏能力。
-当前仓库以 Go 后端 + Vue 前端实现为主，同时保留 `jimureport-example/` 作为 Java 生态兼容与参考示例。
+当前仓库以 Go 后端 + Vue 前端实现为主。
 
 ## Tech Stack
 - Go 1.22+
@@ -30,7 +30,7 @@ goReport 是一个基于 OpenSpec 驱动开发的报表与可视化系统，覆�
 - 后端主目录：`backend/cmd/server`、`backend/internal/{auth,config,models,repository,service,httpserver,middleware}`
 - 前端主目录：`frontend/src/{views,components,api,stores,types,utils,router}`
 - OpenSpec 目录：`openspec/specs`（当前规格）与 `openspec/changes`（变更提案）
-- 兼容示例：`jimureport-example/`（Spring Boot 集成参考）
+
 
 ### Testing Strategy
 - 优先执行项目脚本（如 `make test`）进行回归验证

@@ -39,8 +39,8 @@
 ```bash
 # Fork 项目到您的 GitHub 账户
 # 克隆您的 Fork
-git clone https://github.com/your-username/jimureport-go.git
-cd jimureport-go
+git clone https://github.com/your-username/goreport.git
+cd goreport
 ```
 
 ### 2. 创建分支
@@ -370,7 +370,7 @@ Closes #123
 
 - 查看 [文档](../../docs)
 - 提交 [Issue](../../issues)
-- 加入 [Discord](https://discord.gg/jimureport)
+- 加入 [Discord](https://discord.gg/goreport)
 
 ## 致谢
 

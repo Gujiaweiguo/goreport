@@ -75,7 +75,7 @@ func (r *datasetRepository) Update(ctx context.Context, dataset *models.Dataset)
 }
 
 func (r *datasetRepository) Delete(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.Dataset{}).Error
+	return r.db.WithContext(ctx).Unscoped().Where("id = ?", id).Delete(&models.Dataset{}).Error
 }
 
 func (r *datasetRepository) SoftDelete(ctx context.Context, id string) error {

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gujiaweiguo/goreport/internal/models"
@@ -72,6 +73,7 @@ type UpdateRequest struct {
 	Name     *string         `json:"name"`
 	Config   json.RawMessage `json:"config"`
 	Status   *int            `json:"status"`
+	Action   *string         `json:"action"`
 	TenantID string          `json:"-"`
 }
 
@@ -122,6 +124,10 @@ func (s *service) Create(ctx context.Context, req *CreateRequest) (*models.Datas
 	}
 
 	if err := s.extractFields(ctx, dataset); err != nil {
+		// Keep create flow consistent: if field extraction fails, remove the dataset created in this request.
+		if rollbackErr := s.datasetRepo.Delete(ctx, dataset.ID); rollbackErr != nil {
+			return nil, fmt.Errorf("failed to extract fields: %w (rollback failed: %v)", err, rollbackErr)
+		}
 		return nil, fmt.Errorf("failed to extract fields: %w", err)
 	}
 
@@ -311,6 +317,7 @@ func (s *service) extractSQLFields(ctx context.Context, dataset *models.Dataset)
 			Type:        inferFieldType(columnTypes[i].DatabaseTypeName()),
 			DataType:    dataType,
 			IsComputed:  false,
+			Config:      "{}",
 			SortIndex:   i,
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
@@ -421,24 +428,30 @@ func inferFieldType(sqlType string) string {
 }
 
 type CreateFieldRequest struct {
-	DatasetID   string  `json:"datasetId"`
-	Name        string  `json:"name"`
-	DisplayName *string `json:"displayName"`
-	Type        string  `json:"type"`
-	DataType    string  `json:"dataType"`
-	Expression  *string `json:"expression"`
-	TenantID    string  `json:"-"`
+	DatasetID       string  `json:"datasetId"`
+	Name            string  `json:"name"`
+	DisplayName     *string `json:"displayName"`
+	Type            string  `json:"type"`
+	DataType        string  `json:"dataType"`
+	Expression      *string `json:"expression"`
+	IsGroupingField bool    `json:"isGroupingField"`
+	GroupingRule    *string `json:"groupingRule"`
+	GroupingEnabled *bool   `json:"groupingEnabled"`
+	TenantID        string  `json:"-"`
 }
 
 type UpdateFieldRequest struct {
-	FieldID     string  `json:"fieldId"`
-	DisplayName *string `json:"displayName"`
-	Type        *string `json:"type"`
-	DataType    *string `json:"dataType"`
-	IsSortable  *bool   `json:"isSortable"`
-	IsGroupable *bool   `json:"isGroupable"`
-	SortOrder   *string `json:"sortOrder"`
-	TenantID    string  `json:"-"`
+	FieldID         string  `json:"fieldId"`
+	DisplayName     *string `json:"displayName"`
+	Type            *string `json:"type"`
+	DataType        *string `json:"dataType"`
+	IsSortable      *bool   `json:"isSortable"`
+	IsGroupable     *bool   `json:"isGroupable"`
+	SortOrder       *string `json:"sortOrder"`
+	IsGroupingField *bool   `json:"isGroupingField"`
+	GroupingRule    *string `json:"groupingRule"`
+	GroupingEnabled *bool   `json:"groupingEnabled"`
+	TenantID        string  `json:"-"`
 }
 
 func (s *service) CreateComputedField(ctx context.Context, req *CreateFieldRequest) (*models.DatasetField, error) {
@@ -450,8 +463,14 @@ func (s *service) CreateComputedField(ctx context.Context, req *CreateFieldReque
 		return nil, errors.New("type must be 'dimension' or 'measure'")
 	}
 
-	if req.Expression == nil || *req.Expression == "" {
-		return nil, errors.New("expression is required for computed fields")
+	if req.IsGroupingField {
+		if req.GroupingRule == nil || *req.GroupingRule == "" {
+			return nil, errors.New("groupingRule is required for grouping fields")
+		}
+	} else {
+		if req.Expression == nil || *req.Expression == "" {
+			return nil, errors.New("expression is required for computed fields")
+		}
 	}
 
 	dataset, err := s.datasetRepo.GetByID(ctx, req.DatasetID)
@@ -463,37 +482,45 @@ func (s *service) CreateComputedField(ctx context.Context, req *CreateFieldReque
 		return nil, errors.New("dataset not found")
 	}
 
-	fields, err := s.fieldRepo.List(ctx, req.DatasetID)
-	if err != nil {
-		return nil, err
-	}
+	if !req.IsGroupingField {
+		fields, err := s.fieldRepo.List(ctx, req.DatasetID)
+		if err != nil {
+			return nil, err
+		}
 
-	var fieldNames []string
-	for _, f := range fields {
-		fieldNames = append(fieldNames, f.Name)
-	}
+		var fieldNames []string
+		for _, f := range fields {
+			fieldNames = append(fieldNames, f.Name)
+		}
 
-	if err := s.sqlBuilder.Validate(*req.Expression, fieldNames); err != nil {
-		return nil, fmt.Errorf("invalid expression: %w", err)
-	}
+		if err := s.sqlBuilder.Validate(*req.Expression, fieldNames); err != nil {
+			return nil, fmt.Errorf("invalid expression: %w", err)
+		}
 
-	if _, err := s.ResolveComputedFieldDependencies(ctx, req.DatasetID, req.Name); err != nil {
-		return nil, fmt.Errorf("failed to resolve dependencies: %w", err)
+		if strings.Contains(*req.Expression, fmt.Sprintf("[%s]", req.Name)) {
+			return nil, errors.New("expression cannot reference itself")
+		}
 	}
 
 	field := &models.DatasetField{
-		ID:          fmt.Sprintf("field-%d", time.Now().UnixNano()),
-		DatasetID:   req.DatasetID,
-		Name:        req.Name,
-		DisplayName: req.DisplayName,
-		Type:        req.Type,
-		DataType:    req.DataType,
-		IsComputed:  true,
-		Expression:  req.Expression,
-		IsSortable:  true,
-		IsGroupable: req.Type == "dimension",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		ID:               fmt.Sprintf("field-%d", time.Now().UnixNano()),
+		DatasetID:        req.DatasetID,
+		Name:             req.Name,
+		DisplayName:      req.DisplayName,
+		Type:             req.Type,
+		DataType:         req.DataType,
+		IsComputed:       !req.IsGroupingField,
+		Expression:       req.Expression,
+		IsGroupingField:  req.IsGroupingField,
+		GroupingRule:     req.GroupingRule,
+		GroupingEnabled:  req.GroupingEnabled,
+		Config:           "{}",
+		IsSortable:       true,
+		IsGroupable:      req.Type == "dimension",
+		DefaultSortOrder: "none",
+		SortIndex:        0,
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
 	}
 
 	if err := s.fieldRepo.Create(ctx, field); err != nil {
@@ -537,6 +564,15 @@ func (s *service) UpdateField(ctx context.Context, req *UpdateFieldRequest) (*mo
 	}
 	if req.SortOrder != nil {
 		field.DefaultSortOrder = *req.SortOrder
+	}
+	if req.IsGroupingField != nil {
+		field.IsGroupingField = *req.IsGroupingField
+	}
+	if req.GroupingRule != nil {
+		field.GroupingRule = req.GroupingRule
+	}
+	if req.GroupingEnabled != nil {
+		field.GroupingEnabled = req.GroupingEnabled
 	}
 	field.UpdatedAt = time.Now()
 

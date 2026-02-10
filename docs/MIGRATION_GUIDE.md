@@ -28,7 +28,7 @@
 
 ```bash
 # 备份数据库
-mysqldump -uroot -p jimureport > backup_$(date +%Y%m%d).sql
+mysqldump -uroot -p goreport > backup_$(date +%Y%m%d).sql
 
 # 压缩备份
 gzip backup_$(date +%Y%m%d).sql
@@ -108,7 +108,7 @@ python scripts/import_users.py --source old_export.json
 ```bash
 # 创建 .env 文件
 cat > .env << EOF
-DB_DSN=mysql://user:pass@localhost:3306/jimureport
+DB_DSN=mysql://user:pass@localhost:3306/goreport
 JWT_SECRET=$(openssl rand -hex 32)
 CACHE_ENABLED=true
 CACHE_ADDR=localhost:6379
@@ -275,7 +275,7 @@ SELECT id, name, config FROM reports WHERE id IN (
 make dev-down
 
 # 恢复旧数据库
-mysql -uroot -p jimureport < backup_20240206.sql
+mysql -uroot -p goreport < backup_20240206.sql
 
 # 重启旧系统
 systemctl start old-report-system
@@ -291,10 +291,10 @@ systemctl start old-report-system
 
 ```bash
 # 确保数据库字符集
-ALTER DATABASE jimureport CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+ALTER DATABASE goreport CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 # 导出时指定编码
-mysqldump --default-character-set=utf8mb4 -uroot -p jimureport > backup.sql
+mysqldump --default-character-set=utf8mb4 -uroot -p goreport > backup.sql
 ```
 
 ### 数据量过大
@@ -358,20 +358,20 @@ JOIN user_tenants ut ON u.id = ut.user_id;
 
 ```bash
 # 转换数据格式
-./tools/convert --input export.json --output jimureport.json
+./tools/convert --input export.json --output goreport.json
 ```
 
 ### 数据导入工具
 
 ```bash
 # 导入到 goReport
-./tools/import --input jimureport.json --validate
+./tools/import --input goreport.json --validate
 ```
 
 ## 获取帮助
 
 如遇到迁移问题：
 
-- 查看迁移文档：`https://docs.jimureport.com/migration`
+- 查看迁移文档：`https://docs.goreport.dev/migration`
 - 提交问题：GitHub Issues (标签：migration)
-- 联系支持：`migration@jimureport.com`
+- 联系支持：`weiguogu@163.com`

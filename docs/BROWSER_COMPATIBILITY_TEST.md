@@ -390,7 +390,7 @@ Error 2: ...
 
 - 查看 [浏览器兼容性文档](https://developer.mozilla.org/zh-CN/docs/Web/Compatibility)
 - 提交 Issue：GitHub Issues (标签：browser-compatibility)
-- 联系支持：`support@jimureport.com`
+- 联系支持：`weiguogu@163.com`
 
 ---
 

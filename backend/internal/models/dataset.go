@@ -13,6 +13,7 @@ type Dataset struct {
 	Name         string         `gorm:"type:varchar(200);not null" json:"name"`
 	Type         string         `gorm:"type:enum('sql','api','file');not null" json:"type"`
 	Config       string         `gorm:"type:json" json:"config"`
+	Action       string         `gorm:"type:varchar(20)" json:"action,omitempty"`
 	Status       int            `gorm:"type:tinyint;default:1" json:"status"`
 	CreatedBy    string         `gorm:"type:varchar(36)" json:"createdBy"`
 	CreatedAt    time.Time      `json:"createdAt"`

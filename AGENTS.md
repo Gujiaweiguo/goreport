@@ -21,131 +21,155 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 # Guidance for agentic coding in this repository.
 
 ## Scope and layout
-- Primary runnable project lives in `jimureport-example/`.
-- Main Spring Boot entrypoint in code: `com.jeecg.goReportApplication`.
-- Docs reference running from `jimureport-example` and Docker usage.
+- Primary runnable project lives in `backend/` (Go) and `frontend/` (Vue).
+- Main Go entrypoint: `backend/cmd/server/main.go`.
+- Docs reference running from project root with Docker Compose.
 
 ## Build, lint, test, run
 
-### Maven (jimureport-example)
-- Build package (documented):
-  - `mvn clean package`
-  - Source: `jimureport-example/README.md`
-- Run app (documented as IDE run):
-  - Run main class from IDE.
-  - README mentions `org.jeecg.modules.goReportApplication`, but actual class is `com.jeecg.goReportApplication`.
-  - Sources: `jimureport-example/README.md`, `jimureport-example/src/main/java/com/jeecg/goReportApplication.java`.
-- Test (standard Maven, not documented in repo):
-  - `mvn test`
-  - `mvn -Dtest=TestClassName test`
-  - `mvn -Dtest=TestClassName#testMethod test`
+### Go Backend
+- Build:
+  - `cd backend && go build -o bin/server cmd/server/main.go`
+  - Or use `make build`
+- Run:
+  - `cd backend && go run cmd/server/main.go`
+  - Or use `make dev` to start all services
+- Test:
+  - `cd backend && go test ./... -v`
+  - Or use `make test`
 
-### Docker (jimureport-example)
-- Build image stack (documented):
-  - `docker-compose up -d`
-  - Source: `jimureport-example/README.md`
+### Frontend
+- Install dependencies:
+  - `cd frontend && npm install`
+- Run dev server:
+  - `cd frontend && npm run dev`
+- Build:
+  - `cd frontend && npm run build`
+
+### Docker
+- Start all services:
+  - `make dev`
+- View logs:
+  - `make logs`
+- Stop services:
+  - `make dev-down`
 
 ### Database bootstrap
-- Initialize DB schema (documented):
-  - Execute `db/jimureport.mysql5.7.create.sql`.
-  - Source: `jimureport-example/README.md`
+- Initialize DB schema:
+  - `backend/db/init.sql` is automatically loaded by Docker Compose.
+  - Or manually: `mysql -uroot -p < backend/db/init.sql`
 
 ### Lint/format
-- No explicit lint/format tooling found (no Checkstyle/PMD/SpotBugs/EditorConfig).
-- Do not assume auto-formatters exist; follow existing style by observation.
+- Go: Uses `gofmt` (standard)
+  - `gofmt -w backend/`
+- No explicit frontend linter configured.
 
-## Code style guidelines (observed)
+## Code style guidelines
 
 ### Language and frameworks
-- Java 17 (see `jimureport-example/pom.xml`).
-- Spring Boot 3.5.x with standard Spring annotations.
-- Lombok used for logging (`@Slf4j`).
+- Go 1.22+
+- Gin web framework
+- GORM for database
+- JWT for authentication
+- Vue 3 + TypeScript
+- Vite build tool
+- Element Plus UI library
 
-### Project structure
-- Base package: `com.jeecg` / `com.jeecg.modules.jmreport`.
-- Common package areas:
-  - `controller` for MVC controllers.
-  - `config` for configuration classes.
-  - `extend` for goReport extension implementations.
-  - `satoken` for auth/session utilities.
+### Project structure (Go)
+- `backend/cmd/server/` - Application entry point
+- `backend/internal/` - Internal packages
+  - `auth/` - JWT authentication
+  - `config/` - Configuration management
+  - `models/` - Data models
+  - `repository/` - Data access layer
+  - `service/` - Business logic layer
+  - `httpserver/` - HTTP handlers
+  - `middleware/` - HTTP middleware
 
-### Imports
-- No wildcard imports observed.
-- Imports grouped by third-party first, then JDK.
-- Keep imports minimal and explicit.
-
-### Formatting and layout
-- 4-space indentation.
-- Opening brace on the same line.
-- Blank line between logical sections (imports, class fields, methods).
-- Inline `if` spacing with braces:
-  - `if (condition) {` and `} else {`.
+### Go code style
+- Standard Go formatting (`gofmt`)
+- 4-space indentation (project convention)
+- Package comments for public packages
+- Exported functions/structs have comments
+- Error handling: check errors explicitly, never ignore
+- Use `gorm` tags for model fields
+- Use `json` tags for API structs
 
 ### Naming conventions
-- Classes: `PascalCase` (e.g., `LoginController`).
-- Methods/fields: `camelCase` (e.g., `getToken`).
-- Constants: `UPPER_SNAKE_CASE` (e.g., `LOGIN_PAGE`).
-- Packages: lowercase dotted names.
-- YAML keys: lowercase with hyphens (e.g., `token-name`).
+- Go: Follow standard Go conventions
+  - `PascalCase` for exported names
+  - `camelCase` for unexported names
+  - `UPPER_SNAKE_CASE` for constants
+- Frontend: Vue/TypeScript conventions
+  - Components: `PascalCase.vue`
+  - Functions: `camelCase`
+  - Constants: `UPPER_SNAKE_CASE`
 
-### Dependency injection
-- Field injection via `@Autowired` is used (no constructor injection observed).
-- Fields are often package-private (no access modifier).
+### Error handling (Go)
+- Always check errors
+- Return errors to caller
+- Log errors at appropriate level
+- Use custom error types when needed
 
-### Logging
-- Uses SLF4J (`LoggerFactory`) or Lombok `@Slf4j`.
-- Log levels:
-  - `info` for normal flow.
-  - `warn` for recoverable issues.
-  - `error` for failures.
-- Prefer parameterized logging (`{}`) over string concatenation.
+### HTTP conventions
+- RESTful API design
+- Versioned routes: `/api/v1/...`
+- JSON request/response bodies
+- Standard HTTP status codes
+- JWT in `Authorization` header
 
-### Error handling
-- Prefer explicit exception handling with logging.
-- Custom runtime exception used: `goReportException`.
-- Exception handler classes exist but are commented out.
-- Avoid empty catch blocks; if swallowing, add a comment or log.
-
-### HTTP and web conventions
-- Controllers use `@Controller`, `@GetMapping`, `@RequestMapping`.
-- Redirects constructed via `redirect:` prefix.
-- Response bodies are mostly string views, not JSON in controllers.
-
-### Auth/session conventions (Sa-Token)
-- Sa-Token used for auth (`cn.dev33.satoken.*`).
-- Token is read from Sa-Token context or from request parameter `token`.
-- Token name configured in `application.yml` (`X-Access-Token`).
+### Auth conventions
+- JWT for stateless authentication
+- Token format: `Bearer <token>`
+- Claims include: user_id, tenant_id, exp
+- Middleware extracts user info to context
 
 ### Comments and docs
-- JavaDoc used for public methods in some classes.
-- Inline comments used for non-obvious behavior (e.g., redirects, token handling).
+- Go: Package and function comments
+- English preferred for technical terms
+- Chinese OK for business logic comments
 
 ## Testing guidance
-- Test sources are minimal; do not assume extensive coverage.
-- Use Maven Surefire single-test runs when possible.
-- If adding tests, align package structure with `src/main/java`.
-- There is a sample data class under `src/main/java` (`testdb`), not in `src/test`.
-- Do not move or rename it unless asked; treat it as runtime sample data.
+
+### Go testing
+- Standard `go test`
+- Table-driven tests preferred
+- Mock external dependencies
+- Test files: `*_test.go`
+
+### Running tests
+```bash
+# All tests
+cd backend && go test ./... -v
+
+# Specific package
+cd backend && go test ./internal/dashboard -v
+
+# Coverage
+cd backend && go test ./... -cover
+```
 
 ## Environment assumptions
-- JDK 17+ required.
-- MySQL 5.7+ required for example app.
-- Redis optional and controlled via optional dependencies.
+- Go 1.22+ required
+- Node.js 20+ required
+- MySQL 5.7+ required
+- Redis optional
+- Docker recommended for local development
 
 ## Docker notes
-- Docker setup documented under `jimureport-example/README.md`.
-- Mac M-series guidance requires ARM base image tweaks (see README).
+- Docker Compose for local development
+- Production Dockerfile in `backend/Dockerfile` and `frontend/Dockerfile`
 
 ## Localization
-- Comments and log messages include both Chinese and English.
-- Preserve existing language style in nearby code; do not rewrite for consistency.
+- Comments and log messages can be bilingual
+- Preserve existing language style
 
 ## Repo-specific notes
-- `.gitignore` ignores `target/`, `logs/`, and IDE files.
-- No CI configuration found in `.github/workflows` or other CI files.
+- `.gitignore` ignores `target/`, `logs/`, `node_modules/`, and IDE files
+- No CI configuration currently
 
 ## Cursor/Copilot rules
-- No `.cursor/rules/`, `.cursorrules`, or `.github/copilot-instructions.md` found.
+- No `.cursor/rules/`, `.cursorrules`, or `.github/copilot-instructions.md` found
 
 ## 规则
 - 默认中文回复
@@ -159,13 +183,10 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 - 上线后 Archive，并执行 `openspec validate --strict --no-interactive`
 
 ## Sources consulted
-- `jimureport-example/README.md`
-- `jimureport-example/README.en-US.md`
-- `jimureport-example/pom.xml`
-- `jimureport-example/src/main/java/com/jeecg/goReportApplication.java`
-- `jimureport-example/src/main/java/com/jeecg/modules/jmreport/controller/LoginController.java`
-- `jimureport-example/src/main/java/com/jeecg/modules/jmreport/extend/goReportTokenServiceImpl.java`
-- `jimureport-example/src/main/java/com/jeecg/modules/jmreport/satoken/util/AjaxRequestUtils.java`
-- `jimureport-example/src/main/java/com/jeecg/modules/jmreport/config/CustomCorsConfiguration.java`
-- `jimureport-example/src/main/resources/application.yml`
+- `README.md`
+- `README.en-US.md`
+- `backend/go.mod`
+- `backend/cmd/server/main.go`
+- `frontend/package.json`
+- `docker-compose.yml`
 - `.gitignore`

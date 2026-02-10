@@ -3,7 +3,7 @@ package datasource
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gujiaweiguo/goreport/internal/cache"
@@ -21,7 +21,23 @@ func NewCachedMetadataService(cache *cache.Cache) *CachedMetadataService {
 	}
 }
 
-func (s *CachedMetadataService) GetTables(ctx context.Context, tenantID, datasourceID, database string) ([]string, error) {
+func extractDatabaseFromDSN(dsn string) string {
+	// DSN format: username:password@tcp(host:port)/database?params
+	// Extract database name from DSN
+	parts := strings.Split(dsn, "/")
+	if len(parts) < 2 {
+		return ""
+	}
+
+	dbPart := parts[1]
+	questionPos := strings.Index(dbPart, "?")
+	if questionPos > 0 {
+		return dbPart[:questionPos]
+	}
+	return dbPart
+}
+
+func (s *CachedMetadataService) GetTables(ctx context.Context, tenantID, datasourceID, dsn string) ([]string, error) {
 	domain := "datasource:tables"
 	identity := datasourceID
 
@@ -32,7 +48,7 @@ func (s *CachedMetadataService) GetTables(ctx context.Context, tenantID, datasou
 		}
 	}
 
-	db, err := gorm.Open(mysql.Open(fmt.Sprintf("%s?charset=utf8mb4&parseTime=True&loc=Local", database)), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
@@ -42,6 +58,7 @@ func (s *CachedMetadataService) GetTables(ctx context.Context, tenantID, datasou
 		}
 	}()
 
+	database := extractDatabaseFromDSN(dsn)
 	tables, err := GetTables(ctx, db, database)
 	if err != nil {
 		return nil, err
@@ -53,7 +70,7 @@ func (s *CachedMetadataService) GetTables(ctx context.Context, tenantID, datasou
 	return tables, nil
 }
 
-func (s *CachedMetadataService) GetFields(ctx context.Context, tenantID, datasourceID, database, tableName string) ([]FieldInfo, error) {
+func (s *CachedMetadataService) GetFields(ctx context.Context, tenantID, datasourceID, dsn, tableName string) ([]FieldInfo, error) {
 	domain := "datasource:fields"
 	identity := datasourceID + ":" + tableName
 
@@ -64,7 +81,7 @@ func (s *CachedMetadataService) GetFields(ctx context.Context, tenantID, datasou
 		}
 	}
 
-	db, err := gorm.Open(mysql.Open(fmt.Sprintf("%s?charset=utf8mb4&parseTime=True&loc=Local", database)), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
@@ -74,6 +91,7 @@ func (s *CachedMetadataService) GetFields(ctx context.Context, tenantID, datasou
 		}
 	}()
 
+	database := extractDatabaseFromDSN(dsn)
 	fields, err := GetFields(ctx, db, database, tableName)
 	if err != nil {
 		return nil, err

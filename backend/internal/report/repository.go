@@ -22,6 +22,10 @@ func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
 }
 
+func (r *repository) GetDB() *gorm.DB {
+	return r.db
+}
+
 func (r *repository) Create(ctx context.Context, report *Report) error {
 	return r.db.WithContext(ctx).Create(report).Error
 }

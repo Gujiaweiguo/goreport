@@ -1,21 +1,23 @@
-# JimuReport 开发环境 Docker Compose 配置
+# goReport 开发环境 Docker Compose 配置
 # 一键启动完整开发环境：前端 + 后端 + MySQL + Redis
 
-version: '3.8'
+networks:
+  goreport-network:
+    driver: bridge
 
 services:
   # MySQL 数据库
   mysql:
     image: mysql:8.0
-    container_name: jimureport-mysql
+    container_name: goreport-mysql
     restart: unless-stopped
     ports:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: jimureport
-      MYSQL_USER: jimureport
-      MYSQL_PASSWORD: jimureport
+      MYSQL_DATABASE: goreport
+      MYSQL_USER: goreport
+      MYSQL_PASSWORD: goreport
       TZ: Asia/Shanghai
     volumes:
       - mysql-data:/var/lib/mysql
@@ -27,12 +29,12 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - jimureport-network
+      - goreport-network
 
   # Redis 缓存
   redis:
     image: redis:7-alpine
-    container_name: jimureport-redis
+    container_name: goreport-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -45,14 +47,14 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - jimureport-network
+      - goreport-network
 
   # Go 后端
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
-    container_name: jimureport-backend
+    container_name: goreport-backend
     restart: unless-stopped
     ports:
       - "8085:8085"
@@ -61,27 +63,22 @@ services:
       - go-mod-cache:/go/pkg/mod
     environment:
       - SERVER_ADDR=:8085
-      - DB_DSN=root:root@tcp(mysql:3306)/jimureport?charset=utf8mb4&parseTime=True&loc=Local
-      - REDIS_ADDR=redis:6379
+      - DB_DSN=root:root@tcp(goreport-mysql:3306)/goreport?charset=utf8mb4&parseTime=True&loc=Local
+      - REDIS_ADDR=goreport-redis:6379
       - REDIS_PASSWORD=
-      - JWT_SECRET=your-secret-key-change-in-production
-      - JWT_ISSUER=jimureport
-      - JWT_AUDIENCE=jimureport
+      - JWT_SECRET=${JWT_SECRET:-}
+      - JWT_ISSUER=goreport
+      - JWT_AUDIENCE=goreport
       - GIN_MODE=debug
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
-      - jimureport-network
+      - goreport-network
 
   # Vue 前端
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile.dev
-    container_name: jimureport-frontend
+    container_name: goreport-frontend
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -95,13 +92,10 @@ services:
     depends_on:
       - backend
     networks:
-      - jimureport-network
+      - goreport-network
 
 volumes:
   mysql-data:
   redis-data:
   go-mod-cache:
 
-networks:
-  jimureport-network:
-    driver: bridge

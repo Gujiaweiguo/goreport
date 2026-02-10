@@ -21,6 +21,11 @@ type DatasetField struct {
 	CreatedAt        time.Time `json:"createdAt"`
 	UpdatedAt        time.Time `json:"updatedAt"`
 
+	// Grouping field metadata
+	IsGroupingField bool    `gorm:"type:boolean;default:false" json:"isGroupingField"`
+	GroupingRule    *string `gorm:"type:text" json:"groupingRule,omitempty"`
+	GroupingEnabled *bool   `gorm:"type:boolean;default:false" json:"groupingEnabled"`
+
 	Dataset Dataset `gorm:"foreignKey:DatasetID" json:"dataset,omitempty"`
 }
 

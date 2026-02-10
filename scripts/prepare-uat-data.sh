@@ -11,9 +11,9 @@ echo "================================"
 echo ""
 
 # 配置
-DB_HOST="localhost"
+DB_HOST="goreport-mysql"
 DB_PORT="3306"
-DB_NAME="jimureport"
+DB_NAME="goreport"
 DB_USER="root"
 DB_PASS="root"
 BACKEND_URL="http://localhost:8085"
@@ -64,9 +64,9 @@ INSERT INTO tenants (id, name, code, status) VALUES
 
 -- 插入测试用户
 INSERT INTO users (id, username, password, email, real_name, status) VALUES 
-('uat-admin-001', 'uat_admin', '$2a$10$N9qo8uLOickgx2ZMRZoMye1j.d8q5f2Z1F5e1e1e1e1e1e1e1e1e1', 'uat-admin@jimureport.com', 'UAT管理员', 1),
-('uat-user-001', 'uat_user1', '$2a$10$N9qo8uLOickgx2ZMRZoMye1j.d8q5f2Z1F5e1e1e1e1e1e1e1e1e1', 'uat-user1@jimureport.com', '测试用户1', 1),
-('uat-user-002', 'uat_user2', '$2a$10$N9qo8uLOickgx2ZMRZoMye1j.d8q5f2Z1F5e1e1e1e1e1e1e1e1e1', 'uat-user2@jimureport.com', '测试用户2', 1);
+('uat-admin-001', 'uat_admin', '$2a$10$N9qo8uLOickgx2ZMRZoMye1j.d8q5f2Z1F5e1e1e1e1e1e1e1e1e1', 'weiguogu@163.com', 'UAT管理员', 1),
+('uat-user-001', 'uat_user1', '$2a$10$N9qo8uLOickgx2ZMRZoMye1j.d8q5f2Z1F5e1e1e1e1e1e1e1e1e1', 'weiguogu@163.com', '测试用户1', 1),
+('uat-user-002', 'uat_user2', '$2a$10$N9qo8uLOickgx2ZMRZoMye1j.d8q5f2Z1F5e1e1e1e1e1e1e1e1e1', 'weiguogu@163.com', '测试用户2', 1);
 
 -- 插入用户-租户关联
 INSERT INTO user_tenants (id, user_id, tenant_id, role, is_default) VALUES 
@@ -83,9 +83,9 @@ echo "插入测试数据源..."
 
 mysql -h$DB_HOST -P$DB_PORT -u$DB_USER -p$DB_PASS $DB_NAME << 'EOF'
 INSERT INTO data_sources (id, tenant_id, name, type, host, port, database_name, username, password, status) VALUES 
-('uat-ds-001', 'uat-tenant-001', 'UAT-MySQL测试库', 'mysql', 'mysql', 3306, 'jimureport', 'root', 'root', 1),
-('uat-ds-002', 'uat-tenant-001', 'UAT-销售数据库', 'mysql', 'mysql', 3306, 'jimureport', 'root', 'root', 1),
-('uat-ds-003', 'uat-tenant-001', 'UAT-用户数据库', 'mysql', 'mysql', 3306, 'jimureport', 'root', 'root', 1);
+('uat-ds-001', 'uat-tenant-001', 'UAT-MySQL测试库', 'mysql', 'mysql', 3306, 'goreport', 'root', 'root', 1),
+('uat-ds-002', 'uat-tenant-001', 'UAT-销售数据库', 'mysql', 'mysql', 3306, 'goreport', 'root', 'root', 1),
+('uat-ds-003', 'uat-tenant-001', 'UAT-用户数据库', 'mysql', 'mysql', 3306, 'goreport', 'root', 'root', 1);
 EOF
 
 echo "✅ 数据源插入完成 (3个)"
@@ -162,11 +162,11 @@ INSERT INTO test_sales_data (product_name, sales_amount, sales_date, region) VAL
 ('产品E', 12500.00, '2024-01-19', '西南');
 
 INSERT INTO test_user_data (username, email, registration_date, status) VALUES
-('user001', 'user001@test.com', '2024-01-01', 'active'),
-('user002', 'user002@test.com', '2024-01-05', 'active'),
-('user003', 'user003@test.com', '2024-01-10', 'inactive'),
-('user004', 'user004@test.com', '2024-01-15', 'active'),
-('user005', 'user005@test.com', '2024-01-20', 'active');
+('user001', 'user001@163.com', '2024-01-01', 'active'),
+('user002', 'user002@163.com', '2024-01-05', 'active'),
+('user003', 'user003@163.com', '2024-01-10', 'inactive'),
+('user004', 'user004@163.com', '2024-01-15', 'active'),
+('user005', 'user005@163.com', '2024-01-20', 'active');
 
 INSERT INTO test_inventory_data (product_name, quantity, warehouse, last_updated) VALUES
 ('产品A', 150, '仓库1', '2024-01-20'),

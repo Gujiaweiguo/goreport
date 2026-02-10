@@ -71,7 +71,7 @@ mkdir -p "$BACKUP_DIR"
 # 备份数据库
 print_info "备份数据库..."
 if docker compose -f $COMPOSE_FILE ps | grep -q "mysql"; then
-    docker compose -f $COMPOSE_FILE exec -T mysql mysqldump -uroot -p"${DB_PASSWORD}" jimureport > "$BACKUP_DIR/database_backup.sql"
+    docker compose -f $COMPOSE_FILE exec -T mysql mysqldump -uroot -p"${DB_PASSWORD}" goreport > "$BACKUP_DIR/database_backup.sql"
     print_info "数据库备份完成: $BACKUP_DIR/database_backup.sql"
 else
     print_warn "MySQL 服务未运行，跳过数据库备份"
@@ -153,7 +153,7 @@ if [ -d "db/migrations" ]; then
     for migration in db/migrations/*.sql; do
         if [ -f "$migration" ]; then
             print_info "执行迁移: $migration"
-            docker compose -f $COMPOSE_FILE exec -T mysql mysql -uroot -p"${DB_PASSWORD}" jimureport < "$migration"
+            docker compose -f $COMPOSE_FILE exec -T mysql mysql -uroot -p"${DB_PASSWORD}" goreport < "$migration"
         fi
     done
 fi
@@ -192,7 +192,7 @@ cat > "$BACKUP_DIR/deploy_report.txt" << EOF
 $(docker compose -f $COMPOSE_FILE ps)
 
 镜像信息:
-$(docker images | grep jimureport)
+$(docker images | grep goreport)
 
 访问地址:
 - 前端: http://localhost
@@ -204,7 +204,7 @@ $(docker images | grep jimureport)
   # 如果需要回滚，执行:
   docker compose -f $COMPOSE_FILE down
   # 恢复数据库:
-  # docker compose -f $COMPOSE_FILE exec -T mysql mysql -uroot -p"${DB_PASSWORD}" jimureport < $BACKUP_DIR/database_backup.sql
+  # docker compose -f $COMPOSE_FILE exec -T mysql mysql -uroot -p"${DB_PASSWORD}" goreport < $BACKUP_DIR/database_backup.sql
   # 重新部署上一个版本
 EOF
 

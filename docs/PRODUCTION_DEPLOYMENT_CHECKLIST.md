@@ -85,7 +85,7 @@ mysql -u root -p < backup_test.sql
 ssh user@production-server
 
 # 2. 进入项目目录
-cd /opt/jimureport
+cd /opt/goreport
 
 # 3. 拉取最新代码
 git fetch origin

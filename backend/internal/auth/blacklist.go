@@ -1,53 +1,63 @@
 package auth
 
 import (
-	"sync"
+	"context"
+	"fmt"
 	"time"
+
+	"github.com/gujiaweiguo/goreport/internal/cache"
 )
 
-type tokenBlacklist struct {
-	mu     sync.Mutex
-	tokens map[string]time.Time
+const (
+	blacklistKeyPrefix = "jrt:" // JSON Token Revoked
+)
+
+type BlacklistStore struct {
+	cache *cache.Cache
 }
 
-var blacklist = &tokenBlacklist{tokens: make(map[string]time.Time)}
+var blacklistStore *BlacklistStore
 
-// RevokeToken marks the token as revoked until its expiration time.
-func RevokeToken(token string, expiresAt time.Time) {
-	if token == "" {
-		return
+func InitBlacklist(cache *cache.Cache) {
+	blacklistStore = &BlacklistStore{
+		cache: cache,
 	}
-
-	blacklist.mu.Lock()
-	defer blacklist.mu.Unlock()
-
-	blacklist.tokens[token] = expiresAt
 }
 
-// IsTokenRevoked returns true if the token is revoked and not expired.
-func IsTokenRevoked(token string) bool {
+func RevokeToken(ctx context.Context, token string, expiresAt time.Time) error {
+	if blacklistStore == nil || blacklistStore.cache == nil {
+		return nil
+	}
+
+	if token == "" {
+		return nil
+	}
+
+	ttl := time.Until(expiresAt)
+	if ttl < 0 {
+		return nil
+	}
+
+	key := fmt.Sprintf("%s%s", blacklistKeyPrefix, token)
+
+	return blacklistStore.cache.Set(ctx, "default", "auth_blacklist", key, nil, []byte("1"), ttl)
+}
+
+func IsTokenRevoked(ctx context.Context, token string) bool {
+	if blacklistStore == nil || blacklistStore.cache == nil {
+		return false
+	}
+
 	if token == "" {
 		return false
 	}
 
-	now := time.Now()
+	key := fmt.Sprintf("%s%s", blacklistKeyPrefix, token)
 
-	blacklist.mu.Lock()
-	defer blacklist.mu.Unlock()
-
-	for value, expiresAt := range blacklist.tokens {
-		if expiresAt.Before(now) {
-			delete(blacklist.tokens, value)
-		}
-	}
-
-	expiresAt, ok := blacklist.tokens[token]
-	if !ok {
+	val, found, err := blacklistStore.cache.Get(ctx, "default", "auth_blacklist", key, nil)
+	if err != nil || !found || val == nil {
 		return false
 	}
-	if expiresAt.Before(now) {
-		delete(blacklist.tokens, token)
-		return false
-	}
-	return true
+
+	return string(val) == "1"
 }

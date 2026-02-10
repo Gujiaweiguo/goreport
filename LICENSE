@@ -679,13 +679,13 @@ Public License instead of this License.  But first, please read
     本软件受适用的国家软件著作权法（包括国际条约）和双重保护许可。
   
    1.允许基于本平台软件开展业务系统开发。
-   2.不得基于该平台软件的基础，修改包装成一个与JimuReport软件功能类似的产品进行发布、销售，或与JimuReport参与同类软件产品市场的竞争。
+   2.不得基于该平台软件的基础，修改包装成一个与goReport软件功能类似的产品进行发布、销售，或与goReport参与同类软件产品市场的竞争。
 	 违反此条款属于侵权行为，须赔偿侵权经济损失，同时立即停止著作权侵权行为。
-   3.需要保留积木报表官方的版权信息（预览“Powered by 积木报表”、“积木Logo” 等版权及链接）
+   3.需要保留goReport官方的版权信息（预览“Powered by goReport”、“积木Logo” 等版权及链接）
    
-	 解释权归：http://jimureport.com
+	 解释权归：http://goreport.dev
 
 
    相关授权协议详细说明：
    https://www.gnu.org/licenses/gpl-3.0.html
-   http://jimureport.com/vip
+   http://goreport.dev/vip

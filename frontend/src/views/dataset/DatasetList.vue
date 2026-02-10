@@ -45,7 +45,7 @@
       v-model="previewVisible"
       title="数据集预览"
       width="80%"
-      :close-on-click-modal="closePreview"
+      :close-on-click-modal="false"
     >
       <DatasetPreview v-if="previewDatasetId" :dataset-id="previewDatasetId" :data="previewData" />
     </el-dialog>
@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox, ElDialog } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { datasetApi, type Dataset } from '@/api/dataset'
 import DatasetPreview from '@/components/dataset/DatasetPreview.vue'
 
@@ -75,11 +75,12 @@ const loadDatasets = async () => {
   loading.value = true
   try {
     const response = await datasetApi.list(currentPage.value, pageSize.value)
-    if (response.success) {
-      datasets.value = response.result || []
-      total.value = response.total || 0
+    const { data } = response
+    if (data.success) {
+      datasets.value = data.result || []
+      total.value = data.total || 0
     } else {
-      ElMessage.error(response.message || '加载数据集失败')
+      ElMessage.error(data.message || '加载数据集失败')
     }
   } catch (error) {
     ElMessage.error('加载数据集失败')
@@ -109,11 +110,12 @@ const deleteDataset = async (dataset: Dataset) => {
     )
 
     const response = await datasetApi.delete(dataset.id)
-    if (response.success) {
+    const { data } = response
+    if (data.success) {
       ElMessage.success('删除成功')
       await loadDatasets()
     } else {
-      ElMessage.error(response.message || '删除失败')
+      ElMessage.error(data.message || '删除失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
@@ -141,10 +143,11 @@ const previewDataset = async (dataset: Dataset) => {
   // 模拟预览数据加载 - 实际应该从后端 API 获取
   try {
     const response = await datasetApi.preview(dataset.id)
-    if (response.success) {
-      previewData.value = response.result || []
+    const { data } = response
+    if (data.success) {
+      previewData.value = data.result || []
     } else {
-      ElMessage.warning(response.message || '预览数据加载失败，显示模拟数据')
+      ElMessage.warning(data.message || '预览数据加载失败，显示模拟数据')
       previewData.value = [
         { id: 1, name: '测试数据 1', value: 1000 },
         { id: 2, name: '测试数据 2', value: 2000 },
@@ -159,11 +162,6 @@ const previewDataset = async (dataset: Dataset) => {
       { id: 3, name: '测试数据 3', value: 1500 }
     ]
   }
-}
-
-const closePreview = () => {
-  previewVisible.value = false
-  previewDatasetId.value = ''
 }
 
 const getTypeLabel = (type: string) => {

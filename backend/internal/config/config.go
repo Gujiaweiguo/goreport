@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 )
@@ -44,27 +46,32 @@ type JWTConfig struct {
 
 // Load 加载配置
 func Load() (*Config, error) {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = generateRandomSecret()
+	}
+
 	return &Config{
 		Server: ServerConfig{
 			Addr: getEnv("SERVER_ADDR", ":8085"),
 		},
 		Database: DatabaseConfig{
-			DSN:             getEnv("DB_DSN", "root:root@tcp(localhost:3306)/jimureport?charset=utf8mb4&parseTime=True&loc=Local"),
+			DSN:             getEnv("DB_DSN", "root:root@tcp(localhost:3306)/goreport?charset=utf8mb4&parseTime=True&loc=Local"),
 			MaxOpenConns:    getIntEnv("DB_MAX_OPEN_CONNS", 100),
 			MaxIdleConns:    getIntEnv("DB_MAX_IDLE_CONNS", 10),
 			ConnMaxLifetime: getIntEnv("DB_CONN_MAX_LIFETIME", 3600),
 		},
 		JWT: JWTConfig{
-			Secret:   getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
-			Issuer:   getEnv("JWT_ISSUER", "jimureport"),
-			Audience: getEnv("JWT_AUDIENCE", "jimureport"),
+			Secret:   jwtSecret,
+			Issuer:   getEnv("JWT_ISSUER", "goreport"),
+			Audience: getEnv("JWT_AUDIENCE", "goreport"),
 		},
 		Cache: CacheConfig{
 			Enabled:    getBoolEnv("CACHE_ENABLED", false),
 			Addr:       getEnv("CACHE_ADDR", "localhost:6379"),
 			Password:   getEnv("CACHE_PASSWORD", ""),
 			DB:         getIntEnv("CACHE_DB", 0),
-			DefaultTTL: getIntEnv("CACHE_DEFAULT_TTL", 3600), // 默认 1 小时
+			DefaultTTL: getIntEnv("CACHE_DEFAULT_TTL", 3600),
 		},
 	}, nil
 }
@@ -91,4 +98,11 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+// generateRandomSecret 生成随机密钥
+func generateRandomSecret() string {
+	bytes := make([]byte, 32)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
 }

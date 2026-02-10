@@ -33,6 +33,10 @@ func (h *Handler) Create(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "tenant not found"})
 		return
 	}
+	if !canWriteDataset(c) {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "insufficient permissions"})
+		return
+	}
 
 	dataset, err := h.service.Create(c.Request.Context(), &req)
 	if err != nil {
@@ -112,6 +116,10 @@ func (h *Handler) Update(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "tenant not found"})
 		return
 	}
+	if !canWriteDataset(c) {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "insufficient permissions"})
+		return
+	}
 
 	dataset, err := h.service.Update(c.Request.Context(), &req)
 	if err != nil {
@@ -132,6 +140,10 @@ func (h *Handler) Delete(c *gin.Context) {
 	tenantID := auth.GetTenantID(c)
 	if tenantID == "" {
 		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "tenant not found"})
+		return
+	}
+	if !canWriteDataset(c) {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "insufficient permissions"})
 		return
 	}
 
@@ -280,6 +292,10 @@ func (h *Handler) CreateComputedField(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "tenant not found"})
 		return
 	}
+	if !canWriteDataset(c) {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "insufficient permissions"})
+		return
+	}
 
 	field, err := h.service.CreateComputedField(c.Request.Context(), &req)
 	if err != nil {
@@ -315,6 +331,10 @@ func (h *Handler) UpdateField(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "tenant not found"})
 		return
 	}
+	if !canWriteDataset(c) {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "insufficient permissions"})
+		return
+	}
 
 	field, err := h.service.UpdateField(c.Request.Context(), &req)
 	if err != nil {
@@ -343,6 +363,10 @@ func (h *Handler) DeleteField(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "tenant not found"})
 		return
 	}
+	if !canWriteDataset(c) {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "insufficient permissions"})
+		return
+	}
 
 	if err := h.service.DeleteField(c.Request.Context(), fieldID, tenantID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "failed to delete field"})
@@ -350,4 +374,15 @@ func (h *Handler) DeleteField(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "field deleted"})
+}
+
+func canWriteDataset(c *gin.Context) bool {
+	roles := auth.GetRoles(c)
+	for _, role := range roles {
+		if role == "admin" || role == "user" {
+			return true
+		}
+	}
+
+	return false
 }

@@ -96,7 +96,18 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	if claims.ExpiresAt != nil {
 		expiresAt = claims.ExpiresAt.Time
 	}
-	auth.RevokeToken(tokenString, expiresAt)
+
+	err = auth.RevokeToken(c.Request.Context(), tokenString, expiresAt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "failed to revoke token",
+		})
+		return
+	}
+
+	// 移除客户端的 Token
+	c.SetCookie("token", "", -1, "/", "", true, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

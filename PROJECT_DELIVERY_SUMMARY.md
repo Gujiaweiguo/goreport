@@ -164,10 +164,10 @@ backend/internal/dashboard/
 ### UAT 环境
 
 ```
-✅ jimureport-frontend-prod   Up  0.0.0.0:80->80/tcp
-✅ jimureport-backend-prod    Up  8085/tcp
-✅ jimureport-mysql-prod      Up  3306/tcp
-✅ jimureport-redis-prod      Up  6379/tcp
+✅ goreport-frontend-prod   Up  0.0.0.0:80->80/tcp
+✅ goreport-backend-prod    Up  8085/tcp
+✅ goreport-mysql-prod      Up  3306/tcp
+✅ goreport-redis-prod      Up  6379/tcp
 ```
 
 **访问地址**:
@@ -207,7 +207,7 @@ backend/internal/dashboard/
 ## 📁 项目结构
 
 ```
-jimureport/
+goreport/
 ├── backend/                    # Go 后端
 │   ├── cmd/
 │   │   └── server/            # 应用入口
