@@ -8,10 +8,12 @@ import (
 	"github.com/gujiaweiguo/goreport/internal/cache"
 	"github.com/gujiaweiguo/goreport/internal/config"
 	"github.com/gujiaweiguo/goreport/internal/dashboard"
+	"github.com/gujiaweiguo/goreport/internal/dataset"
 	"github.com/gujiaweiguo/goreport/internal/httpserver/handlers"
 	"github.com/gujiaweiguo/goreport/internal/middleware"
 	"github.com/gujiaweiguo/goreport/internal/render"
 	"github.com/gujiaweiguo/goreport/internal/report"
+	"github.com/gujiaweiguo/goreport/internal/repository"
 	"gorm.io/gorm"
 
 	"github.com/gin-gonic/gin"
@@ -32,6 +34,7 @@ func NewServer(cfg *config.Config, db *gorm.DB) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	auth.InitBlacklist(cache)
 
 	r := gin.Default()
 
@@ -52,6 +55,20 @@ func NewServer(cfg *config.Config, db *gorm.DB) (*Server, error) {
 	{
 		auth.POST("/login", authHandler.Login)
 		auth.POST("/logout", authHandler.Logout)
+	}
+
+	// 用户与租户路由
+	userHandler := handlers.NewUserHandler(repository.NewUserRepository(db))
+	users := r.Group("/api/v1/users")
+	{
+		users.GET("/me", userHandler.GetMe)
+	}
+
+	tenantHandler := handlers.NewTenantHandler(repository.NewTenantRepository(db))
+	tenants := r.Group("/api/v1/tenants")
+	{
+		tenants.GET("", tenantHandler.List)
+		tenants.GET("/current", tenantHandler.GetCurrent)
 	}
 
 	// 数据源路由
@@ -96,6 +113,31 @@ func NewServer(cfg *config.Config, db *gorm.DB) (*Server, error) {
 		dashboards.GET("/:id", dashboardHandler.Get)
 		dashboards.PUT("/:id", dashboardHandler.Update)
 		dashboards.DELETE("/:id", dashboardHandler.Delete)
+	}
+
+	// 数据集路由
+	datasetRepo := repository.NewDatasetRepository(db)
+	fieldRepo := repository.NewDatasetFieldRepository(db)
+	sourceRepo := repository.NewDatasetSourceRepository(db)
+	datasourceRepo := repository.NewDataSourceRepository(db)
+	datasetService := dataset.NewService(datasetRepo, fieldRepo, sourceRepo, datasourceRepo)
+	queryExecutor := dataset.NewQueryExecutor(datasetRepo, fieldRepo, datasourceRepo, dataset.NewSQLExpressionBuilder(), dataset.NewComputedFieldCache())
+	datasetHandler := dataset.NewHandler(datasetService, queryExecutor)
+	datasets := r.Group("/api/v1/datasets")
+	{
+		datasets.GET("", datasetHandler.List)
+		datasets.POST("", datasetHandler.Create)
+		datasets.GET("/:id", datasetHandler.Get)
+		datasets.PUT("/:id", datasetHandler.Update)
+		datasets.DELETE("/:id", datasetHandler.Delete)
+		datasets.GET("/:id/preview", datasetHandler.Preview)
+		datasets.POST("/:id/data", datasetHandler.QueryData)
+		datasets.GET("/:id/dimensions", datasetHandler.GetDimensions)
+		datasets.GET("/:id/measures", datasetHandler.GetMeasures)
+		datasets.GET("/:id/schema", datasetHandler.GetSchema)
+		datasets.POST("/:id/fields", datasetHandler.CreateComputedField)
+		datasets.PUT("/:id/fields/:fieldId", datasetHandler.UpdateField)
+		datasets.DELETE("/:id/fields/:fieldId", datasetHandler.DeleteField)
 	}
 
 	srv := &http.Server{

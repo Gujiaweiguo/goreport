@@ -7,20 +7,23 @@ import (
 	"time"
 
 	"github.com/gujiaweiguo/goreport/internal/models"
-	"gorm.io/driver/sqlite"
+	"github.com/gujiaweiguo/goreport/internal/testutil"
 	"gorm.io/gorm"
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("Failed to connect to test database: %v", err)
-	}
+	db := testutil.SetupMySQLTestDB(t)
+	testutil.EnsureTenants(db, t)
 
-	err = db.AutoMigrate(&models.Dataset{}, &models.DatasetField{}, &models.DatasetSource{})
+	err := db.AutoMigrate(&models.DataSource{}, &models.Dataset{}, &models.DatasetField{}, &models.DatasetSource{})
 	if err != nil {
 		t.Fatalf("Failed to migrate database: %v", err)
 	}
+
+	t.Cleanup(func() {
+		testutil.CleanupTenantData(db, []string{"tenant-1"})
+		testutil.CloseDB(db)
+	})
 
 	return db
 }
