@@ -184,10 +184,6 @@ export const datasetApi = {
     return apiClient.get<ApiResponse<DatasetSchema>>(`/api/v1/datasets/${id}/schema`)
   },
 
-  getSchema: (id: string) => {
-    return apiClient.get<ApiResponse<DatasetSchema>>(`/api/v1/datasets/${id}/schema`)
-  },
-
   createField: (id: string, data: CreateFieldRequest) => {
     return apiClient.post<ApiResponse<DatasetField>>(`/api/v1/datasets/${id}/fields`, data)
   },
