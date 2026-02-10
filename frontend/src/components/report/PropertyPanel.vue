@@ -142,28 +142,43 @@
              />
            </el-select>
          </el-form-item>
-         <el-form-item label="聚合函数" v-if="formData.measure">
-           <el-select
-             v-model="formData.aggregation"
-             placeholder="请选择聚合函数"
-             clearable
-           >
-             <el-option label="无" value="none" />
-             <el-option label="求和 (SUM)" value="SUM" />
-             <el-option label="平均值 (AVG)" value="AVG" />
-             <el-option label="计数 (COUNT)" value="COUNT" />
-             <el-option label="最大值 (MAX)" value="MAX" />
-             <el-option label="最小值 (MIN)" value="MIN" />
-           </el-select>
-         </el-form-item>
-         <el-form-item label="分组" v-if="formData.dimension">
-           <el-switch v-model="formData.groupBy" />
-         </el-form-item>
-       </template>
-
-      <el-form-item>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
-      </el-form-item>
+          <el-form-item label="聚合函数" v-if="formData.measure">
+            <el-select
+              v-model="formData.aggregation"
+              placeholder="请选择聚合函数"
+              clearable
+            >
+              <el-option label="无" value="none" />
+              <el-option label="求和 (SUM)" value="SUM" />
+              <el-option label="平均值 (AVG)" value="AVG" />
+              <el-option label="计数 (COUNT)" value="COUNT" />
+              <el-option label="最大值 (MAX)" value="MAX" />
+              <el-option label="最小值 (MIN)" value="MIN" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="分组" v-if="formData.dimension">
+            <el-switch v-model="formData.groupBy" />
+          </el-form-item>
+          <el-form-item v-if="formData.datasetId">
+            <el-button
+              type="primary"
+              @click="handlePreviewDataset"
+              :loading="loadingPreviewData"
+            >
+              预览数据
+            </el-button>
+          </el-form-item>
+          <div v-if="previewData.length" class="data-preview">
+            <el-table :data="previewData" size="small" max-height="200">
+              <el-table-column
+                v-for="key in Object.keys(previewData[0])"
+                :key="key"
+                :label="key"
+                :prop="key"
+              />
+            </el-table>
+          </div>
+        </template>
     </el-form>
   </div>
 </template>

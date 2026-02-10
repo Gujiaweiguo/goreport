@@ -31,6 +31,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       // 清除token并跳转到登录页
       localStorage.removeItem('token')
+      localStorage.removeItem('user')
       window.location.href = '/login'
     }
     return Promise.reject(error)

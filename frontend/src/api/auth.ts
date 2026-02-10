@@ -49,9 +49,13 @@ export const auth = {
     } catch (error) {
       console.error('Logout failed:', error)
     } finally {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      auth.clearSession()
     }
+  },
+
+  clearSession: () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
   },
 
   getToken: () => {

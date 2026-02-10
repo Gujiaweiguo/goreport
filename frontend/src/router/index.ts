@@ -2,10 +2,15 @@ import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import Login from '@/views/Login.vue'
 import DatasourceManage from '@/views/DatasourceManage.vue'
+import DatasetList from '@/views/dataset/DatasetList.vue'
+import DatasetEdit from '@/views/dataset/DatasetEdit.vue'
 import ReportDesigner from '@/views/ReportDesigner.vue'
+import ReportList from '@/views/ReportList.vue'
 import ReportPreview from '@/views/ReportPreview.vue'
 import DashboardDesigner from '@/views/DashboardDesigner.vue'
 import ChartEditor from '@/views/ChartEditor.vue'
+import { auth } from '@/api/auth'
+import { userApi } from '@/api/user'
 
 const routes = [
   {
@@ -38,16 +43,40 @@ const routes = [
         meta: { requiresAuth: true, title: '数据源管理', order: 3 }
       },
       {
+        path: 'dataset',
+        name: 'DatasetList',
+        component: DatasetList,
+        meta: { requiresAuth: true, title: '数据集管理', order: 4 }
+      },
+      {
+        path: 'dataset/create',
+        name: 'DatasetCreate',
+        component: DatasetEdit,
+        meta: { requiresAuth: true, title: '新建数据集', order: 4 }
+      },
+      {
+        path: 'dataset/edit/:id',
+        name: 'DatasetEdit',
+        component: DatasetEdit,
+        meta: { requiresAuth: true, title: '编辑数据集', order: 4 }
+      },
+      {
+        path: 'report/list',
+        name: 'ReportList',
+        component: ReportList,
+        meta: { requiresAuth: true, title: '报表列表', order: 4 }
+      },
+      {
         path: 'report/designer',
         name: 'ReportDesigner',
         component: ReportDesigner,
-        meta: { requiresAuth: true, title: '报表设计器', order: 4 }
+        meta: { requiresAuth: true, title: '报表设计器', order: 5 }
       },
       {
         path: 'report/preview',
         name: 'ReportPreview',
         component: ReportPreview,
-        meta: { requiresAuth: true, title: '报表预览', order: 5 }
+        meta: { requiresAuth: true, title: '报表预览', order: 6 }
       }
     ]
   }
@@ -58,16 +87,54 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
+let sessionValidationPromise: Promise<boolean> | null = null
+
+async function validateSession(): Promise<boolean> {
+  if (sessionValidationPromise) {
+    return sessionValidationPromise
+  }
+
+  sessionValidationPromise = (async () => {
+    const token = auth.getToken()
+    if (!token) {
+      return false
+    }
+
+    try {
+      const response = await userApi.getMe()
+      return !!response.data.success
+    } catch {
+      auth.clearSession()
+      return false
+    }
+  })()
+
+  try {
+    return await sessionValidationPromise
+  } finally {
+    sessionValidationPromise = null
+  }
+}
+
+router.beforeEach(async (to) => {
+  const token = auth.getToken()
 
   if (to.path === '/login' && token) {
-    next('/dashboard/designer')
-  } else if (to.meta.requiresAuth && !token) {
-    next('/login')
-  } else {
-    next()
+    const valid = await validateSession()
+    return valid ? '/dashboard/designer' : true
   }
+
+  if (to.meta.requiresAuth) {
+    if (!token) {
+      return '/login'
+    }
+    const valid = await validateSession()
+    if (!valid) {
+      return '/login'
+    }
+  }
+
+  return true
 })
 
 router.onError((error) => {

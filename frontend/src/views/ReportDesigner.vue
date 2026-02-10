@@ -16,7 +16,7 @@
           删除
         </el-button>
         <el-button :disabled="!selectedCell" @click="handleMergeCell">合并</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+        <el-button @click="handlePreviewData">预览数据</el-button>
       </div>
     </el-card>
 
@@ -56,10 +56,14 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { InputInstance } from 'element-plus'
 import { reportApi } from '@/api/report'
+import { datasetApi } from '@/api/dataset'
 import PropertyPanel from '@/components/report/PropertyPanel.vue'
+
+const route = useRoute()
 
 interface CellStyle {
   fontSize: number
@@ -71,10 +75,18 @@ interface CellStyle {
   borderColor: string
 }
 
-interface CellBinding {
+  interface CellBinding {
   datasourceId?: string
   tableName?: string
   fieldName?: string
+  datasetId?: string
+  dimension?: string
+  measure?: string
+  aggregation?: 'SUM' | 'AVG' | 'COUNT' | 'MAX' | 'MIN' | 'none'
+  groupBy?: boolean
+  params?: Array<{ key: string; value: string }>
+  filter?: string
+  previewData?: any[]  // NEW: store query results at cell level
 }
 
 interface DesignerCell {
@@ -92,7 +104,8 @@ const currentReportId = ref('')
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const canvasWrapperRef = ref<HTMLDivElement | null>(null)
 const editorRef = ref<InputInstance>()
-const selectedCell = ref<DesignerCell | null>(null)
+  const selectedCell = ref<DesignerCell | null>(null)
+  const previewData = ref<any[]>([])
 const dpr = window.devicePixelRatio || 1
 
 const gridConfig = reactive({
@@ -350,11 +363,14 @@ function handleCellUpdate(cell: DesignerCell) {
 }
 
 function handleNew() {
-  cells.clear()
+  for (const key of cells.keys()) {
+    cells.delete(key)
+  }
   selectedCell.value = null
   reportName.value = ''
   currentReportId.value = ''
   renderGrid()
+  ElMessage.success('已新建空白报表')
 }
 
 function handleDeleteCell() {
@@ -398,13 +414,94 @@ function serializeConfig() {
   }
 }
 
+async function loadReport(id: string) {
+  try {
+    const response = await reportApi.get(id)
+    if (response.data.success) {
+      const report = response.data.result
+      reportName.value = report.name
+      currentReportId.value = report.id
+
+      try {
+        const config = JSON.parse(report.config)
+        if (config.grid) {
+          gridConfig.rows = config.grid.rows || 18
+          gridConfig.cols = config.grid.cols || 12
+          gridConfig.cellWidth = config.grid.cellWidth || 120
+          gridConfig.cellHeight = config.grid.cellHeight || 44
+        }
+        if (config.cells && Array.isArray(config.cells)) {
+          for (const key of cells.keys()) {
+            cells.delete(key)
+          }
+          for (const cell of config.cells) {
+            const key = getCellKey(cell.row, cell.col)
+            cells.value.set(key, cell)
+          }
+        }
+        renderGrid()
+        ElMessage.success('报表加载成功')
+      } catch (error) {
+        console.error('解析报表配置失败:', error)
+        ElMessage.warning('报表配置格式错误，已加载空报表')
+      }
+    } else {
+      ElMessage.error(response.data.message || '加载报表失败')
+    }
+  } catch (error: any) {
+    console.error('加载报表失败:', error)
+    ElMessage.error(error.message || '加载报表失败')
+  }
+}
+
+async function handlePreviewData() {
+  if (!selectedCell.value || !selectedCell.value.binding?.datasetId) {
+    ElMessage.warning('请先选择一个单元格并配置数据集绑定')
+    return
+  }
+
+  loadingPreviewData.value = true
+  try {
+    const aggregations: Record<string, Aggregation> = {}
+    if (selectedCell.value.binding?.aggregation && selectedCell.value.binding?.aggregation !== 'none') {
+      aggregations[selectedCell.value.binding.measure] = {
+        'function': selectedCell.value.binding.aggregation as any,
+        field: selectedCell.value.binding.measure
+      }
+    }
+
+    const query: any = {
+      fields: [selectedCell.value.binding?.dimension, selectedCell.value.binding?.measure].filter(Boolean),
+      groupBy: selectedCell.value.binding?.groupBy ? [selectedCell.value.binding?.dimension] : undefined,
+      aggregations: Object.keys(aggregations).length ? aggregations : undefined
+    }
+
+    const response = await datasetApi.query(selectedCell.value.binding.datasetId, query)
+    if (response.data.success) {
+      previewData.value = response.data.result?.data || []
+      ElMessage.success('数据预览加载成功')
+    }
+  } catch (error: any) {
+    ElMessage.error('数据预览失败')
+  } finally {
+    loadingPreviewData.value = false
+  }
+}
+
 async function handleSave() {
+  if (!reportName.value.trim()) {
+    ElMessage.warning('请输入报表名称')
+    return
+  }
+
   saving.value = true
   try {
     const payload = {
-      name: reportName.value || '未命名报表',
-      config: serializeConfig()
+      name: reportName.value,
+      type: 'report',
+      config: JSON.stringify(serializeConfig())
     }
+
     const response = currentReportId.value
       ? await reportApi.update({
           id: currentReportId.value,
@@ -438,6 +535,11 @@ onMounted(() => {
   })
   if (canvasWrapperRef.value) {
     resizeObserver.observe(canvasWrapperRef.value)
+  }
+
+  const reportId = route.query.id as string
+  if (reportId) {
+    loadReport(reportId)
   }
 })
 
