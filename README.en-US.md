@@ -88,19 +88,19 @@ Implementation Status
 - [x] Metadata query (tables/fields)
 
 ### Phase 3: Report Core
-- [ ] Report CRUD API
-- [ ] Canvas report designer
-- [ ] Cell operations (select/edit/style)
-- [ ] Data binding (data source/table/field)
-- [ ] Rendering engine (data query + HTML generation)
-- [ ] Report preview
+- [x] Report CRUD API
+- [x] Canvas report designer
+- [x] Cell operations (select/edit/style)
+- [x] Data binding (data source/table/field)
+- [x] Rendering engine (data query + HTML generation)
+- [x] Report preview
 
 ### Phase 4: Advanced Features
-- [ ] BI dashboard
-- [ ] Chart components
-- [ ] Export features (Excel/PDF)
+- [x] BI dashboard
+- [x] Chart components
+- [x] Export features (Excel/PDF)
 - [ ] Expression editor
-- [ ] Report parameters
+- [x] Report parameters
 
 
 Green Installation-Free Version
