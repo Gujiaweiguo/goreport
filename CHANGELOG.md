@@ -91,6 +91,28 @@
 - 移动端大屏查看优化
 - AI 智能报表生成
 
+## [1.0.1-phase2-stable] - 2026-02-10
+
+### 新增
+
+- 用户/租户管理 API：`/api/v1/users/me`、`/api/v1/tenants`、`/api/v1/tenants/current`
+- API 端到端冒烟脚本：登录 → 数据源 → 数据集 → 报表预览（`make smoke-e2e`）
+- CI 前端独立任务：`npm run test:run` + `npm run build`
+
+### 变更
+
+- 认证链路增强：路由守卫增加 `/users/me` 会话校验，401 统一清理会话
+- 数据源与鉴权测试增强：补齐 JWT/中间件/黑名单测试与数据源 handler 覆盖
+- 前端构建拆包优化：`vite` 手动拆分 `zrender/echarts/element-plus/vendor` chunk
+
+### 修复
+
+- 修复 `frontend/src/api/dataset.ts` 重复 `getSchema` 键定义导致的构建告警
+
+### 清理
+
+- 删除临时产物：`.bak` 备份文件与调试截图资源
+
 ---
 
 ## 版本历史
