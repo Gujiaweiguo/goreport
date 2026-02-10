@@ -20,11 +20,30 @@ export default defineConfig(({ mode }) => {
       sourcemap: mode === 'development',
       rollupOptions: {
         output: {
-          manualChunks: {
-            'vendor': ['vue', 'vue-router', 'pinia'],
-            'element-plus': ['element-plus'],
-            'echarts': ['echarts'],
-            'common': ['lodash-es']
+          manualChunks(id) {
+            if (!id.includes('node_modules')) {
+              return
+            }
+
+            if (id.includes('node_modules/zrender')) {
+              return 'zrender'
+            }
+
+            if (id.includes('node_modules/echarts')) {
+              return 'echarts'
+            }
+
+            if (id.includes('node_modules/element-plus')) {
+              return 'element-plus'
+            }
+
+            if (
+              id.includes('node_modules/vue') ||
+              id.includes('node_modules/vue-router') ||
+              id.includes('node_modules/pinia')
+            ) {
+              return 'vendor'
+            }
           }
         }
       },
