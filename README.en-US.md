@@ -8,7 +8,7 @@ v2.3.0 | 2025-12-22
 
 [![](https://img.shields.io/badge/Author-北京国炬信息技术有限公司-orange.svg)](https://guojusoft.com)
 [![](https://img.shields.io/badge/version-2.3.0-brightgreen.svg)](https://github.com/jeecgboot/goReport)
-[![](https://img.shields.io/badge/Blog-goReport官网-blue.svg)](http://jimureport.com)
+[![](https://img.shields.io/badge/Blog-goReport官网-blue.svg)](http://goreport.dev)
 [![GitHub stars](https://img.shields.io/github/stars/zhangdaiscott/goReport.svg?style=social&label=Stars)](https://github.com/jeecgboot/goReport)
 [![GitHub forks](https://img.shields.io/github/forks/zhangdaiscott/goReport.svg?style=social&label=Fork)](https://github.com/jeecgboot/goReport)
 
@@ -33,115 +33,91 @@ Open source license: `Free functionality, commercial use allowed, code not open`
 Technical Documentation
 -----------------------------------
 
-- Official Website: http://jimureport.com
-- Online Demo: http://jimureport.com/login
-- Quick Start: [Quick Integration of goReport](https://help.jimureport.com/quick.html) | [Development Documentation](https://help.jimureport.com) | [Video Tutorials](http://jimureport.com/doc/video)
+- Official Website: http://goreport.dev
+- Online Demo: http://goreport.dev/login
+- Quick Start: [Quick Integration of goReport](https://docs.goreport.dev/quick.html) | [Development Documentation](https://docs.goreport.dev) | [Video Tutorials](http://goreport.dev/doc/video)
 - Technical Support: [Found a bug? Please report an issue on GitHub](https://github.com/jeecgboot/goReport/issues/new)
 - QQ Groups: 854804538、③596660273(full)、①212391162(full)、②929646317(full)
 
 
 
-Quick Integration of goReport
------------------------------------
-> Supports quick integration into SpringBoot scaffold projects. SpringBoot3 requires JDK17+, SpringBoot2 requires JDK8+
-
-#### Step 1: Add goReport Dependencies
-
-
--   springboot3
-
-```
- <dependency>
-    <groupId>org.jeecgframework.jimureport</groupId>
-    <artifactId>jimureport-spring-boot3-starter</artifactId>
-    <version>2.3.0</version>
- </dependency>
- <!-- MongoDB, Redis, and file dataset support package, add as needed -->
- <dependency>
-    <groupId>org.jeecgframework.jimureport</groupId>
-    <artifactId>jimureport-nosql-starter</artifactId>
-    <version>2.1.0</version>
- </dependency>
- <!-- Backend export interface ECharts support package, add as needed -->
- <dependency>
-    <groupId>org.jeecgframework.jimureport</groupId>
-    <artifactId>jimureport-echarts-starter</artifactId>
-    <version>2.2.0</version>
- </dependency>
-```
-
--   springboot2
-
-```
- <dependency>
-    <groupId>org.jeecgframework.jimureport</groupId>
-    <artifactId>jimureport-spring-boot-starter</artifactId>
-    <version>2.3.0.1</version>
- </dependency>
- <dependency>
-    <groupId>org.jeecgframework.jimureport</groupId>
-    <artifactId>jimureport-nosql-starter</artifactId>
-    <version>2.1.0</version>
- </dependency>
- <dependency>
-    <groupId>org.jeecgframework.jimureport</groupId>
-    <artifactId>jimureport-echarts-starter</artifactId>
-    <version>2.2.0</version>
- </dependency>
-```
-
-#### Step 2: Add JimuBI Dependencies (Dashboard and Data Screens)
-
--   springboot3
-
-```
-<dependency>
-  <groupId>org.jeecgframework.jimureport</groupId>
-  <artifactId>jimubi-spring-boot3-starter</artifactId>
-  <version>2.3.0</version>
-</dependency>
-```
-
--   springboot2
-
-```
- <dependency>
-   <groupId>org.jeecgframework.jimureport</groupId>
-   <artifactId>jimubi-spring-boot-starter</artifactId>
-   <version>2.3.0</version>
- </dependency>
-```
-
-#### Step 3: Initialize SQL and Required Configuration
-
-- https://help.jimureport.com/quick.html
-
-
-
-jimureport-example Environment Requirements
+Quick Start
 -----------------------------------
 
-- Requires JDK17+ (this project uses SpringBoot3 architecture)
-- Requires MySQL 5.7+, manually execute db/jimureport.mysql5.7.create.sql, will automatically create jimureport database
-- Project configuration: src/main/resources/application-dev.yml
+### Docker Compose (Recommended)
+
+```bash
+# Clone repository
+git clone https://github.com/jeecgboot/goReport.git
+cd goreport
+
+# Start services
+make dev
+
+# View status
+make ps
+```
+
+### Environment Requirements
+
+- Requires Go 1.22+
+- Requires Node.js 20+
+- Requires MySQL 5.7+
 - Requires Redis (optional)
+
+Visit:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8085
+
+
+Implementation Status
+-----------------------------------
+
+### Phase 1: Infrastructure
+- [x] Project scaffold
+- [x] Docker development environment
+- [x] Database initialization
+- [x] JWT authentication
+- [x] Redis cache
+
+### Phase 2: Auth and Data Source
+- [x] User/Tenant management
+- [x] JWT auth middleware
+- [x] Data source CRUD
+- [x] Data source connection test
+- [x] Metadata query (tables/fields)
+
+### Phase 3: Report Core
+- [ ] Report CRUD API
+- [ ] Canvas report designer
+- [ ] Cell operations (select/edit/style)
+- [ ] Data binding (data source/table/field)
+- [ ] Rendering engine (data query + HTML generation)
+- [ ] Report preview
+
+### Phase 4: Advanced Features
+- [ ] BI dashboard
+- [ ] Chart components
+- [ ] Export features (Excel/PDF)
+- [ ] Expression editor
+- [ ] Report parameters
 
 
 Green Installation-Free Version
 -----------------------------------
 
-- [Integrated Source Code Run](https://github.com/jeecgboot/goReport/tree/master/jimureport-example)
-- [Docker Quick Run](https://help.jimureport.com/docker.html)
+- [Integrated Source Code Run](https://github.com/jeecgboot/goReport)
+- [Docker Quick Run](https://docs.goreport.dev/docker.html)
 - [Green Installation-Free Version](https://pan.baidu.com/s/1z9VmMz4HCc7GMVbzugetLQ?pwd=xafr)
 
-> Default account and password: admin/123456, [Password change supported](https://help.jimureport.com/qa?_highlight=%E5%AF%86%E7%A0%81#4-jimureport-example%E9%A1%B9%E7%9B%AE%E6%80%8E%E4%B9%88%E4%BF%AE%E6%94%B9%E9%BB%98%E8%AE%A4%E5%AF%86%E7%A0%81)
+> Default account and password: admin/123456, [Password change supported](https://docs.goreport.dev/qa)
 
 
 
 License Agreement
 -----------------------------------
 
-The open source version is released under the LGPL license. If you cannot accept LGPL and need to use this project for commercial purposes without retaining copyright information (preview "Powered by goReport", "goReport Logo" and other copyright and links), you need to purchase [commercial license](http://jimureport.com/vip) to protect your legal rights.
+The open source version is released under the LGPL license. If you cannot accept LGPL and need to use this project for commercial purposes without retaining copyright information (preview "Powered by goReport", "goReport Logo" and other copyright and links), you need to purchase [commercial license](http://goreport.dev/vip) to protect your legal rights.
 
 
 Background
@@ -155,7 +131,7 @@ Why Choose goReport?
 -----------------------------------
 >    Permanently free, supports various complex reports, and features fool-proof online design, very intelligent. In the era of low-code, this is your first choice!
 
-- Can be quickly integrated into SpringBoot scaffold projects
+- Go backend with high performance
 - Web-based designer with Excel-like operation style, completing report design through drag-and-drop
 - Bind data sources to templates through SQL, API and other methods. Also supports expressions and automatic calculation of totals, greatly reducing calculation workload
 - High development efficiency, fool-proof online report design, design a report in one minute, simple yet powerful
@@ -167,7 +143,7 @@ Why Choose goReport?
 - Can design various types of documents and large screens, such as inventory receipts, sales orders, financial reports, contracts, monitoring screens, tourism data screens, etc.
 - Large screen designer supports dozens of chart styles, can be freely spliced and combined to design cool large screens
 - Data visualization, open source alternative to DataV and FineReport, with better experience and simpler usage than FineReport
-- [goReport Official Website](http://jimureport.com/login) allows you to create reports and large screens online for free. One-click registration with mobile number for permanent use. Large screens adopt Word-like style, you can drag components freely and design however you want, creating cool visual screens like Baidu and Alibaba! The important thing is: Free! Free! Free!
+- [goReport Official Website](http://goreport.dev/login) allows you to create reports and large screens online for free. One-click registration with mobile number for permanent use. Large screens adopt Word-like style, you can drag components freely and design however you want, creating cool visual screens like Baidu and Alibaba! The important thing is: Free! Free! Free!
 
 
 Database Compatibility
@@ -305,7 +281,7 @@ Advanced Large Screen Effects
 
 Report Function List
 -----------------------------------
-More function list: [http://jimureport.com/plan](http://jimureport.com/plan)
+More function list: [http://goreport.dev/plan](http://goreport.dev/plan)
 
 ```
 ├─Report Designer
