@@ -1,7 +1,7 @@
 # goReport Makefile
 # 提供常用开发命令
 
-.PHONY: help dev dev-down dev-logs dev-ps build build-frontend build-backend build-prod test test-frontend test-backend test-backend-docker test-full test-coverage clean db-shell redis-cli docs
+.PHONY: help dev dev-down dev-logs dev-ps build build-frontend build-backend build-prod test test-frontend test-backend test-backend-docker test-full test-coverage smoke-e2e clean db-shell redis-cli docs
 
 # 默认目标
 help:
@@ -17,6 +17,7 @@ help:
 	@echo "  make test-backend - 运行后端测试"
 	@echo "  make test-backend-docker - 在容器内运行后端测试"
 	@echo "  make test-coverage - 生成测试覆盖率报告"
+	@echo "  make smoke-e2e   - 运行 API 端到端冒烟链路"
 	@echo "  make clean       - 清理容器和卷"
 	@echo "  make logs        - 查看日志"
 	@echo "  make ps          - 查看容器状态"
@@ -68,6 +69,9 @@ test-backend-docker:
 test-coverage:
 	cd backend && go test -coverprofile=coverage.out ./...
 	cd backend && go tool cover -html=coverage.out -o coverage.html
+
+smoke-e2e:
+	bash scripts/smoke-api-e2e.sh
 
 # 构建
 build-frontend:
