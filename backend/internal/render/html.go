@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func buildHTML(config *ReportConfig, cellValues map[string]string) string {
+func buildHTML(config *ReportConfig, cellValues map[string]string, page, pageSize int) string {
 	maxRow := 0
 	maxCol := 0
 	for _, cell := range config.Cells {
@@ -20,7 +20,19 @@ func buildHTML(config *ReportConfig, cellValues map[string]string) string {
 
 	var b strings.Builder
 	b.WriteString("<table>")
-	for r := 0; r <= maxRow; r++ {
+
+	startRow := 0
+	endRow := maxRow + 1
+
+	if page > 0 && pageSize > 0 {
+		startRow = (page - 1) * pageSize
+		endRow = page * pageSize
+		if endRow > maxRow+1 {
+			endRow = maxRow + 1
+		}
+	}
+
+	for r := startRow; r < endRow; r++ {
 		b.WriteString("<tr>")
 		for c := 0; c <= maxCol; c++ {
 			value := cellValues[cellKey(r, c)]

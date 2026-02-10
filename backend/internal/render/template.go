@@ -13,3 +13,13 @@ type Cell struct {
 	TableName    *string `json:"tableName"`
 	FieldName    *string `json:"fieldName"`
 }
+
+func GetTotalRows(config *ReportConfig) int {
+	maxRow := 0
+	for _, cell := range config.Cells {
+		if cell.Row > maxRow {
+			maxRow = cell.Row
+		}
+	}
+	return maxRow + 1
+}

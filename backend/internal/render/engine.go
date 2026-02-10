@@ -41,5 +41,16 @@ func (e *Engine) Render(ctx context.Context, configJSON string, params map[strin
 		cellValues[cellKey(cell.Row, cell.Col)] = value
 	}
 
-	return buildHTML(&config, cellValues), nil
+	page := 0
+	pageSize := 0
+	if params != nil {
+		if pageVal, ok := params["page"].(float64); ok {
+			page = int(pageVal)
+		}
+		if pageSizeVal, ok := params["pageSize"].(float64); ok {
+			pageSize = int(pageSizeVal)
+		}
+	}
+
+	return buildHTML(&config, cellValues, page, pageSize), nil
 }
