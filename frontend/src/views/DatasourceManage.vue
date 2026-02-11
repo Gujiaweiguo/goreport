@@ -79,20 +79,10 @@
     <el-pagination
       class="pagination-bg"
       layout="total, prev, pager, next"
-      @current-change="currentPage"
-      @size-change="pageSize"
-    >
-      <div class="page-controls">
-        <span>共 {{ total }} 条数据源</span>
-        <el-pagination
-          layout="prev, pager, next"
-          @current-page="currentPage"
-          :page-size="pageSize"
-        :total="total"
-          :background="#f5f7fa"
-        />
-      </div>
-    </el-pagination>
+      :current-page="currentPage"
+      :page-size="pageSize"
+      :total="total"
+    />
   </div>
 </template>
 
