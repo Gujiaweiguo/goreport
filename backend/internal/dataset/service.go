@@ -26,6 +26,7 @@ type Service interface {
 
 	CreateComputedField(ctx context.Context, req *CreateFieldRequest) (*models.DatasetField, error)
 	UpdateField(ctx context.Context, req *UpdateFieldRequest) (*models.DatasetField, error)
+	BatchUpdateFields(ctx context.Context, datasetID, tenantID string, req *BatchUpdateFieldsRequest) (*BatchUpdateFieldsResponse, error)
 	DeleteField(ctx context.Context, fieldID, tenantID string) error
 	ListDimensions(ctx context.Context, datasetID, tenantID string) ([]*models.DatasetField, error)
 	ListMeasures(ctx context.Context, datasetID, tenantID string) ([]*models.DatasetField, error)
@@ -36,7 +37,7 @@ type service struct {
 	datasetRepo    repository.DatasetRepository
 	fieldRepo      repository.DatasetFieldRepository
 	sourceRepo     repository.DatasetSourceRepository
-	datasourceRepo repository.DataSourceRepository
+	datasourceRepo repository.DatasourceRepository
 	sqlBuilder     SQLExpressionBuilder
 	apiBuilder     APIExpressionBuilder
 	cache          *ComputedFieldCache
@@ -46,7 +47,7 @@ func NewService(
 	datasetRepo repository.DatasetRepository,
 	fieldRepo repository.DatasetFieldRepository,
 	sourceRepo repository.DatasetSourceRepository,
-	datasourceRepo repository.DataSourceRepository,
+	datasourceRepo repository.DatasourceRepository,
 ) Service {
 	return &service{
 		datasetRepo:    datasetRepo,
@@ -343,6 +344,9 @@ func (s *service) executeSQLPreview(ctx context.Context, dataset *models.Dataset
 	if err := json.Unmarshal([]byte(dataset.Config), &config); err != nil {
 		return nil, err
 	}
+	if err := validateSQLSafety(config.Query); err != nil {
+		return nil, fmt.Errorf("query validation failed: %w", err)
+	}
 
 	db, err := s.getDBConnection(datasource)
 	if err != nil {
@@ -350,9 +354,15 @@ func (s *service) executeSQLPreview(ctx context.Context, dataset *models.Dataset
 	}
 	defer db.Close()
 
+	previewCtx, cancel := withDatasetPreviewTimeout(ctx)
+	defer cancel()
+
 	query := fmt.Sprintf("%s LIMIT 100", config.Query)
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(previewCtx, query)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, errors.New("preview query timeout")
+		}
 		return nil, err
 	}
 	defer rows.Close()
@@ -386,6 +396,13 @@ func (s *service) executeSQLPreview(ctx context.Context, dataset *models.Dataset
 		results = append(results, row)
 	}
 
+	if err := rows.Err(); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, errors.New("preview query timeout")
+		}
+		return nil, err
+	}
+
 	return results, nil
 }
 
@@ -395,7 +412,7 @@ func (s *service) getDBConnection(datasource *models.DataSource) (*sql.DB, error
 		datasource.Password,
 		datasource.Host,
 		datasource.Port,
-		datasource.DatabaseName,
+		datasource.Database,
 	)
 
 	return sql.Open("mysql", dsn)
@@ -452,6 +469,21 @@ type UpdateFieldRequest struct {
 	GroupingRule    *string `json:"groupingRule"`
 	GroupingEnabled *bool   `json:"groupingEnabled"`
 	TenantID        string  `json:"-"`
+}
+
+type BatchUpdateFieldsRequest struct {
+	Fields []UpdateFieldRequest `json:"fields"`
+}
+
+type BatchFieldError struct {
+	FieldID string `json:"fieldId"`
+	Message string `json:"message"`
+}
+
+type BatchUpdateFieldsResponse struct {
+	Success       bool              `json:"success"`
+	UpdatedFields []string          `json:"updatedFields"`
+	Errors        []BatchFieldError `json:"errors"`
 }
 
 func (s *service) CreateComputedField(ctx context.Context, req *CreateFieldRequest) (*models.DatasetField, error) {
@@ -581,6 +613,63 @@ func (s *service) UpdateField(ctx context.Context, req *UpdateFieldRequest) (*mo
 	}
 
 	return field, nil
+}
+
+func (s *service) BatchUpdateFields(ctx context.Context, datasetID, tenantID string, req *BatchUpdateFieldsRequest) (*BatchUpdateFieldsResponse, error) {
+	if datasetID == "" {
+		return nil, errors.New("dataset id is required")
+	}
+	if len(req.Fields) == 0 {
+		return nil, errors.New("fields is required")
+	}
+
+	dataset, err := s.datasetRepo.GetByID(ctx, datasetID)
+	if err != nil {
+		return nil, err
+	}
+	if dataset.TenantID != tenantID {
+		return nil, errors.New("dataset not found")
+	}
+
+	fields, err := s.fieldRepo.List(ctx, datasetID)
+	if err != nil {
+		return nil, err
+	}
+	fieldSet := make(map[string]struct{}, len(fields))
+	for _, field := range fields {
+		fieldSet[field.ID] = struct{}{}
+	}
+
+	resp := &BatchUpdateFieldsResponse{
+		Success:       true,
+		UpdatedFields: make([]string, 0, len(req.Fields)),
+		Errors:        make([]BatchFieldError, 0),
+	}
+
+	for i := range req.Fields {
+		fieldReq := req.Fields[i]
+		if fieldReq.FieldID == "" {
+			resp.Success = false
+			resp.Errors = append(resp.Errors, BatchFieldError{FieldID: "", Message: "fieldId is required"})
+			continue
+		}
+		if _, ok := fieldSet[fieldReq.FieldID]; !ok {
+			resp.Success = false
+			resp.Errors = append(resp.Errors, BatchFieldError{FieldID: fieldReq.FieldID, Message: "field does not belong to dataset"})
+			continue
+		}
+
+		fieldReq.TenantID = tenantID
+		if _, err := s.UpdateField(ctx, &fieldReq); err != nil {
+			resp.Success = false
+			resp.Errors = append(resp.Errors, BatchFieldError{FieldID: fieldReq.FieldID, Message: err.Error()})
+			continue
+		}
+
+		resp.UpdatedFields = append(resp.UpdatedFields, fieldReq.FieldID)
+	}
+
+	return resp, nil
 }
 
 func (s *service) DeleteField(ctx context.Context, fieldID, tenantID string) error {

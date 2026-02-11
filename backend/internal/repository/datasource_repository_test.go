@@ -13,8 +13,8 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestNewDataSourceRepository(t *testing.T) {
-	repo := NewDataSourceRepository(nil)
+func TestNewDatasourceRepository(t *testing.T) {
+	repo := NewDatasourceRepository(nil)
 	assert.NotNil(t, repo)
 }
 
@@ -24,7 +24,7 @@ func setupDataSourceRepo(t *testing.T) (*gorm.DB, DataSourceRepository) {
 	t.Cleanup(func() {
 		testutil.CloseDB(db)
 	})
-	return db, NewDataSourceRepository(db)
+	return db, NewDatasourceRepository(db)
 }
 
 func setupTenant(t *testing.T, db *gorm.DB) string {

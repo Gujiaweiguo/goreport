@@ -345,6 +345,51 @@ func (h *Handler) UpdateField(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "result": field, "message": "field updated"})
 }
 
+func (h *Handler) BatchUpdateFields(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "id is required"})
+		return
+	}
+
+	var req BatchUpdateFieldsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "invalid request"})
+		return
+	}
+	if len(req.Fields) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "fields is required"})
+		return
+	}
+
+	tenantID := auth.GetTenantID(c)
+	if tenantID == "" {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "tenant not found"})
+		return
+	}
+	if !canWriteDataset(c) {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "insufficient permissions"})
+		return
+	}
+
+	result, err := h.service.BatchUpdateFields(c.Request.Context(), id, tenantID, &req)
+	if err != nil {
+		if err.Error() == "dataset not found" {
+			c.JSON(http.StatusNotFound, gin.H{"success": false, "message": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+
+	if !result.Success {
+		c.JSON(http.StatusOK, gin.H{"success": true, "result": result, "message": "batch update completed with partial failures"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "result": result, "message": "batch update completed"})
+}
+
 func (h *Handler) DeleteField(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {

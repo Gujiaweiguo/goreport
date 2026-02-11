@@ -11,6 +11,7 @@ import DashboardDesigner from '@/views/DashboardDesigner.vue'
 import ChartEditor from '@/views/ChartEditor.vue'
 import { auth } from '@/api/auth'
 import { userApi } from '@/api/user'
+import axios from 'axios'
 
 const routes = [
   {
@@ -103,9 +104,15 @@ async function validateSession(): Promise<boolean> {
     try {
       const response = await userApi.getMe()
       return !!response.data.success
-    } catch {
-      auth.clearSession()
-      return false
+    } catch (error) {
+      if (axios.isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) {
+        auth.clearSession()
+        return false
+      }
+
+      // Keep the local session for transient failures (network/CSP/proxy),
+      // otherwise users can be stuck on login after successful auth.
+      return true
     }
   })()
 

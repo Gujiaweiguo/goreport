@@ -53,7 +53,7 @@ func (e *Engine) fetchCellValueFromDB(ctx context.Context, cell Cell, ds models.
 		ds.Password,
 		ds.Host,
 		ds.Port,
-		ds.DatabaseName,
+		ds.Database,
 	)
 
 	dataDB, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})

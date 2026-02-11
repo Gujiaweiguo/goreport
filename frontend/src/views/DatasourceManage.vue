@@ -1,336 +1,351 @@
 <template>
   <div class="datasource-manage">
-     <ErrorState
-       v-if="loadError"
-       type="network"
-       title="加载数据源失败"
-       :message="errorMessage"
-       :canRetry="true"
-       :onRetry="loadDatasources"
-     />
+    <h2>数据源管理</h2>
+    <div class="page-actions">
+      <el-button type="primary" @click="handleCreate">
+        <el-icon><Plus /></el-icon>
+        创建数据源
+      </el-button>
+      <el-button type="primary" plain @click="showCreateDialog">
+        <span>批量导入</span>
+      </el-button>
+    </div>
 
-     <el-card v-else class="page-header">
-       <el-button type="primary" @click="showCreateDialog">创建数据源</el-button>
-     </el-card>
+    <el-table
+      :data="datasources"
+      @selection-change="handleSelectionChange"
+      v-loading="loading"
+      stripe
+      border
+      @row-click="handleRowClick"
+      style="width: 100%"
+    >
+      <el-table-column prop="type" label="类型" width="80">
+        <template #default="{ row }">
+          <el-tag v-if="row.type === 'mysql'" type="success">MySQL</el-tag>
+          <el-tag v-else-if="row.type === 'postgresql'" type="warning">PostgreSQL</el-tag>
+          <el-tag v-else-if="row.type === 'sqlserver'" type="info">SQL Server</el-tag>
+          <el-tag v-else-if="row.type === 'excel' || row.type === 'csv'" type="info">Excel/CSV</el-tag>
+          <el-tag v-else type="warning">API 数据源</el-tag>
+          <el-tag v-else>Unknown</el-tag>
+        </template>
+          <span>{{ row.type }}</span>
+        </template>
+      </el-table-column>
 
-      <el-card v-if="!loadError" class="table-container">
-        <LoadingState v-if="loading" :loading="loading" text="加载数据源..." />
-        <el-table v-else :data="datasources" style="width: 100%">
-          <el-table-column prop="name" label="名称" width="180" />
-        <el-table-column prop="type" label="类型" width="100" />
-        <el-table-column label="连接地址" width="250">
-          <template #default="{ row }">
-            {{ row.host }}:{{ row.port }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="database" label="数据库" width="150" />
-        <el-table-column prop="username" label="用户名" width="120" />
-        <el-table-column label="操作" width="280">
-          <template #default="{ row }">
-            <el-button size="small" @click="handleTest(row)">测试连接</el-button>
-            <el-button size="small" @click="showEditDialog(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
+      <el-table-column prop="name" label="名称" width="150">
+        <template #default="{ row }">
+          <span>{{ row.name || '-' }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="host" label="主机" width="120">
+        <template #default="{ row }">
+          <span>{{ row.host || '-' }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="port" label="端口" width="80">
+        <template #default="{ row }">
+          <span>{{ row.port || '-' }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="database" label="数据库" width="100">
+        <template #default="{ row }">
+          <span>{{ row.database || '-' }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="createdAt" label="创建时间" width="130">
+        <template #default="{ row }">
+          <span>{{ formatDate(row.createdAt) }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="updatedAt" label="更新时间" width="130">
+        <template #default="{ row }">
+          <span>{{ formatDate(row.updatedAt) }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="operations" label="操作" width="280">
+        <template #default="{ row }">
+          <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+          <el-button link type="success" size="small" @click="openTableDialog(row)">表/字段</el-button>
+          <el-button link type="primary" size="small" @click="openTestConnection(row)">测试连接</el-button>
+        </template>
+      </el-table-column>
       </el-table>
-    </el-card>
+    </el-table>
 
-    <el-dialog
-      v-model="dialogVisible"
-      :title="dialogTitle"
-      width="600px"
-      @close="handleDialogClose"
+    <el-pagination
+      background="#f5f7fa"
+      layout="total, prev, pager, next"
+      @current-change="currentPage"
+      @size-change="pageSize"
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="formRules"
-        label-width="100px"
-      >
-        <el-form-item label="名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入数据源名称" />
-        </el-form-item>
-
-        <el-form-item label="类型" prop="type">
-          <el-select v-model="form.type" placeholder="请选择数据源类型">
-            <el-option label="MySQL" value="mysql" />
-            <el-option label="PostgreSQL" value="postgresql" />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="主机" prop="host">
-          <el-input v-model="form.host" placeholder="请输入主机地址" />
-        </el-form-item>
-
-        <el-form-item label="端口" prop="port">
-          <el-input-number v-model="form.port" :min="1" :max="65535" />
-        </el-form-item>
-
-        <el-form-item label="数据库" prop="database">
-          <el-input v-model="form.database" placeholder="请输入数据库名称" />
-        </el-form-item>
-
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="请输入用户名" />
-        </el-form-item>
-
-        <el-form-item label="密码" prop="password">
-          <el-input
-            v-model="form.password"
-            type="password"
-            placeholder="请输入密码"
-            show-password
-          />
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <el-button @click="handleDialogClose">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="handleSubmit">
-          {{ isEdit ? '更新' : '创建' }}
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog
-      v-model="testDialogVisible"
-      title="测试连接"
-      width="400px"
-    >
-      <div v-loading="testing">
-        <p v-if="!testResult">点击下方按钮测试连接...</p>
-        <div v-else>
-          <el-result
-            :icon="testResult.success ? 'success' : 'error'"
-            :title="testResult.success ? '连接成功' : '连接失败'"
-            :sub-title="testResult.message"
-          />
-        </div>
+      <div class="page-controls">
+        <span>共 {{ total }} 条数据源</span>
+        <el-pagination
+          layout="prev, pager, next"
+          @current-page="currentPage"
+          :page-size="pageSize"
+        :total="total"
+          :background="#f5f7fa"
+        />
       </div>
-      <template #footer>
-        <el-button @click="testDialogVisible = false">关闭</el-button>
-        <el-button type="primary" :loading="testing" @click="runTest">
-          测试
-        </el-button>
-      </template>
-    </el-dialog>
+    </el-pagination>
   </div>
 </template>
 
 <script setup lang="ts">
- import { ref, reactive, onMounted } from 'vue'
- import { ElMessage, ElMessageBox } from 'element-plus'
- import type { FormInstance, FormRules } from 'element-plus'
- import { datasourceApi, type DataSource, type CreateDataSourceRequest } from '@/api/datasource'
- import LoadingState from '@/components/common/LoadingState.vue'
- import ErrorState from '@/components/common/ErrorState.vue'
+import { reactive, ref } from 'vue'
+import { datasourceApi, type DataSource } from '@/api/datasource'
+import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 
-
- const dialogVisible = ref(false)
- const testDialogVisible = ref(false)
- const dialogTitle = ref('创建数据源')
- const loading = ref(false)
- const submitting = ref(false)
- const testing = ref(false)
- const isEdit = ref(false)
- const currentEditId = ref('')
- const formRef = ref<FormInstance>()
- const loadError = ref(false)
- const errorMessage = ref('')
-
-const datasources = ref<DataSource[]>([])
-const testResult = ref<{ success: boolean; message: string } | null>(null)
-
-interface DataSourceForm {
+interface Datasource {
+  id: string
   name: string
   type: string
   host: string
   port: number
   database: string
-  username: string
-  password: string
+  username?: string
+  password?: string
+  tenantId: string
+  createdAt?: string
+  updatedAt?: string
 }
 
-const form = reactive<DataSourceForm>({
+interface OperationState {
+  visible: boolean
+  operation: string
+  result?: any
+  error?: string
+}
+
+const formatDate = (date?: string) => {
+  if (!date) return '-'
+  const d = new Date(date)
+  return d.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const dialogVisible = ref(false)
+const loading = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(10)
+
+const datasources = ref<DataSource[]>([])
+const total = ref(0)
+const searchKeyword = ref('')
+const filter = reactive<{}>({ keyword: '', type: '', page: 1, pageSize: 10 })
+
+const operationState = reactive<OperationState>({
+  visible: false,
+  operation: '',
+  result: null,
+  error: ''
+})
+
+// Datasource form
+const createForm = reactive({
   name: '',
   type: 'mysql',
-  host: 'localhost',
+  host: '',
   port: 3306,
   database: '',
   username: '',
   password: ''
 })
 
-const formRules = reactive<FormRules<DataSourceForm>>({
-  name: [{ required: true, message: '请输入数据源名称', trigger: 'blur' }],
-  type: [{ required: true, message: '请选择数据源类型', trigger: 'change' }],
-  host: [{ required: true, message: '请输入主机地址', trigger: 'blur' }],
-  port: [{ required: true, message: '请输入端口号', trigger: 'blur' }],
-  database: [{ required: true, message: '请输入数据库名称', trigger: 'blur' }],
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+const editForm = reactive({
+  id: '',
+  name: '',
+  type: '',
+  host: '',
+  port: 3306,
+  database: '',
+  username: '',
+  password: ''
 })
 
- async function loadDatasources() {
-   loadError.value = false
-   errorMessage.value = ''
-   loading.value = true
-   try {
-     const response = await datasourceApi.list()
-     if (response.data.success) {
-       datasources.value = response.data.result || []
-     } else {
-       loadError.value = true
-       errorMessage.value = response.data.message || '加载数据源失败'
-     }
-   } catch (error: any) {
-     loadError.value = true
-     errorMessage.value = error.message || '加载数据源失败'
-   } finally {
-     loading.value = false
-   }
- }
+const deleteForm = reactive({
+  id: '',
+  name: ''
+})
 
-function showCreateDialog() {
-  isEdit.value = false
-  dialogTitle.value = '创建数据源'
-  resetForm()
-  dialogVisible.value = true
+const rules = {
+  name: [{ required: true, message: '请输入数据源名称', trigger: 'blur' }]
 }
 
-function showEditDialog(row: DataSource) {
-  isEdit.value = true
-  dialogTitle.value = '编辑数据源'
-  form.name = row.name
-  form.type = row.type
-  form.host = row.host
-  form.port = row.port
-  form.database = row.database
-  form.username = row.username
-  form.password = ''
-  currentEditId.value = row.id
-  dialogVisible.value = true
-}
-
-function resetForm() {
-  form.name = ''
-  form.type = 'mysql'
-  form.host = 'localhost'
-  form.port = 3306
-  form.database = ''
-  form.username = ''
-  form.password = ''
-}
-
-function handleDialogClose() {
-  dialogVisible.value = false
-  resetForm()
-  if (formRef.value) {
-    formRef.value.clearValidate()
+const loadDatasources = async () => {
+  loading.value = true
+  try {
+    const { data, total } = await datasourceApi.list(currentPage.value, pageSize.value)
+    datasources.value = data || []
+    total.value = total || 0
+  } catch (error) {
+    ElMessage.error('加载数据源失败')
+  } finally {
+    loading.value = false
   }
 }
 
-async function handleSubmit() {
-  if (!formRef.value) return
+const handleSearch = async () => {
+  currentPage.value = 1
+  loadDatasources()
+}
 
+const handleCreate = async () => {
   try {
-    await formRef.value.validate()
-  } catch {
+    if (!createForm.name || createForm.type === '') {
+      ElMessage.warning('请先选择数据源类型')
+      return
+    }
+    if (createForm.port !== undefined && (createForm.port < 1 || createForm.port > 65535)) {
+      ElMessage.warning('端口号范围应在 1-65535 之间')
+      return
+    }
+    if ((createForm.type === 'mysql' || createForm.type === 'postgresql' || createForm.type === 'sqlserver') && !createForm.database) {
+      ElMessage.warning('请输入数据库连接名称')
+      return
+    }
+
+    loading.value = true
+    const response = await datasourceApi.create(createForm as any)
+    loading.value = false
+
+    if (response.data.success) {
+      ElMessage.success('数据源创建成功')
+      dialogVisible.value = false
+      createForm.id = response.data.result.id
+      createForm.name = ''
+      createForm.type = ''
+      createForm.host = ''
+      createForm.port = ''
+      createForm.database = ''
+      await loadDatasources()
+    } else {
+      ElMessage.error(response.data.message || '创建失败')
+      dialogVisible.value = false
+    }
+  } catch (error) {
+    ElMessage.error('创建失败')
+    loading.value = false
+  }
+}
+
+const handleEdit = async (ds: Datasource) => {
+  editForm.id = ds.id
+  editForm.name = ds.name
+  editForm.type = ds.type
+  editForm.host = ds.host
+  editForm.port = ds.port
+  editForm.database = ds.database
+  editForm.username = ds.username || ''
+  editForm.password = ds.password || ''
+  dialogVisible.value = false
+
+  await loadDatasources()
+}
+
+const handleUpdate = async () => {
+  if (!editForm.id) {
+    ElMessage.warning('请先选择数据源')
     return
   }
 
-  submitting.value = true
+  loading.value = true
+  const response = await datasourceApi.update(editFormRef.value as any)
+  loading.value = false
 
-  try {
-    if (isEdit.value) {
-      const response = await datasourceApi.update(currentEditId.value, form)
-      if (response.data.success) {
-        ElMessage.success('更新数据源成功')
-        await loadDatasources()
-        handleDialogClose()
-      } else {
-        ElMessage.error(response.data.message || '更新数据源失败')
-      }
-    } else {
-      const response = await datasourceApi.create(form)
-      if (response.data.success) {
-        ElMessage.success('创建数据源成功')
-        await loadDatasources()
-        handleDialogClose()
-      } else {
-        ElMessage.error(response.data.message || '创建数据源失败')
-      }
-    }
-  } catch (error: any) {
-    ElMessage.error('操作失败')
-  } finally {
-    submitting.value = false
+  if (response.data.success) {
+    ElMessage.success('数据源更新成功')
+    editFormRef.value = {}
+    dialogVisible.value = false
+    await loadDatasources()
+  } else {
+    ElMessage.error(response.data.message || '更新失败')
+    dialogVisible.value = false
   }
 }
 
-async function handleDelete(row: DataSource) {
-  try {
-    await ElMessageBox.confirm(`确认删除数据源 "${row.name}" 吗？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+const handleDelete = async (ds: Datasource) => {
+  if (!ds.id) {
+    ElMessage.warning('请先选择数据源')
+    return
+  }
 
-    const response = await datasourceApi.delete(row.id)
+  await ElMessageBox.confirm(`确认删除数据源"${ds.name}" 吗？`, '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  })
+
+  try {
+    const response = await datasourceApi.delete(ds.id)
+    loading.value = true
     if (response.data.success) {
-      ElMessage.success('删除数据源成功')
+      ElMessage.success('数据源删除成功')
       await loadDatasources()
     } else {
-      ElMessage.error(response.data.message || '删除数据源失败')
+      ElMessage.error(response.data.message || '删除失败')
     }
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除数据源失败')
-    }
+  } catch (error) {
+    ElMessage.error('删除失败')
+  }
+    loading.value = false
   }
 }
 
-async function handleTest(row: DataSource) {
-  testDialogVisible.value = true
-  testResult.value = null
-
-  const testData: CreateDataSourceRequest = {
-    name: row.name,
-    type: row.type,
-    host: row.host,
-    port: row.port,
-    database: row.database,
-    username: row.username,
+const openCreateDialog = () => {
+  dialogVisible.value = true
+  Object.assign(createForm, {
+    type: 'mysql',
+    port: 3306,
+    database: '',
+    username: '',
     password: ''
-  }
-
-  testing.value = true
-  try {
-    const response = await datasourceApi.test(testData)
-    testResult.value = {
-      success: response.data.success,
-      message: response.data.message || (response.data.success ? '连接成功' : '连接失败')
-    }
-  } catch (error: any) {
-    testResult.value = {
-      success: false,
-      message: error.message || '连接测试失败'
-    }
-  } finally {
-    testing.value = false
-  }
+  })
 }
 
-function runTest() {
-  const currentDataSource = datasources.value.find(ds => ds.id === currentEditId.value)
-  if (currentDataSource) {
-    handleTest(currentDataSource)
-  }
+const openEditDialog = (ds: Datasource) => {
+  dialogVisible.value = true
+  editForm.id = ds.id
+  editForm.name = ds.name
+  editForm.type = ds.type
+  editForm.host = ds.host
+  editForm.port = ds.port
+  editForm.database = ds.database
+  editForm.username = ds.username || ''
+  editForm.password = ds.password || ''
+
+  dialogVisible.value = true
 }
 
-onMounted(() => {
-  loadDatasources()
-})
+const openTableDialog = (ds: Datasource) => {
+  tableDatasourceId.value = ds.id
+  tableDialogVisible.value = true
+}
+
+const closeTableDialog = () => {
+  tableDialogVisible.value = false
+}
+
+const showCreateDialog = () => {
+  dialogVisible.value = true
+}
+
+const closeDialog = () => {
+  dialogVisible.value = false
+}
 </script>
 
 <style scoped>
@@ -338,11 +353,62 @@ onMounted(() => {
   padding: 20px;
 }
 
-.page-header {
+.page-actions {
   margin-bottom: 20px;
+  display: flex;
+  gap: 16px;
 }
 
 .table-container {
   min-height: 400px;
+  background: #f5f7fa;
+  border: 1px solid #e0e0e0e;
+  border-radius: 8px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+}
+
+.el-button {
+  margin-right: 8px;
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.el-dialog {
+  width: 600px;
+}
+
+.el-table {
+  font-size: 13px;
+}
+
+.el-form {
+  max-width: 400px;
+}
+
+.el-pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.el-empty-text {
+  color: #909399;
 }
 </style>

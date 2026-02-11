@@ -98,7 +98,7 @@ func TestCreateDatasource_Success(t *testing.T) {
 	h := newTestDataSourceHandler(repo)
 
 	repo.On("Create", mock.Anything, mock.MatchedBy(func(ds *models.DataSource) bool {
-		return ds.Name == "ds" && ds.TenantID == "tenant-1" && ds.DatabaseName == "goreport"
+		return ds.Name == "ds" && ds.TenantID == "tenant-1" && ds.Database == "goreport"
 	})).Return(nil).Once()
 
 	body := `{"name":"ds","type":"mysql","host":"localhost","port":3306,"database":"goreport","username":"root","password":"root"}`

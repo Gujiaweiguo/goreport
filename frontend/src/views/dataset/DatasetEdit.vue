@@ -240,6 +240,7 @@
                   v-else
                   :dataset-id="currentDatasetId"
                   :data="previewData"
+                  :schema="schema"
                   @close="closePreview"
                 />
               </div>
@@ -376,15 +377,24 @@ import { InfoFilled } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules, UploadUserFile } from 'element-plus'
 import { datasourceApi, type DataSource } from '@/api/datasource'
 import {
+  formatBatchFieldErrors,
+  getApiErrorMessage,
   datasetApi,
+  type BatchUpdateFieldRequest,
   type CreateFieldRequest,
   type CreateDatasetRequest,
   type DatasetField,
   type DatasetSchema,
-  type UpdateDatasetRequest,
-  type UpdateFieldRequest
+  type UpdateDatasetRequest
 } from '@/api/dataset'
 import DatasetPreview from '@/components/dataset/DatasetPreview.vue'
+import {
+  getBatchPrecheckMessage,
+  resolveBatchResult,
+  resolveRefreshLoadPlan,
+  resolveSaveNavigationPlan,
+  resolveTabSwitchLoadPlan
+} from './datasetEditWorkflow'
 
 type WorkflowStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -480,6 +490,8 @@ const joinConfig = ref<JoinConfigState>({
 const fileList = ref<UploadUserFile[]>([])
 const previewData = ref<Record<string, any>[]>([])
 const schema = ref<DatasetSchema>({ dimensions: [], measures: [], computed: [] })
+const loadedSchemaDatasetId = ref('')
+const loadedPreviewDatasetId = ref('')
 const selectedFields = ref<DatasetField[]>([])
 const groupingFieldDialogVisible = ref(false)
 const groupingFieldFormRef = ref<FormInstance>()
@@ -524,11 +536,7 @@ const sidebarTableItems = computed<SidebarTableItem[]>(() => {
 })
 
 const getErrorMessage = (error: unknown, fallback: string): string => {
-  if (typeof error === 'object' && error !== null) {
-    const maybeError = error as { response?: { data?: { message?: string } }; message?: string }
-    return maybeError.response?.data?.message || maybeError.message || fallback
-  }
-  return fallback
+  return getApiErrorMessage(error, fallback)
 }
 
 const runWithState = async <T>(
@@ -909,6 +917,7 @@ const loadSchema = async (id: string) => {
     throw new Error(response.data.message || '加载字段结构失败')
   }
   schema.value = response.data.result || { dimensions: [], measures: [], computed: [] }
+  loadedSchemaDatasetId.value = id
 }
 
 const ensureDatasetPersisted = async () => {
@@ -939,12 +948,14 @@ const fetchPreview = async (id: string) => {
     throw new Error(response.data.message || '预览失败')
   }
   previewData.value = response.data.result || []
+  loadedPreviewDatasetId.value = id
 }
 
 const handleTypeChange = () => {
   formData.value.config = {}
   fileList.value = []
   previewData.value = []
+  loadedPreviewDatasetId.value = ''
   activeSidebarTableKey.value = CUSTOM_SQL_KEY
   resetSqlWorkspace()
 
@@ -982,14 +993,18 @@ const previewDataset = async () => {
   }
 
   await formRef.value.validate()
-  await runWithState(
-    'preview',
-    async () => {
-      const id = await ensureDatasetPersisted()
-      await fetchPreview(id)
-    },
-    { successMessage: '预览成功', errorMessage: '预览失败' }
-  )
+  try {
+    await runWithState(
+      'preview',
+      async () => {
+        const id = await ensureDatasetPersisted()
+        await fetchPreview(id)
+      },
+      { successMessage: '预览成功', errorMessage: '预览失败' }
+    )
+  } catch {
+    // 预览失败时保留已有数据与上下文。
+  }
 }
 
 const handleSaveAction = async (action: 'save' | 'save_and_return') => {
@@ -999,82 +1014,128 @@ const handleSaveAction = async (action: 'save' | 'save_and_return') => {
 
   await formRef.value.validate()
 
-  await runWithState(
-    action,
-    async () => {
-      if (currentDatasetId.value) {
-        const updatePayload: UpdateDatasetRequest = {
-          name: formData.value.name,
-          config: formData.value.config,
-          action
-        }
-        const updateResponse = await datasetApi.update(currentDatasetId.value, updatePayload)
-        if (!updateResponse.data.success) {
-          throw new Error(updateResponse.data.message || '保存失败')
-        }
-      } else {
-        const createResponse = await datasetApi.create({
-          name: formData.value.name,
-          type: formData.value.type,
-          datasourceId: formData.value.datasourceId,
-          config: formData.value.config
-        })
-        if (!createResponse.data.success || !createResponse.data.result?.id) {
-          throw new Error(createResponse.data.message || '保存失败')
+  try {
+    await runWithState(
+      action,
+      async () => {
+        const isNewDataset = !currentDatasetId.value
+        let persistedId = currentDatasetId.value
+
+        if (!isNewDataset) {
+          const updatePayload: UpdateDatasetRequest = {
+            name: formData.value.name,
+            config: formData.value.config,
+            action
+          }
+          const updateResponse = await datasetApi.update(currentDatasetId.value, updatePayload)
+          if (!updateResponse.data.success) {
+            throw new Error(updateResponse.data.message || '保存失败')
+          }
+        } else {
+          const createResponse = await datasetApi.create({
+            name: formData.value.name,
+            type: formData.value.type,
+            datasourceId: formData.value.datasourceId,
+            config: formData.value.config
+          })
+          if (!createResponse.data.success || !createResponse.data.result?.id) {
+            throw new Error(createResponse.data.message || '保存失败')
+          }
+          persistedId = createResponse.data.result.id
+          currentDatasetId.value = persistedId
         }
 
-        currentDatasetId.value = createResponse.data.result.id
-        if (action === 'save') {
-          await router.replace(`/dataset/edit/${currentDatasetId.value}`)
+        await loadSchema(persistedId)
+
+        const navigationPlan = resolveSaveNavigationPlan(action, isNewDataset, true)
+        if (navigationPlan.replaceRoute) {
+          await router.replace(`/dataset/edit/${persistedId}`)
         }
+        if (navigationPlan.returnToList) {
+          goBack()
+        }
+      },
+      {
+        successMessage: action === 'save' ? '保存成功' : '保存成功，已返回列表',
+        errorMessage: '保存失败'
       }
-
-      await loadSchema(currentDatasetId.value)
-
-      if (action === 'save_and_return') {
-        goBack()
-      }
-    },
-    {
-      successMessage: action === 'save' ? '保存成功' : '保存成功，已返回列表',
-      errorMessage: '保存失败'
-    }
-  )
+    )
+  } catch {
+    // 保存失败时保留当前表单与路由上下文，便于继续编辑修复。
+  }
 }
 
 const handleRefreshData = async () => {
-  await runWithState(
-    'refresh',
-    async () => {
-      if (!currentDatasetId.value) {
-        throw new Error('请先保存数据集后再刷新数据')
-      }
-      await Promise.all([fetchPreview(currentDatasetId.value), loadSchema(currentDatasetId.value)])
-    },
-    { successMessage: '数据刷新成功', errorMessage: '数据刷新失败' }
-  )
+  try {
+    await runWithState(
+      'refresh',
+      async () => {
+        if (!currentDatasetId.value) {
+          throw new Error('请先保存数据集后再刷新数据')
+        }
+
+        const refreshPlan = resolveRefreshLoadPlan(
+          currentDatasetId.value,
+          activeTab.value,
+          loadedPreviewDatasetId.value
+        )
+
+        const tasks: Promise<void>[] = []
+        if (refreshPlan.loadSchema) {
+          tasks.push(loadSchema(currentDatasetId.value))
+        }
+        if (refreshPlan.loadPreview) {
+          tasks.push(fetchPreview(currentDatasetId.value))
+        }
+        await Promise.all(tasks)
+      },
+      { successMessage: '数据刷新成功', errorMessage: '数据刷新失败' }
+    )
+  } catch {
+    // 刷新失败时保留当前上下文和已加载数据。
+  }
 }
 
 const handleTabChange = async (name: string | number) => {
   const targetTab = String(name)
-  await runWithState(
-    'tab_switch',
-    async () => {
-      activeTab.value = targetTab
+  if (targetTab === activeTab.value) {
+    return
+  }
 
-      if (targetTab === 'batch' && currentDatasetId.value && !allFields.value.length) {
-        await loadSchema(currentDatasetId.value)
-      }
-
-      if (targetTab === 'preview' && currentDatasetId.value && !previewData.value.length) {
-        await fetchPreview(currentDatasetId.value)
-      }
-    },
-    {
-      errorMessage: '切换标签失败',
-      notifySuccess: false
-    }
+  const tabPlan = resolveTabSwitchLoadPlan(
+    targetTab,
+    currentDatasetId.value,
+    loadedSchemaDatasetId.value,
+    loadedPreviewDatasetId.value
   )
+
+  activeTab.value = targetTab
+
+  if (!tabPlan.loadSchema && !tabPlan.loadPreview) {
+    return
+  }
+
+  try {
+    await runWithState(
+      'tab_switch',
+      async () => {
+        const tasks: Promise<void>[] = []
+        if (tabPlan.loadSchema && currentDatasetId.value) {
+          tasks.push(loadSchema(currentDatasetId.value))
+        }
+        if (tabPlan.loadPreview && currentDatasetId.value) {
+          tasks.push(fetchPreview(currentDatasetId.value))
+        }
+        await Promise.all(tasks)
+      },
+      {
+        errorMessage: '切换标签失败',
+        notifySuccess: false
+      }
+    )
+  } catch {
+    // 切换失败时保留当前标签与已加载数据，允许用户继续操作。
+  }
 }
 
 const handleSelectionChange = (fields: DatasetField[]) => {
@@ -1082,56 +1143,58 @@ const handleSelectionChange = (fields: DatasetField[]) => {
 }
 
 const submitBatchUpdate = async () => {
-  if (!currentDatasetId.value) {
-    ElMessage.warning('请先保存数据集')
-    return
-  }
-  if (!selectedFields.value.length) {
-    ElMessage.warning('请先选择要批量更新的字段')
-    return
-  }
-
   const hasPatch = !!(batchConfig.value.type || batchConfig.value.sortOrder || batchConfig.value.displayNamePrefix.trim())
-  if (!hasPatch) {
-    ElMessage.warning('请至少配置一个批量更新项')
+  const precheckMessage = getBatchPrecheckMessage(currentDatasetId.value, selectedFields.value.length, hasPatch)
+  if (precheckMessage) {
+    ElMessage.warning(precheckMessage)
     return
   }
 
-  await runWithState(
-    'batch_update',
-    async () => {
-      const failures: string[] = []
+  try {
+    await runWithState(
+      'batch_update',
+      async () => {
+        const fields: BatchUpdateFieldRequest[] = selectedFields.value.map((field) => {
+          const payload: BatchUpdateFieldRequest = { fieldId: field.id }
+          if (batchConfig.value.type) {
+            payload.type = batchConfig.value.type
+          }
+          if (batchConfig.value.sortOrder) {
+            payload.sortOrder = batchConfig.value.sortOrder
+          }
+          if (batchConfig.value.displayNamePrefix.trim()) {
+            payload.displayName = `${batchConfig.value.displayNamePrefix.trim()}${field.displayName || field.name}`
+          }
+          return payload
+        })
 
-      for (const field of selectedFields.value) {
-        const payload: UpdateFieldRequest = {}
-        if (batchConfig.value.type) {
-          payload.type = batchConfig.value.type
-        }
-        if (batchConfig.value.sortOrder) {
-          payload.sortOrder = batchConfig.value.sortOrder
-        }
-        if (batchConfig.value.displayNamePrefix.trim()) {
-          payload.displayName = `${batchConfig.value.displayNamePrefix.trim()}${field.displayName || field.name}`
-        }
-
-        const response = await datasetApi.updateField(currentDatasetId.value, field.id, payload)
+        const response = await datasetApi.batchUpdateFields(currentDatasetId.value, { fields })
         if (!response.data.success) {
-          failures.push(field.name)
+          throw new Error(response.data.message || '批量更新失败')
         }
-      }
 
-      if (failures.length) {
-        throw new Error(`以下字段更新失败：${failures.join('、')}`)
-      }
+        const result = response.data.result
+        const resolution = resolveBatchResult(result)
 
-      await loadSchema(currentDatasetId.value)
-      selectedFields.value = []
-    },
-    {
-      successMessage: '批量更新成功',
-      errorMessage: '批量更新失败'
-    }
-  )
+        await loadSchema(currentDatasetId.value)
+
+        if (resolution.isPartialFailure) {
+          const failedSet = new Set(resolution.failedFieldIds)
+          selectedFields.value = allFields.value.filter((field) => failedSet.has(field.id))
+          const details = formatBatchFieldErrors(result.errors || [])
+          throw new Error(details ? `以下字段更新失败：${details}` : response.data.message || '批量更新失败')
+        }
+
+        selectedFields.value = []
+      },
+      {
+        successMessage: '批量更新成功',
+        errorMessage: '批量更新失败'
+      }
+    )
+  } catch {
+    // 部分失败时已刷新字段结构并保留失败字段选择，便于用户快速重试。
+  }
 }
 
 const resetGroupingFieldForm = () => {
@@ -1192,6 +1255,7 @@ const submitGroupingField = async () => {
 
 const closePreview = () => {
   previewData.value = []
+  loadedPreviewDatasetId.value = ''
 }
 
 const goBack = () => {

@@ -4,19 +4,19 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gujiaweiguo/goreport/internal/auth"
 	"github.com/gujiaweiguo/goreport/internal/cache"
 	"github.com/gujiaweiguo/goreport/internal/config"
 	"github.com/gujiaweiguo/goreport/internal/dashboard"
 	"github.com/gujiaweiguo/goreport/internal/dataset"
+	"github.com/gujiaweiguo/goreport/internal/datasource"
 	"github.com/gujiaweiguo/goreport/internal/httpserver/handlers"
 	"github.com/gujiaweiguo/goreport/internal/middleware"
 	"github.com/gujiaweiguo/goreport/internal/render"
 	"github.com/gujiaweiguo/goreport/internal/report"
 	"github.com/gujiaweiguo/goreport/internal/repository"
 	"gorm.io/gorm"
-
-	"github.com/gin-gonic/gin"
 )
 
 // Server HTTP 服务器
@@ -71,23 +71,32 @@ func NewServer(cfg *config.Config, db *gorm.DB) (*Server, error) {
 		tenants.GET("/current", tenantHandler.GetCurrent)
 	}
 
-	// 数据源路由
-	datasourceHandler := handlers.NewDataSourceHandler(db, cache)
-	datasources := r.Group("/api/v1/datasource")
+	// 数据源路由（新的 datasource 包）
+	datasourceRepo := repository.NewDatasourceRepository(db)
+	datasourceService := datasource.NewService(datasourceRepo)
+	datasourceHandler := datasource.NewHandlerWithMetadata(datasourceService, datasource.NewCachedMetadataService(cache))
+	datasources := r.Group("/api/v1/datasources")
 	{
-		datasources.GET("/list", datasourceHandler.ListDatasources)
-		datasources.POST("/create", datasourceHandler.CreateDatasource)
-		datasources.POST("/test", datasourceHandler.TestDatasource)
+		datasources.GET("", datasourceHandler.List)
+		datasources.POST("", datasourceHandler.Create)
+		datasources.GET("/:id", datasourceHandler.Get)
+		datasources.PUT("/:id", datasourceHandler.Update)
+		datasources.DELETE("/:id", datasourceHandler.Delete)
 		datasources.GET("/:id/tables", datasourceHandler.GetTables)
 		datasources.GET("/:id/tables/:table/fields", datasourceHandler.GetFields)
-		datasources.PUT("/:id", datasourceHandler.UpdateDatasource)
-		datasources.DELETE("/:id", datasourceHandler.DeleteDatasource)
+		datasources.POST("/copy/:id", datasourceHandler.Copy)
+		datasources.POST("/move", datasourceHandler.Move)
+		datasources.PUT("/:id/rename", datasourceHandler.Rename)
+		datasources.GET("/search", datasourceHandler.Search)
+		datasources.POST("/test", datasourceHandler.TestConnection)
+		datasources.GET("/profiles", datasourceHandler.ListProfiles)
 	}
 
 	// 缓存指标路由
 	cacheHandler := handlers.NewCacheHandler(cache)
 	r.GET("/api/v1/cache/metrics", cacheHandler.GetMetrics)
 
+	// 报表路由
 	reportRepo := report.NewRepository(db)
 	reportEngine := render.NewEngine(db, cache)
 	reportService := report.NewService(reportRepo, reportEngine, cache)
@@ -119,10 +128,10 @@ func NewServer(cfg *config.Config, db *gorm.DB) (*Server, error) {
 	datasetRepo := repository.NewDatasetRepository(db)
 	fieldRepo := repository.NewDatasetFieldRepository(db)
 	sourceRepo := repository.NewDatasetSourceRepository(db)
-	datasourceRepo := repository.NewDataSourceRepository(db)
 	datasetService := dataset.NewService(datasetRepo, fieldRepo, sourceRepo, datasourceRepo)
 	queryExecutor := dataset.NewQueryExecutor(datasetRepo, fieldRepo, datasourceRepo, dataset.NewSQLExpressionBuilder(), dataset.NewComputedFieldCache())
 	datasetHandler := dataset.NewHandler(datasetService, queryExecutor)
+
 	datasets := r.Group("/api/v1/datasets")
 	{
 		datasets.GET("", datasetHandler.List)
@@ -131,11 +140,12 @@ func NewServer(cfg *config.Config, db *gorm.DB) (*Server, error) {
 		datasets.PUT("/:id", datasetHandler.Update)
 		datasets.DELETE("/:id", datasetHandler.Delete)
 		datasets.GET("/:id/preview", datasetHandler.Preview)
-		datasets.POST("/:id/data", datasetHandler.QueryData)
+		datasets.GET("/:id/data", datasetHandler.QueryData)
 		datasets.GET("/:id/dimensions", datasetHandler.GetDimensions)
 		datasets.GET("/:id/measures", datasetHandler.GetMeasures)
 		datasets.GET("/:id/schema", datasetHandler.GetSchema)
 		datasets.POST("/:id/fields", datasetHandler.CreateComputedField)
+		datasets.PATCH("/:id/fields", datasetHandler.BatchUpdateFields)
 		datasets.PUT("/:id/fields/:fieldId", datasetHandler.UpdateField)
 		datasets.DELETE("/:id/fields/:fieldId", datasetHandler.DeleteField)
 	}

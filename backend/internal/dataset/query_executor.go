@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -51,7 +52,7 @@ type QueryResponse struct {
 type queryExecutor struct {
 	datasetRepo    repository.DatasetRepository
 	fieldRepo      repository.DatasetFieldRepository
-	datasourceRepo repository.DataSourceRepository
+	datasourceRepo repository.DatasourceRepository
 	sqlBuilder     SQLExpressionBuilder
 	cache          *ComputedFieldCache
 }
@@ -59,7 +60,7 @@ type queryExecutor struct {
 func NewQueryExecutor(
 	datasetRepo repository.DatasetRepository,
 	fieldRepo repository.DatasetFieldRepository,
-	datasourceRepo repository.DataSourceRepository,
+	datasourceRepo repository.DatasourceRepository,
 	sqlBuilder SQLExpressionBuilder,
 	cache *ComputedFieldCache,
 ) QueryExecutor {
@@ -103,6 +104,9 @@ func (q *queryExecutor) querySQLDataset(ctx context.Context, dataset *models.Dat
 	if err := json.Unmarshal([]byte(dataset.Config), &config); err != nil {
 		return nil, fmt.Errorf("invalid dataset config: %w", err)
 	}
+	if err := validateSQLSafety(config.Query); err != nil {
+		return nil, fmt.Errorf("query validation failed: %w", err)
+	}
 
 	selectedFields := req.Fields
 	if len(selectedFields) == 0 && len(req.GroupBy) > 0 {
@@ -126,13 +130,19 @@ func (q *queryExecutor) querySQLDataset(ctx context.Context, dataset *models.Dat
 	}
 	groupByClause := q.buildGroupByClause(req.GroupBy)
 	orderByClause := q.buildOrderByClause(req.SortBy, req.SortOrder)
-	limitClause := q.buildLimitClause(req.Page, req.PageSize)
+	limitClause, page, pageSize := q.buildLimitClause(req.Page, req.PageSize)
 
 	query := fmt.Sprintf("SELECT %s FROM (%s) AS dataset_query %s %s %s %s",
 		selectClause, config.Query, whereClause, groupByClause, orderByClause, limitClause)
 
-	rows, err := db.Query(query, whereArgs...)
+	queryCtx, cancel := withDatasetQueryTimeout(ctx)
+	defer cancel()
+
+	rows, err := db.QueryContext(queryCtx, query, whereArgs...)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, errors.New("query execution timeout")
+		}
 		return nil, fmt.Errorf("query execution failed: %w", err)
 	}
 	defer rows.Close()
@@ -178,16 +188,26 @@ func (q *queryExecutor) querySQLDataset(ctx context.Context, dataset *models.Dat
 		data = append(data, row)
 	}
 
-	total, err := q.countQueryResults(db, config.Query, whereClause, whereArgs)
+	if err := rows.Err(); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, errors.New("query execution timeout")
+		}
+		return nil, err
+	}
+
+	total, err := q.countQueryResults(queryCtx, db, config.Query, whereClause, whereArgs)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, errors.New("query count timeout")
+		}
 		return nil, err
 	}
 
 	return &QueryResponse{
 		Data:          data,
 		Total:         total,
-		Page:          req.Page,
-		PageSize:      req.PageSize,
+		Page:          page,
+		PageSize:      pageSize,
 		ExecutionTime: 0,
 		Aggregations:  aggregations,
 	}, nil
@@ -309,7 +329,7 @@ func (q *queryExecutor) buildOrderByClause(sortBy, sortOrder string) string {
 	return fmt.Sprintf("ORDER BY `%s` %s", sortBy, strings.ToUpper(sortOrder))
 }
 
-func (q *queryExecutor) buildLimitClause(page, pageSize int) string {
+func normalizePagination(page, pageSize int) (int, int) {
 	if page <= 0 {
 		page = 1
 	}
@@ -320,14 +340,19 @@ func (q *queryExecutor) buildLimitClause(page, pageSize int) string {
 		pageSize = 1000
 	}
 
-	offset := (page - 1) * pageSize
-	return fmt.Sprintf("LIMIT %d OFFSET %d", pageSize, offset)
+	return page, pageSize
 }
 
-func (q *queryExecutor) countQueryResults(db *sql.DB, baseQuery, whereClause string, whereArgs []interface{}) (int64, error) {
+func (q *queryExecutor) buildLimitClause(page, pageSize int) (string, int, int) {
+	page, pageSize = normalizePagination(page, pageSize)
+	offset := (page - 1) * pageSize
+	return fmt.Sprintf("LIMIT %d OFFSET %d", pageSize, offset), page, pageSize
+}
+
+func (q *queryExecutor) countQueryResults(ctx context.Context, db *sql.DB, baseQuery, whereClause string, whereArgs []interface{}) (int64, error) {
 	query := fmt.Sprintf("SELECT COUNT(*) AS total FROM (%s) AS dataset_query %s", baseQuery, whereClause)
 	var total int64
-	err := db.QueryRow(query, whereArgs...).Scan(&total)
+	err := db.QueryRowContext(ctx, query, whereArgs...).Scan(&total)
 	if err != nil {
 		return 0, err
 	}
@@ -358,7 +383,7 @@ func (q *queryExecutor) getDBConnection(datasource *models.DataSource) (*sql.DB,
 		datasource.Password,
 		datasource.Host,
 		datasource.Port,
-		datasource.DatabaseName,
+		datasource.Database,
 	)
 
 	return sql.Open("mysql", dsn)

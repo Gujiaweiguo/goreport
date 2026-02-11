@@ -17,14 +17,14 @@ import (
 )
 
 type DataSourceHandler struct {
-	repo     repository.DataSourceRepository
+	repo     repository.DatasourceRepository
 	metadata *datasource.CachedMetadataService
 	cache    *cache.Cache
 }
 
 func NewDataSourceHandler(db *gorm.DB, cache *cache.Cache) *DataSourceHandler {
 	return &DataSourceHandler{
-		repo:     repository.NewDataSourceRepository(db),
+		repo:     repository.NewDatasourceRepository(db),
 		metadata: datasource.NewCachedMetadataService(cache),
 		cache:    cache,
 	}
@@ -80,15 +80,15 @@ func (h *DataSourceHandler) CreateDatasource(c *gin.Context) {
 	}
 
 	ds := &models.DataSource{
-		ID:           fmt.Sprintf("ds-%d", time.Now().UnixNano()),
-		Name:         req.Name,
-		Type:         req.Type,
-		Host:         req.Host,
-		Port:         req.Port,
-		DatabaseName: req.Database,
-		Username:     req.Username,
-		Password:     req.Password,
-		TenantID:     tenantID,
+		ID:       fmt.Sprintf("ds-%d", time.Now().UnixNano()),
+		Name:     req.Name,
+		Type:     req.Type,
+		Host:     req.Host,
+		Port:     req.Port,
+		Database: req.Database,
+		Username: req.Username,
+		Password: req.Password,
+		TenantID: tenantID,
 	}
 
 	if err := h.repo.Create(c.Request.Context(), ds); err != nil {
@@ -116,7 +116,10 @@ func (h *DataSourceHandler) ListDatasources(c *gin.Context) {
 		return
 	}
 
-	datasources, err := h.repo.List(c.Request.Context(), tenantID)
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
+
+	datasources, _, err := h.repo.List(c.Request.Context(), tenantID, page, pageSize)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -186,7 +189,7 @@ func (h *DataSourceHandler) UpdateDatasource(c *gin.Context) {
 		existingDS.Port = req.Port
 	}
 	if req.Database != "" {
-		existingDS.DatabaseName = req.Database
+		existingDS.Database = req.Database
 	}
 	if req.Username != "" {
 		existingDS.Username = req.Username
@@ -244,7 +247,7 @@ func (h *DataSourceHandler) DeleteDatasource(c *gin.Context) {
 		return
 	}
 
-	if err := h.repo.Delete(c.Request.Context(), id); err != nil {
+	if err := h.repo.Delete(c.Request.Context(), id, tenantID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": "failed to delete datasource",
@@ -276,7 +279,8 @@ func (h *DataSourceHandler) TestDatasource(c *gin.Context) {
 	// 如果密码为空，从数据库中获取现有数据源的密码
 	password := req.Password
 	if password == "" {
-		datasources, err := h.repo.List(c.Request.Context(), auth.GetTenantID(c))
+		tenantID := auth.GetTenantID(c)
+		datasources, _, err := h.repo.List(c.Request.Context(), tenantID, 1, 1000)
 		if err == nil {
 			for _, ds := range datasources {
 				if ds.Name == req.Name {
@@ -284,13 +288,6 @@ func (h *DataSourceHandler) TestDatasource(c *gin.Context) {
 					break
 				}
 			}
-		}
-		if password == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"message": "password is required",
-			})
-			return
 		}
 	}
 
@@ -433,6 +430,6 @@ func buildDSN(ds *models.DataSource) string {
 		ds.Password,
 		ds.Host,
 		port,
-		ds.DatabaseName,
+		ds.Database,
 	)
 }

@@ -102,3 +102,29 @@ The system SHALL ensure dataset access is scoped by tenant.
 - **THEN** system enforces tenant isolation on the underlying datasource
 - **THEN** user cannot access data from other tenants
 
+### Requirement: Schema-Driven Dataset Preview Rendering
+The frontend SHALL render dataset preview using schema-aware mapping rather than fixed field keys.
+
+#### Scenario: Render preview for non-region/sales schema
+- **WHEN** preview payload fields differ from fixed demo keys
+- **THEN** system derives display mapping from available schema and data
+- **THEN** preview still renders meaningful output without hardcoded assumptions
+
+#### Scenario: Fallback when chart mapping is not available
+- **WHEN** preview data does not provide a suitable chart dimension/measure pair
+- **THEN** system falls back to safe preview presentation
+- **THEN** user receives clear feedback about current preview mode
+
+### Requirement: Dataset Query and Preview Failure Transparency
+The system SHALL provide stable and actionable failure responses for guarded dataset preview and query paths.
+
+#### Scenario: Preview failure with actionable message
+- **WHEN** preview execution fails due to validation or execution constraints
+- **THEN** system returns a readable error message and failure type
+- **THEN** client can present recoverable guidance without generic fallback assumptions
+
+#### Scenario: Query failure with deterministic structure
+- **WHEN** query execution fails due to configured guardrails
+- **THEN** system returns deterministic response structure for client handling
+- **THEN** tenant isolation and authorization checks remain enforced before error return
+

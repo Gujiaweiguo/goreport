@@ -88,8 +88,12 @@ export interface UpdateFieldRequest {
   groupingEnabled?: boolean
 }
 
+export interface BatchUpdateFieldRequest extends UpdateFieldRequest {
+  fieldId: string
+}
+
 export interface BatchUpdateFieldsRequest {
-  fields: UpdateFieldRequest[]
+  fields: BatchUpdateFieldRequest[]
 }
 
 export interface BatchUpdateFieldsResponse {
@@ -101,6 +105,54 @@ export interface BatchUpdateFieldsResponse {
 export interface FieldError {
   fieldId: string
   message: string
+}
+
+export const formatBatchFieldErrors = (errors: FieldError[]): string => {
+  if (!errors.length) {
+    return ''
+  }
+
+  return errors
+    .map((item) => {
+      const fieldId = item.fieldId || 'unknown'
+      const message = item.message || '未知错误'
+      return `${fieldId}: ${message}`
+    })
+    .join('；')
+}
+
+interface ErrorPayload {
+  message?: string
+}
+
+interface HttpErrorLike {
+  isAxiosError?: boolean
+  message?: string
+  response?: {
+    data?: ErrorPayload
+  }
+  request?: unknown
+}
+
+export const getApiErrorMessage = (
+  error: unknown,
+  fallbackMessage: string,
+  transportFallbackMessage: string = '网络连接失败，请检查网络后重试'
+): string => {
+  if (!error || typeof error !== 'object') {
+    return fallbackMessage
+  }
+
+  const maybeError = error as HttpErrorLike
+  if (maybeError.response) {
+    return maybeError.response.data?.message || maybeError.message || fallbackMessage
+  }
+
+  if (maybeError.isAxiosError && maybeError.request) {
+    return transportFallbackMessage
+  }
+
+  return maybeError.message || fallbackMessage
 }
 
 export interface QueryRequest {

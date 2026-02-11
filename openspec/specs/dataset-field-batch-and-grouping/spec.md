@@ -45,3 +45,29 @@ The backend SHALL provide validation and response contracts for batch and groupi
 - **THEN** system returns default-compatible field metadata
 - **THEN** existing save and preview behavior remains functional without migration blockers
 
+### Requirement: Batch Update Interaction Reliability
+The dataset editor SHALL provide reliable interaction feedback for batch field updates.
+
+#### Scenario: Batch submit without selection
+- **WHEN** user triggers batch update with no selected fields
+- **THEN** system blocks request submission
+- **THEN** system shows clear guidance to select fields first
+
+#### Scenario: Batch update partial failure feedback
+- **WHEN** batch update response contains both successes and field-level failures
+- **THEN** system presents failed field details without dropping successful updates
+- **THEN** system refreshes field metadata to match persisted backend state
+
+### Requirement: Batch Field Update Response Contract
+The backend SHALL provide field-level response details for dataset batch field updates.
+
+#### Scenario: Return per-field update result
+- **WHEN** batch update request is processed
+- **THEN** response includes a list of successfully updated field ids
+- **THEN** response includes per-field error objects for rejected updates
+
+#### Scenario: Keep unaffected field attributes stable
+- **WHEN** batch update payload omits a field attribute
+- **THEN** system keeps existing attribute value unchanged
+- **THEN** response reflects final persisted state without implicit resets
+

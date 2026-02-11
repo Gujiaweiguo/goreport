@@ -20,12 +20,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
+import { Loading } from '@element-plus/icons-vue'
+import type { DatasetSchema } from '@/api/dataset'
+import { buildPreviewChartModel } from './previewMapping'
 
 interface Props {
   datasetId: string
   data: any[]
+  schema?: DatasetSchema
 }
 
 const props = defineProps<Props>()
@@ -36,6 +40,7 @@ const emit = defineEmits<{
 const chartRef = ref<HTMLElement | null>(null)
 const chartInstance = ref<echarts.ECharts | null>(null)
 const loading = ref(false)
+const previewModel = computed(() => buildPreviewChartModel(props.schema, props.data || []))
 
 onMounted(() => {
   if (props.datasetId && props.data?.length > 0) {
@@ -54,7 +59,13 @@ onBeforeUnmount(() => {
 
 watch(() => props.data, (newData) => {
   if (newData?.length > 0 && chartInstance.value) {
-    updateChart(newData)
+    updateChart()
+  }
+}, { deep: true })
+
+watch(previewModel, () => {
+  if (chartInstance.value) {
+    updateChart()
   }
 }, { deep: true })
 
@@ -62,34 +73,44 @@ function initChart() {
   if (chartRef.value) {
     chartInstance.value = echarts.init(chartRef.value)
   }
-  updateChart(props.data)
+  updateChart()
 }
 
-function updateChart(data: any[]) {
-  if (!chartInstance.value || !data || data.length === 0) return
-
-  const regions = data.map((item: any) => item.region || '')
-  const sales = data.map((item: any) => item.sales || 0)
+function updateChart() {
+  if (!chartInstance.value) return
+  const model = previewModel.value
+  if (!model.categories.length || !model.values.length) return
 
   const option = {
     tooltip: {
       trigger: 'axis'
     },
+    title: model.fallbackMessage
+      ? {
+          text: '预览回退模式',
+          subtext: model.fallbackMessage,
+          textStyle: {
+            fontSize: 14
+          },
+          subtextStyle: {
+            fontSize: 12
+          }
+        }
+      : undefined,
     xAxis: {
       type: 'category',
-      data: regions
+      name: model.categoryLabel,
+      data: model.categories
     },
     yAxis: {
       type: 'value',
-      axisLabel: {
-        formatter: (value: number) => (value / 1000).toFixed(2) + '万'
-      }
+      name: model.valueLabel
     },
     series: [
       {
-        name: '销售额',
+        name: model.valueLabel,
         type: 'bar',
-        data: sales,
+        data: model.values,
         itemStyle: {
           color: '#409EFF'
         }
