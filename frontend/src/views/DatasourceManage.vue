@@ -29,8 +29,6 @@
           <el-tag v-else type="warning">API 数据源</el-tag>
           <el-tag v-else>Unknown</el-tag>
         </template>
-          <span>{{ row.type }}</span>
-        </template>
       </el-table-column>
 
       <el-table-column prop="name" label="名称" width="150">
