@@ -77,7 +77,7 @@
     </el-table>
 
     <el-pagination
-      background="#f5f7fa"
+      class="pagination-bg"
       layout="total, prev, pager, next"
       @current-change="currentPage"
       @size-change="pageSize"
@@ -407,5 +407,9 @@ const closeDialog = () => {
 
 .el-empty-text {
   color: #909399;
+}
+
+.pagination-bg {
+  background-color: #f5f7fa;
 }
 </style>
