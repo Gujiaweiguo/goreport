@@ -74,7 +74,6 @@
           <el-button link type="primary" size="small" @click="openTestConnection(row)">测试连接</el-button>
         </template>
       </el-table-column>
-      </el-table>
     </el-table>
 
     <el-pagination
