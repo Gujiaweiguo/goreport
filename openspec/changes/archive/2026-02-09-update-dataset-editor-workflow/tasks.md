@@ -28,12 +28,12 @@
 
 ## 5. Integration and Regression Tests
 
-- [ ] 5.1 Add backend tests for batch update validation, conflict handling, and compatibility defaults.
-- [ ] 5.2 Add backend tests for grouping field semantics in query and aggregation path.
-- [ ] 5.3 Add frontend tests for Save vs Save and Return behavior and navigation outcomes.
-- [ ] 5.4 Add frontend tests for Data Preview/Batch Management state transitions and Refresh Data behavior.
+- [x] 5.1 Add backend tests for batch update validation, conflict handling, and compatibility defaults.
+- [x] 5.2 Add backend tests for grouping field semantics in query and aggregation path.
+- [x] 5.3 Add frontend tests for Save vs Save and Return behavior and navigation outcomes.
+- [x] 5.4 Add frontend tests for Data Preview/Batch Management state transitions and Refresh Data behavior.
 
-**Note**: Core functionality has been implemented and validated. Test tasks are deferred to future iteration to focus on feature delivery and existing regression testing.
+**Note**: Core functionality and test tasks have been implemented and validated in this iteration.
 
 ## 6. Verification and Release Readiness
 
