@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/gujiaweiguo/goreport/internal/models"
 	"github.com/gujiaweiguo/goreport/internal/repository"
@@ -29,8 +30,8 @@ type CreateRequest struct {
 	Username  string `json:"username"`
 	Password  string `json:"password"`
 	Database  string `json:"database"`
-	TenantID  string `json:"tenantId" binding:"required"`
-	CreatedBy string `json:"createdBy" binding:"required"`
+	TenantID  string `json:"tenantId"`
+	CreatedBy string `json:"createdBy"`
 
 	Advanced *AdvancedConfig `json:"advanced,omitempty"`
 }
@@ -97,6 +98,7 @@ func (s *service) Create(ctx context.Context, req *CreateRequest) (*models.DataS
 	}
 
 	ds := &models.DataSource{
+		ID:        fmt.Sprintf("ds-%d", time.Now().UnixNano()),
 		Name:      req.Name,
 		Type:      req.Type,
 		Host:      req.Host,

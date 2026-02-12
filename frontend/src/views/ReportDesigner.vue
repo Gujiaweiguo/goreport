@@ -482,7 +482,8 @@ async function handlePreviewData() {
       ElMessage.success('数据预览加载成功')
     }
   } catch (error: any) {
-    ElMessage.error('数据预览失败')
+    const backendMessage = error?.response?.data?.message
+    ElMessage.error(backendMessage || error.message || '数据预览失败')
   } finally {
     loadingPreviewData.value = false
   }

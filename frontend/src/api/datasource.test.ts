@@ -48,6 +48,30 @@ describe('datasourceApi', () => {
     expect(apiClient.post).toHaveBeenCalledWith('/api/v1/datasources', payload)
   })
 
+  it('normalizes postgresql type to postgres for create and test', () => {
+    const payload = {
+      name: 'pg-demo',
+      type: 'postgresql',
+      host: 'localhost',
+      port: 5432,
+      database: 'demo',
+      username: 'postgres',
+      password: 'postgres'
+    }
+
+    datasourceApi.create(payload)
+    datasourceApi.test(payload)
+
+    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/datasources', {
+      ...payload,
+      type: 'postgres'
+    })
+    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/datasources/test', {
+      ...payload,
+      type: 'postgres'
+    })
+  })
+
   it('calls update and delete endpoints', () => {
     datasourceApi.update('ds-1', { name: 'new-name' })
     datasourceApi.delete('ds-1')
@@ -68,10 +92,12 @@ describe('datasourceApi', () => {
     }
 
     datasourceApi.test(payload)
+    datasourceApi.testById('ds-1')
     datasourceApi.getTables('ds-1')
     datasourceApi.getFields('ds-1', 'users')
 
     expect(apiClient.post).toHaveBeenCalledWith('/api/v1/datasources/test', payload)
+    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/datasources/ds-1/test', {})
     expect(apiClient.get).toHaveBeenCalledWith('/api/v1/datasources/ds-1/tables')
     expect(apiClient.get).toHaveBeenCalledWith('/api/v1/datasources/ds-1/tables/users/fields')
   })

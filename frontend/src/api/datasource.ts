@@ -39,6 +39,20 @@ export interface ApiResponse<T = any> {
   message: string
 }
 
+const normalizeDatasourceType = (type?: string) => {
+  if (type === 'postgresql') {
+    return 'postgres'
+  }
+  return type
+}
+
+const normalizeDatasourcePayload = <T extends { type?: string }>(data: T): T => {
+  return {
+    ...data,
+    type: normalizeDatasourceType(data.type)
+  }
+}
+
 export const datasourceApi = {
   list: (page?: number, pageSize?: number) => {
     return apiClient.get<ApiResponse<{datasources: DataSource[], total: number, page: number, pageSize: number}>>('/api/v1/datasources', {
@@ -48,11 +62,11 @@ export const datasourceApi = {
   },
 
   create: (data: CreateDataSourceRequest) => {
-    return apiClient.post<ApiResponse<DataSource>>('/api/v1/datasources', data)
+    return apiClient.post<ApiResponse<DataSource>>('/api/v1/datasources', normalizeDatasourcePayload(data))
   },
 
   update: (id: string, data: UpdateDataSourceRequest) => {
-    return apiClient.put<ApiResponse<DataSource>>(`/api/v1/datasources/${id}`, data)
+    return apiClient.put<ApiResponse<DataSource>>(`/api/v1/datasources/${id}`, normalizeDatasourcePayload(data))
   },
 
   delete: (id: string) => {
@@ -60,7 +74,11 @@ export const datasourceApi = {
   },
 
   test: (data: CreateDataSourceRequest) => {
-    return apiClient.post<ApiResponse<null>>('/api/v1/datasources/test', data)
+    return apiClient.post<ApiResponse<null>>('/api/v1/datasources/test', normalizeDatasourcePayload(data))
+  },
+
+  testById: (id: string) => {
+    return apiClient.post<ApiResponse<null>>(`/api/v1/datasources/${id}/test`, {})
   },
 
   getTables: (id: string) => {

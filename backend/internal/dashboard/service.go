@@ -26,22 +26,24 @@ func NewService(repo Repository) Service {
 }
 
 type CreateRequest struct {
-	Name        string `json:"name"`
-	Code        string `json:"code"`
-	Description string `json:"description"`
-	Config      string `json:"config"`
-	TenantID    string `json:"-"`
-	CreatedBy   string `json:"-"`
+	Name        string                      `json:"name"`
+	Code        string                      `json:"code"`
+	Description string                      `json:"description"`
+	Config      models.DashboardConfig      `json:"config"`
+	Components  []models.DashboardComponent `json:"components"`
+	TenantID    string                      `json:"-"`
+	CreatedBy   string                      `json:"-"`
 }
 
 type UpdateRequest struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Code        string `json:"code"`
-	Description string `json:"description"`
-	Config      string `json:"config"`
-	Status      int    `json:"status"`
-	TenantID    string `json:"-"`
+	ID          string                      `json:"id"`
+	Name        string                      `json:"name"`
+	Code        string                      `json:"code"`
+	Description string                      `json:"description"`
+	Config      models.DashboardConfig      `json:"config"`
+	Components  []models.DashboardComponent `json:"components"`
+	Status      int                         `json:"status"`
+	TenantID    string                      `json:"-"`
 }
 
 func (s *service) Create(ctx context.Context, req *CreateRequest) (*models.Dashboard, error) {
@@ -49,16 +51,28 @@ func (s *service) Create(ctx context.Context, req *CreateRequest) (*models.Dashb
 		return nil, errors.New("name is required")
 	}
 
+	config := req.Config
+	if config.Width == 0 {
+		config.Width = 1920
+	}
+	if config.Height == 0 {
+		config.Height = 1080
+	}
+	if config.BackgroundColor == "" {
+		config.BackgroundColor = "#0a0e27"
+	}
+
 	dashboard := &models.Dashboard{
-		ID:        fmt.Sprintf("dashboard-%d", time.Now().UnixNano()),
-		TenantID:  req.TenantID,
-		Name:      req.Name,
-		Code:      req.Code,
-		Config:    req.Config,
-		Status:    1,
-		CreatedBy: req.CreatedBy,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:         fmt.Sprintf("dashboard-%d", time.Now().UnixNano()),
+		TenantID:   req.TenantID,
+		Name:       req.Name,
+		Code:       req.Code,
+		Config:     config,
+		Components: req.Components,
+		Status:     1,
+		CreatedBy:  req.CreatedBy,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 
 	if err := s.repo.Create(dashboard); err != nil {
@@ -84,8 +98,11 @@ func (s *service) Update(ctx context.Context, req *UpdateRequest) (*models.Dashb
 	if req.Code != "" {
 		dashboard.Code = req.Code
 	}
-	if req.Config != "" {
+	if req.Config.Width != 0 || req.Config.Height != 0 {
 		dashboard.Config = req.Config
+	}
+	if len(req.Components) > 0 {
+		dashboard.Components = req.Components
 	}
 	if req.Status != 0 {
 		dashboard.Status = req.Status

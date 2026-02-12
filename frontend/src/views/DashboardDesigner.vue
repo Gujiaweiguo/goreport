@@ -63,7 +63,7 @@
           </div>
           <div class="empty-state">
             <el-icon :size="64"><Monitor /></el-icon>
-            <p>{{ isDragging ? '拖拽到画布创建组件' : '大屏画布开发中...' }}</p>
+            <p>{{ isDragging ? '释放以添加组件' : '拖拽左侧组件到画布开始设计' }}</p>
           </div>
         </div>
       </div>
@@ -462,7 +462,8 @@ async function handleSaveDashboard() {
       ElMessage.error(response.data.message || '保存失败')
     }
   } catch (error: any) {
-    ElMessage.error('保存失败')
+    const backendMessage = error?.response?.data?.message
+    ElMessage.error(backendMessage || error.message || '保存失败')
   } finally {
     savingDashboard.value = false
   }
@@ -501,7 +502,8 @@ async function handleLoadDashboard() {
       ElMessage.warning('暂无已保存的大屏')
     }
   } catch (error: any) {
-    ElMessage.error('加载失败')
+    const backendMessage = error?.response?.data?.message
+    ElMessage.error(backendMessage || error.message || '加载失败')
   } finally {
     loadingDashboard.value = false
   }

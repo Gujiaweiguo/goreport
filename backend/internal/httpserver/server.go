@@ -89,6 +89,7 @@ func NewServer(cfg *config.Config, db *gorm.DB) (*Server, error) {
 		datasources.PUT("/:id/rename", datasourceHandler.Rename)
 		datasources.GET("/search", datasourceHandler.Search)
 		datasources.POST("/test", datasourceHandler.TestConnection)
+		datasources.POST("/:id/test", datasourceHandler.TestSavedConnection)
 		datasources.GET("/profiles", datasourceHandler.ListProfiles)
 	}
 
@@ -140,7 +141,7 @@ func NewServer(cfg *config.Config, db *gorm.DB) (*Server, error) {
 		datasets.PUT("/:id", datasetHandler.Update)
 		datasets.DELETE("/:id", datasetHandler.Delete)
 		datasets.GET("/:id/preview", datasetHandler.Preview)
-		datasets.GET("/:id/data", datasetHandler.QueryData)
+		datasets.POST("/:id/data", datasetHandler.QueryData)
 		datasets.GET("/:id/dimensions", datasetHandler.GetDimensions)
 		datasets.GET("/:id/measures", datasetHandler.GetMeasures)
 		datasets.GET("/:id/schema", datasetHandler.GetSchema)

@@ -6,9 +6,11 @@
         <el-icon><Plus /></el-icon>
         创建数据源
       </el-button>
-      <el-button type="primary" plain @click="showImportDialog">
-        <span>批量导入</span>
-      </el-button>
+      <el-tooltip content="批量导入功能即将上线，敬请期待" placement="top">
+        <el-button type="primary" plain disabled>
+          <span>批量导入</span>
+        </el-button>
+      </el-tooltip>
     </div>
 
     <el-input
@@ -37,7 +39,7 @@
       <el-table-column prop="type" label="类型" width="100">
         <template #default="{ row }">
           <el-tag v-if="row.type === 'mysql'" type="success">MySQL</el-tag>
-          <el-tag v-else-if="row.type === 'postgresql'" type="warning">PostgreSQL</el-tag>
+          <el-tag v-else-if="row.type === 'postgresql' || row.type === 'postgres'" type="warning">PostgreSQL</el-tag>
           <el-tag v-else-if="row.type === 'sqlserver'" type="info">SQL Server</el-tag>
           <el-tag v-else-if="row.type === 'excel'" type="info">Excel</el-tag>
           <el-tag v-else-if="row.type === 'csv'" type="info">CSV</el-tag>
@@ -279,6 +281,7 @@ const total = ref(0)
 const searchKeyword = ref('')
 const datasources = ref<DataSource[]>([])
 const testResult = ref<{ success: boolean; message: string } | null>(null)
+const currentTestDatasourceId = ref('')
 
 const sshAuthType = ref<'password' | 'key'>('password')
 const enableSSH = ref(false)
@@ -520,6 +523,7 @@ async function handleDelete(row: DataSource) {
 }
 
 function openTestDialog(row: DataSource) {
+  currentTestDatasourceId.value = row.id
   testDialogVisible.value = true
   testResult.value = null
 }
@@ -546,7 +550,11 @@ function runTest() {
     } : undefined
   }
 
-  datasourceApi.test(testData)
+  const testRequest = currentTestDatasourceId.value
+    ? datasourceApi.testById(currentTestDatasourceId.value)
+    : datasourceApi.test(testData)
+
+  testRequest
     .then(response => {
       testResult.value = {
         success: response.data.success,
@@ -554,9 +562,10 @@ function runTest() {
       }
     })
     .catch(error => {
+      const backendMessage = error?.response?.data?.message
       testResult.value = {
         success: false,
-        message: error.message || '连接测试失败'
+        message: backendMessage || error.message || '连接测试失败'
       }
     })
     .finally(() => {

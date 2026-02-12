@@ -19,16 +19,39 @@
       <div
         v-for="component in visibleComponents"
         :key="component.id"
-        class="mock-component"
+        class="preview-component"
+        :class="`type-${component.type}`"
         :style="getComponentStyle(component)"
       >
-        <template v-if="renderMockComponent(component).kind === 'text'">
-          <p class="mock-title">{{ component.title || '未命名文本' }}</p>
-        </template>
-        <template v-else>
-          <p class="mock-label">{{ renderMockComponent(component).label }}</p>
-          <p class="mock-name">{{ component.title || '未命名组件' }}</p>
-        </template>
+        <div class="component-content" :style="component.style">
+          <template v-if="component.type === 'text'">
+            <p class="text-title">{{ component.title }}</p>
+          </template>
+          <template v-else-if="component.type === 'chart'">
+            <div class="chart-container">
+              <p class="component-label">图表</p>
+              <p class="component-title">{{ component.title }}</p>
+              <p class="component-hint">数据: {{ component.data?.dataSource || '未配置' }}</p>
+            </div>
+          </template>
+          <template v-else-if="component.type === 'table'">
+            <div class="table-container">
+              <p class="component-label">表格</p>
+              <p class="component-title">{{ component.title }}</p>
+              <p class="component-hint">{{ component.data?.field || '未配置字段' }}</p>
+            </div>
+          </template>
+          <template v-else-if="component.type === 'image'">
+            <div class="image-container">
+              <p class="component-label">图片</p>
+              <p class="component-title">{{ component.title }}</p>
+            </div>
+          </template>
+          <template v-else>
+            <p class="component-label">{{ component.type }}</p>
+            <p class="component-title">{{ component.title }}</p>
+          </template>
+        </div>
       </div>
     </div>
   </div>
@@ -54,23 +77,6 @@ const isRefreshing = ref(false)
 const isFullscreen = ref(false)
 
 const visibleComponents = computed(() => props.components.filter(component => component.visible))
-
-function renderMockComponent(component: DashboardComponent): { kind: 'text' | 'placeholder'; label: string } {
-  const type = component.type.toLowerCase()
-  if (type === 'text') {
-    return { kind: 'text', label: component.title || '文本占位' }
-  }
-  if (type === 'chart') {
-    return { kind: 'placeholder', label: '图表占位' }
-  }
-  if (type === 'table') {
-    return { kind: 'placeholder', label: '表格占位' }
-  }
-  if (type === 'image') {
-    return { kind: 'placeholder', label: '图片占位' }
-  }
-  return { kind: 'placeholder', label: '组件占位' }
-}
 
 function getComponentStyle(component: DashboardComponent) {
   return {
@@ -193,39 +199,62 @@ defineExpose({
   box-sizing: border-box;
 }
 
-.mock-component {
+.preview-component {
   position: absolute;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 16px 36px rgba(5, 8, 24, 0.35);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.component-content {
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
   padding: 12px;
-  box-sizing: border-box;
-  overflow: hidden;
 }
 
-.mock-title {
+.text-title {
   margin: 0;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: #141b33;
   letter-spacing: 0.03em;
 }
 
-.mock-label {
+.component-label {
   margin: 0;
   color: #909399;
-  font-size: 13px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.mock-name {
-  margin: 6px 0 0;
+.component-title {
+  margin: 8px 0 0;
   color: #303133;
   font-size: 16px;
   font-weight: 600;
+}
+
+.component-hint {
+  margin: 4px 0 0;
+  color: #c0c4cc;
+  font-size: 12px;
+}
+
+.chart-container,
+.table-container,
+.image-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 </style>

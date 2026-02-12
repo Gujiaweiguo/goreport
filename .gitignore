@@ -11,3 +11,9 @@ server
 .vscode/
 .env
 .env.*
+
+# Testing artifacts
+*.png
+e2e-*.png
+e2e-test-report.md
+frontend/.vitest-cache/

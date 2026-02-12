@@ -1,6 +1,7 @@
 package dataset
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -192,7 +193,7 @@ func (h *Handler) QueryData(c *gin.Context) {
 
 	var req QueryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": fmt.Sprintf("invalid request: %v", err)})
 		return
 	}
 
