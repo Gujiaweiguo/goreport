@@ -40,31 +40,58 @@ export interface ApiResponse<T = any> {
 }
 
 export const datasourceApi = {
-  list: () => {
-    return apiClient.get<ApiResponse<DataSource[]>>('/api/v1/datasource/list')
+  list: (page?: number, pageSize?: number) => {
+    return apiClient.get<ApiResponse<{datasources: DataSource[], total: number, page: number, pageSize: number}>>('/api/v1/datasources', {
+      page: page || 1,
+      pageSize: pageSize || 10
+    })
   },
 
   create: (data: CreateDataSourceRequest) => {
-    return apiClient.post<ApiResponse<DataSource>>('/api/v1/datasource/create', data)
+    return apiClient.post<ApiResponse<DataSource>>('/api/v1/datasources', data)
   },
 
   update: (id: string, data: UpdateDataSourceRequest) => {
-    return apiClient.put<ApiResponse<DataSource>>(`/api/v1/datasource/${id}`, data)
+    return apiClient.put<ApiResponse<DataSource>>(`/api/v1/datasources/${id}`, data)
   },
 
   delete: (id: string) => {
-    return apiClient.delete<ApiResponse<null>>(`/api/v1/datasource/${id}`)
+    return apiClient.delete<ApiResponse<null>>(`/api/v1/datasources/${id}`)
   },
 
   test: (data: CreateDataSourceRequest) => {
-    return apiClient.post<ApiResponse<null>>('/api/v1/datasource/test', data)
+    return apiClient.post<ApiResponse<null>>('/api/v1/datasources/test', data)
   },
 
   getTables: (id: string) => {
-    return apiClient.get<ApiResponse<string[]>>(`/api/v1/datasource/${id}/tables`)
+    return apiClient.get<ApiResponse<string[]>>(`/api/v1/datasources/${id}/tables`)
   },
 
   getFields: (id: string, table: string) => {
-    return apiClient.get<ApiResponse<any[]>>(`/api/v1/datasource/${id}/tables/${table}/fields`)
+    return apiClient.get<ApiResponse<any[]>>(`/api/v1/datasources/${id}/tables/${table}/fields`)
+  },
+
+  copy: (id: string) => {
+    return apiClient.post<ApiResponse<DataSource>>(`/api/v1/datasources/copy/${id}`, {})
+  },
+
+  move: (id: string, target: string) => {
+    return apiClient.post<ApiResponse<null>>(`/api/v1/datasources/move`, { id, target })
+  },
+
+  rename: (id: string, name: string) => {
+    return apiClient.put<ApiResponse<DataSource>>(`/api/v1/datasources/${id}/rename`, { name })
+  },
+
+  search: (keyword: string, page?: number, pageSize?: number) => {
+    return apiClient.get<ApiResponse<{datasources: DataSource[], total: number, page: number, pageSize: number}>>(`/api/v1/datasources/search`, {
+      keyword,
+      page: page || 1,
+      pageSize: pageSize || 10
+    })
+  },
+
+  listProfiles: () => {
+    return apiClient.get<ApiResponse<any[]>>('/api/v1/datasources/profiles')
   }
 }
