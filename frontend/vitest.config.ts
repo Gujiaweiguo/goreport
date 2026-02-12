@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
   plugins: [vue()],
+  cacheDir: '.vitest-cache',
   test: {
     globals: true,
     environment: 'jsdom',
