@@ -18,7 +18,7 @@ func TestNewDatasourceRepository(t *testing.T) {
 	assert.NotNil(t, repo)
 }
 
-func setupDataSourceRepo(t *testing.T) (*gorm.DB, DataSourceRepository) {
+func setupDataSourceRepo(t *testing.T) (*gorm.DB, DatasourceRepository) {
 	t.Helper()
 	db := testutil.SetupMySQLTestDB(t)
 	t.Cleanup(func() {
@@ -48,15 +48,15 @@ func setupTenant(t *testing.T, db *gorm.DB) string {
 
 func newTestDataSource(id, tenantID, name string) *models.DataSource {
 	return &models.DataSource{
-		ID:           id,
-		TenantID:     tenantID,
-		Name:         name,
-		Type:         "mysql",
-		Host:         "127.0.0.1",
-		Port:         3306,
-		DatabaseName: "goreport",
-		Username:     "root",
-		Password:     "root",
+		ID:       id,
+		TenantID: tenantID,
+		Name:     name,
+		Type:     "mysql",
+		Host:     "127.0.0.1",
+		Port:     3306,
+		Database: "goreport",
+		Username: "root",
+		Password: "root",
 	}
 }
 
@@ -109,9 +109,10 @@ func TestDataSourceRepository_List_ByTenant(t *testing.T) {
 	require.NoError(t, repo.Create(ctx, newTestDataSource(testID("ds"), tenantID, "B")))
 	require.NoError(t, repo.Create(ctx, newTestDataSource(testID("ds"), otherTenantID, "Other")))
 
-	list, err := repo.List(ctx, tenantID)
+	list, total, err := repo.List(ctx, tenantID, 1, 10)
 	require.NoError(t, err)
 	assert.Len(t, list, 2)
+	assert.Equal(t, int64(2), total)
 	for _, item := range list {
 		assert.Equal(t, tenantID, item.TenantID)
 	}
@@ -125,7 +126,7 @@ func TestDataSourceRepository_Delete(t *testing.T) {
 	ds := newTestDataSource(testID("ds"), tenantID, "ToDelete")
 	require.NoError(t, repo.Create(ctx, ds))
 
-	require.NoError(t, repo.Delete(ctx, ds.ID))
+	require.NoError(t, repo.Delete(ctx, ds.ID, tenantID))
 	_, err := repo.GetByID(ctx, ds.ID)
 	assert.Error(t, err)
 }

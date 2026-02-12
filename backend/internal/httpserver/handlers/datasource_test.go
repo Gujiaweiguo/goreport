@@ -32,12 +32,12 @@ func (m *mockDataSourceRepo) GetByID(ctx context.Context, id string) (*models.Da
 	return args.Get(0).(*models.DataSource), args.Error(1)
 }
 
-func (m *mockDataSourceRepo) List(ctx context.Context, tenantID string) ([]*models.DataSource, error) {
-	args := m.Called(ctx, tenantID)
+func (m *mockDataSourceRepo) List(ctx context.Context, tenantID string, page, pageSize int) ([]*models.DataSource, int64, error) {
+	args := m.Called(ctx, tenantID, page, pageSize)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).([]*models.DataSource), args.Error(1)
+	return args.Get(0).([]*models.DataSource), int64Arg(args, 1), args.Error(2)
 }
 
 func (m *mockDataSourceRepo) Update(ctx context.Context, ds *models.DataSource) error {
@@ -45,9 +45,47 @@ func (m *mockDataSourceRepo) Update(ctx context.Context, ds *models.DataSource) 
 	return args.Error(0)
 }
 
-func (m *mockDataSourceRepo) Delete(ctx context.Context, id string) error {
-	args := m.Called(ctx, id)
+func (m *mockDataSourceRepo) Delete(ctx context.Context, id, tenantID string) error {
+	args := m.Called(ctx, id, tenantID)
 	return args.Error(0)
+}
+
+func (m *mockDataSourceRepo) Search(ctx context.Context, tenantID, keyword string, page, pageSize int) ([]*models.DataSource, int64, error) {
+	args := m.Called(ctx, tenantID, keyword, page, pageSize)
+	if args.Get(0) == nil {
+		return nil, 0, args.Error(2)
+	}
+	return args.Get(0).([]*models.DataSource), int64Arg(args, 1), args.Error(2)
+}
+
+func (m *mockDataSourceRepo) Copy(ctx context.Context, id, tenantID string) (*models.DataSource, error) {
+	args := m.Called(ctx, id, tenantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.DataSource), args.Error(1)
+}
+
+func (m *mockDataSourceRepo) Move(ctx context.Context, id, tenantID string) error {
+	args := m.Called(ctx, id, tenantID)
+	return args.Error(0)
+}
+
+func (m *mockDataSourceRepo) Rename(ctx context.Context, id, tenantID string, newName string) error {
+	args := m.Called(ctx, id, tenantID, newName)
+	return args.Error(0)
+}
+
+func int64Arg(args mock.Arguments, idx int) int64 {
+	v := args.Get(idx)
+	switch n := v.(type) {
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	default:
+		return 0
+	}
 }
 
 func newTestDataSourceHandler(repo *mockDataSourceRepo) *DataSourceHandler {
@@ -115,11 +153,11 @@ func TestListDatasources_TenantIsolation(t *testing.T) {
 	repo := &mockDataSourceRepo{}
 	h := newTestDataSourceHandler(repo)
 
-	repo.On("List", mock.Anything, "tenant-1").Return([]*models.DataSource{{
+	repo.On("List", mock.Anything, "tenant-1", 1, 10).Return([]*models.DataSource{{
 		ID:       "ds-1",
 		Name:     "demo",
 		TenantID: "tenant-1",
-	}}, nil).Once()
+	}}, int64(1), nil).Once()
 
 	w := performRequest(t, http.MethodGet, "/datasource/list", "", "tenant-1", func(r *gin.Engine, h *DataSourceHandler) {
 		r.GET("/datasource/list", h.ListDatasources)
@@ -158,7 +196,7 @@ func TestDeleteDatasource_Success(t *testing.T) {
 		Name:     "demo",
 		TenantID: "tenant-1",
 	}, nil).Once()
-	repo.On("Delete", mock.Anything, "ds-1").Return(nil).Once()
+	repo.On("Delete", mock.Anything, "ds-1", "tenant-1").Return(nil).Once()
 
 	w := performRequest(t, http.MethodDelete, "/datasource/ds-1", "", "tenant-1", func(r *gin.Engine, h *DataSourceHandler) {
 		r.DELETE("/datasource/:id", h.DeleteDatasource)
@@ -196,7 +234,7 @@ func TestListDatasources_ResponseBodyShape(t *testing.T) {
 	repo := &mockDataSourceRepo{}
 	h := newTestDataSourceHandler(repo)
 
-	repo.On("List", mock.Anything, "tenant-1").Return([]*models.DataSource{}, nil).Once()
+	repo.On("List", mock.Anything, "tenant-1", 1, 10).Return([]*models.DataSource{}, int64(0), nil).Once()
 
 	w := performRequest(t, http.MethodGet, "/datasource/list", "", "tenant-1", func(r *gin.Engine, h *DataSourceHandler) {
 		r.GET("/datasource/list", h.ListDatasources)
@@ -216,11 +254,11 @@ func TestListDatasources_ResponseBodyShape(t *testing.T) {
 
 func TestBuildDSN(t *testing.T) {
 	ds := &models.DataSource{
-		Username:     "root",
-		Password:     "password",
-		Host:         "localhost",
-		Port:         3306,
-		DatabaseName: "testdb",
+		Username: "root",
+		Password: "password",
+		Host:     "localhost",
+		Port:     3306,
+		Database: "testdb",
 	}
 
 	dsn := buildDSN(ds)
