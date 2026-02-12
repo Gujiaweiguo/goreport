@@ -23,6 +23,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 ## Scope and layout
 - Primary runnable project lives in `backend/` (Go) and `frontend/` (Vue).
 - Main Go entrypoint: `backend/cmd/server/main.go`.
+- Additional Go tooling entrypoint: `backend/cmd/tools/create-user/main.go`.
 - Docs reference running from project root with Docker Compose.
 
 ## Build, lint, test, run
@@ -30,7 +31,9 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 ### Go Backend
 - Build:
   - `cd backend && go build -o bin/server cmd/server/main.go`
-  - Or use `make build`
+  - Or use `make build-backend`
+  - Full local build (frontend + backend): `make build`
+  - Production image build: `make build-prod`
 - Run:
   - `cd backend && go run cmd/server/main.go`
   - Or use `make dev` to start all services
@@ -45,14 +48,22 @@ Keep this managed block so 'openspec update' can refresh the instructions.
   - `cd frontend && npm run dev`
 - Build:
   - `cd frontend && npm run build`
+- Test:
+  - `cd frontend && npm run test`
+  - `cd frontend && npm run test:run`
+  - `cd frontend && npm run test:coverage`
 
 ### Docker
 - Start all services:
   - `make dev`
 - View logs:
-  - `make logs`
+  - `make dev-logs`
+- View status:
+  - `make dev-ps`
 - Stop services:
   - `make dev-down`
+- Build and start production stack:
+  - `make build-prod`
 
 ### Database bootstrap
 - Initialize DB schema:
@@ -79,16 +90,24 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 - `backend/cmd/server/` - Application entry point
 - `backend/internal/` - Internal packages
   - `auth/` - JWT authentication
+  - `cache/` - Cache abstractions and providers
+  - `chart/` - Chart domain
   - `config/` - Configuration management
+  - `dashboard/` - Dashboard domain
+  - `dataset/` - Dataset domain and query execution
+  - `datasource/` - Datasource domain and metadata
+  - `database/` - Database initialization
+  - `render/` - Report render engine
+  - `report/` - Report domain
   - `models/` - Data models
   - `repository/` - Data access layer
-  - `service/` - Business logic layer
   - `httpserver/` - HTTP handlers
   - `middleware/` - HTTP middleware
+  - `testutil/` - Shared test utilities
 
 ### Go code style
 - Standard Go formatting (`gofmt`)
-- 4-space indentation (project convention)
+- Follow `gofmt` output style (tabs/spaces as generated)
 - Package comments for public packages
 - Exported functions/structs have comments
 - Error handling: check errors explicitly, never ignore
@@ -137,10 +156,25 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 - Mock external dependencies
 - Test files: `*_test.go`
 
+### Frontend testing
+- Test runner: `vitest`
+- Script entrypoint: `frontend/package.json`
+
 ### Running tests
 ```bash
 # All tests
 cd backend && go test ./... -v
+make test
+
+# Frontend tests
+cd frontend && npm run test
+cd frontend && npm run test:run
+cd frontend && npm run test:coverage
+make test-frontend
+
+# Full/in-container tests
+make test-full
+make test-backend-docker
 
 # Specific package
 cd backend && go test ./internal/dashboard -v
@@ -152,7 +186,7 @@ cd backend && go test ./... -cover
 ## Environment assumptions
 - Go 1.22+ required
 - Node.js 20+ required
-- MySQL 5.7+ required
+- MySQL 8.0+ required
 - Redis optional
 - Docker recommended for local development
 
@@ -167,6 +201,7 @@ cd backend && go test ./... -cover
 ## Repo-specific notes
 - `.gitignore` ignores `target/`, `logs/`, `node_modules/`, and IDE files
 - No CI configuration currently
+- Prefer `make dev-logs` / `make dev-ps`; `make logs` / `make ps` appear in help text but are not actual targets
 
 ## Cursor/Copilot rules
 - No `.cursor/rules/`, `.cursorrules`, or `.github/copilot-instructions.md` found
@@ -185,8 +220,13 @@ cd backend && go test ./... -cover
 ## Sources consulted
 - `README.md`
 - `README.en-US.md`
+- `Makefile`
 - `backend/go.mod`
 - `backend/cmd/server/main.go`
+- `backend/cmd/tools/create-user/main.go`
+- `backend/internal/httpserver/server.go`
 - `frontend/package.json`
 - `docker-compose.yml`
+- `docker-compose.prod.yml`
+- `docker-compose.test.yml`
 - `.gitignore`
