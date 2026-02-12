@@ -62,9 +62,20 @@ CREATE TABLE IF NOT EXISTS data_sources (
     type VARCHAR(20) NOT NULL COMMENT 'mysql/postgresql/sqlserver/oracle',
     host VARCHAR(255) NOT NULL,
     port INT NOT NULL,
+    `database` VARCHAR(100) NOT NULL DEFAULT '' COMMENT '兼容新版本字段',
     database_name VARCHAR(100) NOT NULL,
     username VARCHAR(100) NOT NULL,
     password VARCHAR(255) NOT NULL,
+    ssh_host VARCHAR(255) DEFAULT '',
+    ssh_port INT DEFAULT 0,
+    ssh_username VARCHAR(100) DEFAULT '',
+    ssh_password VARCHAR(255) DEFAULT '',
+    ssh_key TEXT,
+    ssh_key_phrase VARCHAR(255) DEFAULT '',
+    max_connections INT DEFAULT 10,
+    query_timeout_seconds INT DEFAULT 30,
+    config TEXT,
+    description TEXT,
     params TEXT COMMENT '连接参数JSON',
     status TINYINT DEFAULT 1,
     created_by VARCHAR(36),
@@ -155,5 +166,5 @@ INSERT IGNORE INTO user_tenants (id, user_id, tenant_id, role, is_default) VALUE
     (UUID(), 'admin', 'default', 'admin', 1);
 
 -- 插入测试数据源
-INSERT IGNORE INTO data_sources (id, tenant_id, name, type, host, port, database_name, username, password) VALUES 
-    ('test-mysql', 'default', '测试MySQL', 'mysql', 'mysql', 3306, 'goreport', 'root', 'root');
+INSERT IGNORE INTO data_sources (id, tenant_id, name, type, host, port, `database`, database_name, username, password) VALUES 
+    ('test-mysql', 'default', '测试MySQL', 'mysql', 'mysql', 3306, 'goreport', 'goreport', 'root', 'root');
