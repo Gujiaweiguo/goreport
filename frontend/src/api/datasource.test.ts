@@ -18,9 +18,20 @@ describe('datasourceApi', () => {
     vi.clearAllMocks()
   })
 
-  it('calls list endpoint', () => {
+  it('calls list endpoint with default pagination', () => {
     datasourceApi.list()
-    expect(apiClient.get).toHaveBeenCalledWith('/api/v1/datasource/list')
+    expect(apiClient.get).toHaveBeenCalledWith('/api/v1/datasources', {
+      page: 1,
+      pageSize: 10
+    })
+  })
+
+  it('calls list endpoint with explicit pagination', () => {
+    datasourceApi.list(2, 50)
+    expect(apiClient.get).toHaveBeenCalledWith('/api/v1/datasources', {
+      page: 2,
+      pageSize: 50
+    })
   })
 
   it('calls create endpoint', () => {
@@ -34,17 +45,15 @@ describe('datasourceApi', () => {
       password: 'root'
     }
     datasourceApi.create(payload)
-    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/datasource/create', payload)
+    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/datasources', payload)
   })
 
-  it('calls update endpoint', () => {
+  it('calls update and delete endpoints', () => {
     datasourceApi.update('ds-1', { name: 'new-name' })
-    expect(apiClient.put).toHaveBeenCalledWith('/api/v1/datasource/ds-1', { name: 'new-name' })
-  })
-
-  it('calls delete endpoint', () => {
     datasourceApi.delete('ds-1')
-    expect(apiClient.delete).toHaveBeenCalledWith('/api/v1/datasource/ds-1')
+
+    expect(apiClient.put).toHaveBeenCalledWith('/api/v1/datasources/ds-1', { name: 'new-name' })
+    expect(apiClient.delete).toHaveBeenCalledWith('/api/v1/datasources/ds-1')
   })
 
   it('calls test and metadata endpoints', () => {
@@ -62,8 +71,8 @@ describe('datasourceApi', () => {
     datasourceApi.getTables('ds-1')
     datasourceApi.getFields('ds-1', 'users')
 
-    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/datasource/test', payload)
-    expect(apiClient.get).toHaveBeenCalledWith('/api/v1/datasource/ds-1/tables')
-    expect(apiClient.get).toHaveBeenCalledWith('/api/v1/datasource/ds-1/tables/users/fields')
+    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/datasources/test', payload)
+    expect(apiClient.get).toHaveBeenCalledWith('/api/v1/datasources/ds-1/tables')
+    expect(apiClient.get).toHaveBeenCalledWith('/api/v1/datasources/ds-1/tables/users/fields')
   })
 })
