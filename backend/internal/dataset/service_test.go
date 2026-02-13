@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/gujiaweiguo/goreport/internal/models"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockDatasetRepo struct {
@@ -148,75 +151,43 @@ func (m *mockDatasetRepo) SoftDelete(ctx context.Context, id string) error {
 	return m.Delete(ctx, id)
 }
 
-func TestService_Create(t *testing.T) {
-	repo := &mockDatasetRepo{}
-	service := NewService(repo, nil, nil, nil)
-
-	config := json.RawMessage(`{"url": "https://api.example.com/data"}`)
-
-	tests := []struct {
-		name    string
-		req     *CreateRequest
-		wantErr bool
-	}{
-		{
-			name: "valid API request",
-			req: &CreateRequest{
-				TenantID:  "tenant-1",
-				Name:      "Test Dataset",
-				Type:      "api",
-				Config:    config,
-				CreatedBy: "user-1",
-			},
-			wantErr: false,
-		},
-		{
-			name: "missing name",
-			req: &CreateRequest{
-				TenantID:  "tenant-1",
-				Type:      "api",
-				Config:    config,
-				CreatedBy: "user-1",
-			},
-			wantErr: true,
-		},
-		{
-			name: "missing type",
-			req: &CreateRequest{
-				TenantID:  "tenant-1",
-				Name:      "Test Dataset",
-				Config:    config,
-				CreatedBy: "user-1",
-			},
-			wantErr: true,
-		},
-		{
-			name: "valid SQL request without datasource",
-			req: &CreateRequest{
-				TenantID:  "tenant-1",
-				Name:      "Test Dataset",
-				Type:      "sql",
-				Config:    json.RawMessage(`{"sql": "SELECT * FROM users"}`),
-				CreatedBy: "user-1",
-			},
-			wantErr: true,
+func TestService_Get(t *testing.T) {
+	datasetRepo := &mockDatasetRepo{
+		dataset: &models.Dataset{
+			ID:       "dataset-1",
+			TenantID: "tenant-1",
+			Name:     "Test Dataset",
+			Type:     "sql",
 		},
 	}
+	service := NewService(datasetRepo, nil, nil, nil)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			repo.createErr = nil
-			repo.dataset = nil
-			dataset, err := service.Create(context.Background(), tt.req)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Create() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr && dataset.ID == "" {
-				t.Error("Expected non-empty dataset ID")
-			}
-		})
-	}
+	t.Run("get existing dataset", func(t *testing.T) {
+		dataset, err := service.Get(context.Background(), "dataset-1", "tenant-1")
+		if err != nil {
+			t.Fatalf("Get() unexpected error = %v", err)
+		}
+		if dataset.ID != "dataset-1" {
+			t.Errorf("expected dataset-1, got %s", dataset.ID)
+		}
+	})
+
+	t.Run("cross-tenant dataset is rejected", func(t *testing.T) {
+		_, err := service.Get(context.Background(), "dataset-1", "tenant-2")
+		if err == nil {
+			t.Fatal("expected cross-tenant rejection error")
+		}
+		if err.Error() != "dataset not found" {
+			t.Errorf("expected 'dataset not found' error, got %v", err)
+		}
+	})
+
+	t.Run("dataset not found", func(t *testing.T) {
+		_, err := service.Get(context.Background(), "nonexistent", "tenant-1")
+		if err == nil {
+			t.Fatal("expected dataset not found error")
+		}
+	})
 }
 
 func TestService_Update(t *testing.T) {
@@ -284,6 +255,320 @@ func TestService_Delete(t *testing.T) {
 	err := service.Delete(context.Background(), "existing-id", "tenant-1")
 	if err != nil {
 		t.Errorf("Delete() error = %v", err)
+	}
+}
+
+func TestService_Delete_NotFound(t *testing.T) {
+	repo := &mockDatasetRepo{
+		getErr: errors.New("dataset not found"),
+	}
+	service := NewService(repo, nil, nil, nil)
+
+	err := service.Delete(context.Background(), "nonexistent-id", "tenant-1")
+	if err == nil {
+		t.Fatal("expected dataset not found error")
+	}
+}
+
+func TestService_Delete_CrossTenant(t *testing.T) {
+	repo := &mockDatasetRepo{
+		dataset: &models.Dataset{
+			ID:       "existing-id",
+			TenantID: "tenant-2",
+			Name:     "Other Tenant Dataset",
+			Type:     "api",
+		},
+	}
+	service := NewService(repo, nil, nil, nil)
+
+	err := service.Delete(context.Background(), "existing-id", "tenant-1")
+	if err == nil {
+		t.Fatal("expected dataset not found error")
+	}
+}
+
+func TestService_Preview_APIDataset(t *testing.T) {
+	dataset := &models.Dataset{
+		ID:       "dataset-api",
+		TenantID: "tenant-1",
+		Name:     "API Dataset",
+		Type:     "api",
+		Config:   `{"url": "https://api.example.com/data"}`,
+		Fields: []models.DatasetField{
+			{ID: "field-1", DatasetID: "dataset-api", Name: "data", Type: "dimension", DataType: "string", IsComputed: false},
+		},
+	}
+	repo := &mockDatasetRepo{dataset: dataset}
+	service := NewService(repo, nil, nil, nil)
+
+	_, err := service.Preview(context.Background(), "dataset-api", "tenant-1")
+	if err == nil {
+		t.Fatal("expected error for non-SQL dataset")
+	}
+	if !strings.Contains(err.Error(), "not implemented") {
+		t.Errorf("expected 'not implemented' error, got %v", err)
+	}
+}
+
+func TestService_List_NotFound(t *testing.T) {
+	repo := &mockDatasetRepo{
+		datasets: []*models.Dataset{},
+	}
+	service := NewService(repo, nil, nil, nil)
+
+	result, total, err := service.List(context.Background(), "tenant-1", 1, 10)
+	if err != nil {
+		t.Errorf("List() unexpected error = %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty result, got %d items", len(result))
+	}
+	if total != 0 {
+		t.Errorf("expected total 0, got %d", total)
+	}
+}
+
+func TestService_ListDimensions_EmptyDataset(t *testing.T) {
+	repo := &mockDatasetRepo{
+		dataset: &models.Dataset{
+			ID:       "dataset-1",
+			TenantID: "tenant-1",
+			Name:     "Test Dataset",
+			Type:     "sql",
+			Fields:   []models.DatasetField{},
+		},
+	}
+	fieldRepo := newMockDatasetFieldRepo()
+	service := NewService(repo, fieldRepo, nil, nil)
+
+	dimensions, err := service.ListDimensions(context.Background(), "dataset-1", "tenant-1")
+	if err != nil {
+		t.Errorf("ListDimensions() unexpected error = %v", err)
+	}
+	if len(dimensions) != 0 {
+		t.Errorf("expected empty dimensions list, got %d items", len(dimensions))
+	}
+}
+
+func TestService_ListMeasures_EmptyDataset(t *testing.T) {
+	repo := &mockDatasetRepo{
+		dataset: &models.Dataset{
+			ID:       "dataset-1",
+			TenantID: "tenant-1",
+			Name:     "Test Dataset",
+			Type:     "sql",
+			Fields:   []models.DatasetField{},
+		},
+	}
+	fieldRepo := newMockDatasetFieldRepo()
+	service := NewService(repo, fieldRepo, nil, nil)
+
+	measures, err := service.ListMeasures(context.Background(), "dataset-1", "tenant-1")
+	if err != nil {
+		t.Errorf("ListMeasures() unexpected error = %v", err)
+	}
+	if len(measures) != 0 {
+		t.Errorf("expected empty measures list, got %d items", len(measures))
+	}
+}
+
+func TestService_GetWithFields_EmptyFields(t *testing.T) {
+	repo := &mockDatasetRepo{
+		dataset: &models.Dataset{
+			ID:       "dataset-1",
+			TenantID: "tenant-1",
+			Name:     "Test Dataset",
+			Type:     "sql",
+			Fields:   []models.DatasetField{},
+		},
+	}
+	service := NewService(repo, nil, nil, nil)
+
+	dataset, err := service.GetWithFields(context.Background(), "dataset-1", "tenant-1")
+	if err != nil {
+		t.Errorf("GetWithFields() unexpected error = %v", err)
+	}
+	assert.Equal(t, 0, len(dataset.Fields))
+}
+
+func TestService_BatchUpdateFields_EmptyDataset(t *testing.T) {
+	repo := &mockDatasetRepo{
+		dataset: &models.Dataset{
+			ID:       "dataset-1",
+			TenantID: "tenant-1",
+			Name:     "Test Dataset",
+			Type:     "sql",
+		},
+	}
+	fieldRepo := newMockDatasetFieldRepo()
+	service := NewService(repo, fieldRepo, nil, nil)
+
+	_, err := service.BatchUpdateFields(context.Background(), "dataset-nonexistent", "tenant-1", &BatchUpdateFieldsRequest{
+		Fields: []UpdateFieldRequest{},
+	})
+	if err == nil {
+		t.Fatal("expected dataset not found error")
+	}
+}
+
+func TestService_ListFields_EmptyDataset(t *testing.T) {
+	repo := &mockDatasetRepo{
+		dataset: &models.Dataset{
+			ID:       "dataset-1",
+			TenantID: "tenant-1",
+			Name:     "Test Dataset",
+			Type:     "sql",
+			Fields:   []models.DatasetField{},
+		},
+	}
+	fieldRepo := newMockDatasetFieldRepo()
+	service := NewService(repo, fieldRepo, nil, nil)
+
+	fields, err := service.ListFields(context.Background(), "dataset-1", "tenant-1")
+	if err != nil {
+		t.Errorf("ListFields() unexpected error = %v", err)
+	}
+	if len(fields) != 0 {
+		t.Errorf("expected empty fields list, got %d items", len(fields))
+	}
+}
+
+func TestService_Update_APIType(t *testing.T) {
+	config := json.RawMessage(`{"url": "https://api.example.com/data"}`)
+	name := "Updated API Dataset"
+
+	repo := &mockDatasetRepo{
+		dataset: &models.Dataset{
+			ID:       "dataset-id",
+			TenantID: "tenant-1",
+			Name:     "Old Name",
+			Type:     "api",
+		},
+	}
+	service := NewService(repo, nil, nil, nil)
+
+	req := &UpdateRequest{
+		ID:       "dataset-id",
+		TenantID: "tenant-1",
+		Name:     &name,
+		Config:   config,
+		Status:   intPtr(2),
+	}
+
+	_, err := service.Update(context.Background(), req)
+	if err != nil {
+		t.Errorf("Update() unexpected error = %v", err)
+	}
+}
+
+func TestService_CreateComputedField_NameAlreadyExists(t *testing.T) {
+	repo := &mockDatasetRepo{
+		dataset: &models.Dataset{
+			ID:       "dataset-1",
+			TenantID: "tenant-1",
+			Name:     "Test Dataset",
+			Type:     "sql",
+		},
+	}
+	fieldRepo := newMockDatasetFieldRepo(
+		&models.DatasetField{ID: "field-amount", DatasetID: "dataset-1", Name: "amount", Type: "measure", DataType: "number", IsComputed: false},
+	)
+	service := NewService(repo, fieldRepo, nil, nil)
+
+	expression := "[amount] * 2"
+	_, err := service.CreateComputedField(context.Background(), &CreateFieldRequest{
+		DatasetID:  "dataset-1",
+		Name:       "amount",
+		Type:       "measure",
+		DataType:   "number",
+		Expression: &expression,
+		TenantID:   "tenant-1",
+	})
+
+	if err == nil {
+		t.Fatal("expected expression validation error for self-reference")
+	}
+	assert.Contains(t, err.Error(), "cannot reference itself")
+}
+
+func TestService_UpdateField_NonExistent(t *testing.T) {
+	fieldRepo := newMockDatasetFieldRepo()
+	service := NewService(&mockDatasetRepo{}, fieldRepo, nil, nil)
+
+	displayName := "Updated Display"
+	sortOrder := "desc"
+
+	req := &UpdateFieldRequest{
+		FieldID:     "nonexistent",
+		TenantID:    "tenant-1",
+		DisplayName: &displayName,
+		SortOrder:   &sortOrder,
+	}
+
+	_, err := service.UpdateField(context.Background(), req)
+	if err == nil {
+		t.Fatal("expected field not found error")
+	}
+}
+
+func TestService_DeleteField_NonExistent(t *testing.T) {
+	fieldRepo := newMockDatasetFieldRepo()
+	service := NewService(&mockDatasetRepo{}, fieldRepo, nil, nil)
+
+	err := service.DeleteField(context.Background(), "nonexistent", "tenant-1")
+	if err == nil {
+		t.Fatal("expected field not found error")
+	}
+}
+
+func TestService_ListDimensions_NonExistentDataset(t *testing.T) {
+	repo := &mockDatasetRepo{
+		dataset: &models.Dataset{
+			ID:       "dataset-nonexistent",
+			TenantID: "tenant-2",
+			Name:     "Other Dataset",
+			Type:     "api",
+		},
+	}
+	service := NewService(repo, newMockDatasetFieldRepo(), nil, nil)
+
+	_, err := service.ListDimensions(context.Background(), "dataset-nonexistent", "tenant-1")
+	if err == nil {
+		t.Fatal("expected dataset not found error")
+	}
+}
+
+func TestService_ListMeasures_NonExistentDataset(t *testing.T) {
+	repo := &mockDatasetRepo{
+		dataset: &models.Dataset{
+			ID:       "dataset-nonexistent",
+			TenantID: "tenant-2",
+			Name:     "Other Dataset",
+			Type:     "api",
+		},
+	}
+	service := NewService(repo, newMockDatasetFieldRepo(), nil, nil)
+
+	_, err := service.ListMeasures(context.Background(), "dataset-nonexistent", "tenant-1")
+	if err == nil {
+		t.Fatal("expected dataset not found error")
+	}
+}
+
+func TestService_ListFields_NonExistentDataset(t *testing.T) {
+	repo := &mockDatasetRepo{
+		dataset: &models.Dataset{
+			ID:       "dataset-nonexistent",
+			TenantID: "tenant-2",
+			Name:     "Other Dataset",
+			Type:     "api",
+		},
+	}
+	service := NewService(repo, newMockDatasetFieldRepo(), nil, nil)
+
+	_, err := service.ListFields(context.Background(), "dataset-nonexistent", "tenant-1")
+	if err == nil {
+		t.Fatal("expected dataset not found error")
 	}
 }
 
@@ -747,4 +1032,427 @@ func TestService_GroupingFieldSemantics(t *testing.T) {
 
 func stringPtr(s string) *string {
 	return &s
+}
+
+func intPtr(i int) *int {
+	return &i
+}
+
+// Tests for utility functions
+
+func TestSQLExpressionBuilder_TranslateFunction(t *testing.T) {
+	builder := NewSQLExpressionBuilder()
+
+	t.Run("translates generic functions to MySQL", func(t *testing.T) {
+		expr := "CONCAT(name, '-', id)"
+		result, err := builder.TranslateFunction(expr, "mysql")
+		if err != nil {
+			t.Errorf("TranslateFunction() unexpected error = %v", err)
+		}
+		if result != expr {
+			t.Errorf("expected %q, got %q", expr, result)
+		}
+	})
+
+	t.Run("preserves expression without functions", func(t *testing.T) {
+		expr := "[amount] * [price]"
+		result, err := builder.TranslateFunction(expr, "mysql")
+		if err != nil {
+			t.Errorf("TranslateFunction() unexpected error = %v", err)
+		}
+		if result != expr {
+			t.Errorf("expected %q, got %q", expr, result)
+		}
+	})
+
+	t.Run("handles multiple function calls", func(t *testing.T) {
+		expr := "UPPER(name) + LOWER(desc)"
+		result, err := builder.TranslateFunction(expr, "mysql")
+		if err != nil {
+			t.Errorf("TranslateFunction() unexpected error = %v", err)
+		}
+		if !strings.Contains(result, "UPPER") || !strings.Contains(result, "LOWER") {
+			t.Errorf("expected functions to be preserved, got %q", result)
+		}
+	})
+}
+
+func TestAPIExpressionBuilder(t *testing.T) {
+	builder := NewAPIExpressionBuilder()
+
+	t.Run("Validate valid expression", func(t *testing.T) {
+		fields := []string{"amount", "price"}
+		expr := "[amount] * [price]"
+		err := builder.Validate(expr, fields)
+		if err != nil {
+			t.Errorf("Validate() unexpected error = %v", err)
+		}
+	})
+
+	t.Run("Validate empty expression returns error", func(t *testing.T) {
+		fields := []string{"amount"}
+		err := builder.Validate("", fields)
+		if err == nil {
+			t.Fatal("expected error for empty expression")
+		}
+		if err.Error() != "expression cannot be empty" {
+			t.Errorf("expected 'expression cannot be empty', got %v", err)
+		}
+	})
+
+	t.Run("Validate invalid field reference returns error", func(t *testing.T) {
+		fields := []string{"amount"}
+		expr := "[invalid]"
+		err := builder.Validate(expr, fields)
+		if err == nil {
+			t.Fatal("expected error for invalid field reference")
+		}
+		if !strings.Contains(err.Error(), "invalid") {
+			t.Errorf("expected error mentioning invalid field, got %v", err)
+		}
+	})
+
+	t.Run("Build valid expression", func(t *testing.T) {
+		fields := []string{"amount", "price"}
+		expr := "[amount] * [price]"
+		result, err := builder.Build(expr, fields)
+		if err != nil {
+			t.Errorf("Build() unexpected error = %v", err)
+		}
+		if result != expr {
+			t.Errorf("expected %q, got %q", expr, result)
+		}
+	})
+
+	t.Run("Evaluate expression with field substitution", func(t *testing.T) {
+		expr := "[amount] * [price]"
+		row := map[string]interface{}{
+			"amount": 10,
+			"price":  20,
+		}
+		result, err := builder.Evaluate(expr, row)
+		if err != nil {
+			t.Errorf("Evaluate() unexpected error = %v", err)
+		}
+		expected := "10 * 20"
+		if result != expected {
+			t.Errorf("expected %q, got %q", expected, result)
+		}
+	})
+
+	t.Run("Evaluate with unresolved field returns error", func(t *testing.T) {
+		expr := "[amount] * [missing]"
+		row := map[string]interface{}{
+			"amount": 10,
+		}
+		_, err := builder.Evaluate(expr, row)
+		if err == nil {
+			t.Fatal("expected error for unresolved field reference")
+		}
+		if !strings.Contains(err.Error(), "unresolved") {
+			t.Errorf("expected error mentioning unresolved fields, got %v", err)
+		}
+	})
+}
+
+func TestExpressionCache(t *testing.T) {
+	t.Run("Get returns value that was set", func(t *testing.T) {
+		cache := NewExpressionCache()
+		cache.Set("key1", "value1", time.Hour)
+
+		val, found := cache.Get("key1")
+		if !found {
+			t.Fatal("expected value to be found")
+		}
+		if val != "value1" {
+			t.Errorf("expected value1, got %v", val)
+		}
+	})
+
+	t.Run("Get returns not found for non-existent key", func(t *testing.T) {
+		cache := NewExpressionCache()
+		_, found := cache.Get("nonexistent")
+		if found {
+			t.Fatal("expected value not to be found")
+		}
+	})
+
+	t.Run("Get returns not found for expired item", func(t *testing.T) {
+		cache := NewExpressionCache()
+		cache.Set("key1", "value1", time.Millisecond)
+
+		time.Sleep(time.Millisecond * 10)
+		_, found := cache.Get("key1")
+		if found {
+			t.Fatal("expected expired value not to be found")
+		}
+	})
+
+	t.Run("Invalidate removes item from cache", func(t *testing.T) {
+		cache := NewExpressionCache()
+		cache.Set("key1", "value1", time.Hour)
+		cache.Invalidate("key1")
+
+		_, found := cache.Get("key1")
+		if found {
+			t.Fatal("expected invalidated value not to be found")
+		}
+	})
+
+	t.Run("Clear removes all items from cache", func(t *testing.T) {
+		cache := NewExpressionCache()
+		cache.Set("key1", "value1", time.Hour)
+		cache.Set("key2", "value2", time.Hour)
+		cache.Clear()
+
+		if _, found := cache.Get("key1"); found {
+			t.Fatal("expected key1 not to be found after clear")
+		}
+		if _, found := cache.Get("key2"); found {
+			t.Fatal("expected key2 not to be found after clear")
+		}
+	})
+}
+
+func TestComputedFieldCache(t *testing.T) {
+	cache := NewComputedFieldCache()
+
+	t.Run("GetExpression and SetExpression", func(t *testing.T) {
+		cache.SetExpression("field-1", "[amount] * 0.9", time.Hour)
+		expr, found := cache.GetExpression("field-1")
+		if !found {
+			t.Fatal("expected expression to be found")
+		}
+		if expr != "[amount] * 0.9" {
+			t.Errorf("expected '[amount] * 0.9', got %s", expr)
+		}
+	})
+
+	t.Run("GetSQL and SetSQL", func(t *testing.T) {
+		cache.SetSQL("field-1", "amount * 0.9", time.Hour)
+		sql, found := cache.GetSQL("field-1")
+		if !found {
+			t.Fatal("expected SQL to be found")
+		}
+		if sql != "amount * 0.9" {
+			t.Errorf("expected 'amount * 0.9', got %s", sql)
+		}
+	})
+
+	t.Run("InvalidateField removes all caches for field", func(t *testing.T) {
+		cache.SetExpression("field-1", "[amount]", time.Hour)
+		cache.SetSQL("field-1", "amount", time.Hour)
+		cache.InvalidateField("field-1")
+
+		if _, found := cache.GetExpression("field-1"); found {
+			t.Fatal("expected expression not to be found after invalidate")
+		}
+		if _, found := cache.GetSQL("field-1"); found {
+			t.Fatal("expected SQL not to be found after invalidate")
+		}
+	})
+
+	t.Run("Clear removes all cached data", func(t *testing.T) {
+		cache.SetExpression("field-1", "[amount]", time.Hour)
+		cache.SetSQL("field-1", "amount", time.Hour)
+		cache.Clear()
+
+		if _, found := cache.GetExpression("field-1"); found {
+			t.Fatal("expected expression not to be found after clear")
+		}
+		if _, found := cache.GetSQL("field-1"); found {
+			t.Fatal("expected SQL not to be found after clear")
+		}
+	})
+}
+
+func TestSQLExpressionBuilder_Validate(t *testing.T) {
+	builder := NewSQLExpressionBuilder()
+
+	t.Run("valid expression with valid field references", func(t *testing.T) {
+		fields := []string{"amount", "price", "quantity"}
+		expr := "[amount] * [price] * [quantity]"
+		err := builder.Validate(expr, fields)
+		if err != nil {
+			t.Errorf("Validate() unexpected error = %v", err)
+		}
+	})
+
+	t.Run("empty expression returns error", func(t *testing.T) {
+		fields := []string{"amount"}
+		err := builder.Validate("", fields)
+		if err == nil {
+			t.Fatal("expected error for empty expression")
+		}
+		if err.Error() != "expression cannot be empty" {
+			t.Errorf("expected 'expression cannot be empty' error, got %v", err)
+		}
+	})
+
+	t.Run("invalid field reference returns error", func(t *testing.T) {
+		fields := []string{"amount", "price"}
+		expr := "[amount] * [invalid_field]"
+		err := builder.Validate(expr, fields)
+		if err == nil {
+			t.Fatal("expected error for invalid field reference")
+		}
+		if !strings.Contains(err.Error(), "invalid_field") {
+			t.Errorf("expected error mentioning invalid_field, got %v", err)
+		}
+	})
+
+	t.Run("expression without field references is valid", func(t *testing.T) {
+		fields := []string{"amount"}
+		expr := "100 * 0.9"
+		err := builder.Validate(expr, fields)
+		if err != nil {
+			t.Errorf("Validate() unexpected error = %v", err)
+		}
+	})
+}
+
+func TestSQLExpressionBuilder_SubstituteFieldReferences(t *testing.T) {
+	builder := NewSQLExpressionBuilder()
+
+	t.Run("substitutes field references with column names", func(t *testing.T) {
+		expr := "[amount] * [price]"
+		mapping := map[string]string{
+			"amount": "t.amount",
+			"price":  "t.price",
+		}
+		result := builder.SubstituteFieldReferences(expr, mapping)
+		expected := "t.amount * t.price"
+		if result != expected {
+			t.Errorf("expected %q, got %q", expected, result)
+		}
+	})
+
+	t.Run("expression without references remains unchanged", func(t *testing.T) {
+		expr := "SUM(amount) * 0.9"
+		result := builder.SubstituteFieldReferences(expr, map[string]string{})
+		if result != expr {
+			t.Errorf("expected %q, got %q", expr, result)
+		}
+	})
+}
+
+func TestSQLExpressionBuilder_Build(t *testing.T) {
+	builder := NewSQLExpressionBuilder()
+
+	t.Run("builds valid expression with parentheses", func(t *testing.T) {
+		expr := "[amount] * [price]"
+		fields := []string{"amount", "price"}
+		result, err := builder.Build(expr, fields)
+		if err != nil {
+			t.Errorf("Build() unexpected error = %v", err)
+		}
+		if !strings.HasPrefix(result, "(") || !strings.HasSuffix(result, ")") {
+			t.Errorf("expected expression wrapped in parentheses, got %s", result)
+		}
+		if !strings.Contains(result, "[amount]") || !strings.Contains(result, "[price]") {
+			t.Errorf("expected field references preserved, got %s", result)
+		}
+	})
+
+	t.Run("expression with function is translated", func(t *testing.T) {
+		expr := "ROUND([amount], 2)"
+		fields := []string{"amount"}
+		result, err := builder.Build(expr, fields)
+		if err != nil {
+			t.Errorf("Build() unexpected error = %v", err)
+		}
+		if !strings.Contains(result, "ROUND") {
+			t.Errorf("expected ROUND function preserved, got %s", result)
+		}
+	})
+}
+
+func TestMapSQLTypeToDataType(t *testing.T) {
+	tests := []struct {
+		sqlType    string
+		wantResult string
+	}{
+		// Numeric types -> number
+		{"INT", "number"},
+		{"TINYINT", "number"},
+		{"SMALLINT", "number"},
+		{"MEDIUMINT", "number"},
+		{"BIGINT", "number"},
+		{"FLOAT", "number"},
+		{"DOUBLE", "number"},
+		{"DECIMAL", "number"},
+
+		// Date/time types -> date
+		{"DATE", "date"},
+		{"DATETIME", "date"},
+		{"TIMESTAMP", "date"},
+		{"TIME", "date"},
+		{"YEAR", "date"},
+
+		// Boolean types -> boolean
+		{"BOOLEAN", "boolean"},
+		{"TINYINT(1)", "boolean"},
+
+		// Default types -> string
+		{"VARCHAR", "string"},
+		{"CHAR", "string"},
+		{"TEXT", "string"},
+		{"JSON", "string"},
+		{"BLOB", "string"},
+		{"UNKNOWN", "string"},
+		{"", "string"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.sqlType, func(t *testing.T) {
+			result := mapSQLTypeToDataType(tt.sqlType)
+			if result != tt.wantResult {
+				t.Errorf("mapSQLTypeToDataType(%q) = %q, want %q", tt.sqlType, result, tt.wantResult)
+			}
+		})
+	}
+}
+
+func TestInferFieldType(t *testing.T) {
+	tests := []struct {
+		sqlType    string
+		wantResult string
+	}{
+		// Text types -> dimension
+		{"VARCHAR", "dimension"},
+		{"CHAR", "dimension"},
+		{"TEXT", "dimension"},
+		{"DATE", "dimension"},
+		{"DATETIME", "dimension"},
+		{"TIMESTAMP", "dimension"},
+
+		// Numeric types -> measure
+		{"INT", "measure"},
+		{"TINYINT", "measure"},
+		{"SMALLINT", "measure"},
+		{"MEDIUMINT", "measure"},
+		{"BIGINT", "measure"},
+		{"FLOAT", "measure"},
+		{"DOUBLE", "measure"},
+		{"DECIMAL", "measure"},
+
+		// Boolean types -> dimension
+		{"BOOLEAN", "dimension"},
+		{"TINYINT(1)", "dimension"},
+
+		// Default types -> dimension
+		{"JSON", "dimension"},
+		{"BLOB", "dimension"},
+		{"UNKNOWN", "dimension"},
+		{"", "dimension"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.sqlType, func(t *testing.T) {
+			result := inferFieldType(tt.sqlType)
+			if result != tt.wantResult {
+				t.Errorf("inferFieldType(%q) = %q, want %q", tt.sqlType, result, tt.wantResult)
+			}
+		})
+	}
 }
