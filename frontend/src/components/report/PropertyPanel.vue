@@ -531,6 +531,31 @@ watch(
   { immediate: true }
 )
 
+const previewData = ref<any[]>([])
+const loadingPreviewData = ref(false)
+
+async function handlePreviewDataset() {
+  if (!formData.datasetId) return
+  
+  loadingPreviewData.value = true
+  try {
+    const query: any = {
+      fields: [formData.dimension, formData.measure].filter(Boolean),
+      groupBy: formData.groupBy ? [formData.dimension] : undefined
+    }
+    
+    const response = await datasetApi.query(formData.datasetId, query)
+    if (response.data.success) {
+      previewData.value = response.data.result?.data || []
+      ElMessage.success('数据预览加载成功')
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '数据预览失败')
+  } finally {
+    loadingPreviewData.value = false
+  }
+}
+
 onMounted(async () => {
   await loadDatasources()
   await loadDatasets()

@@ -469,7 +469,7 @@ async function handlePreviewData() {
   loadingPreviewData.value = true
   try {
     const aggregations: Record<string, Aggregation> = {}
-    if (selectedCell.value.binding?.aggregation && selectedCell.value.binding?.aggregation !== 'none') {
+    if (selectedCell.value.binding?.aggregation && selectedCell.value.binding?.aggregation !== 'none' && selectedCell.value.binding?.measure) {
       aggregations[selectedCell.value.binding.measure] = {
         'function': selectedCell.value.binding.aggregation as any,
         field: selectedCell.value.binding.measure

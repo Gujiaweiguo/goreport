@@ -399,16 +399,18 @@
   }
 
   async function loadPreviewData(params: Record<string, any>) {
+    if (!reportId.value) return
+    
     loading.value = true
     try {
-      const previewParams = {
+      const previewParams: any = {
         id: reportId.value,
         params: params || {}
       }
 
       if (showPagination.value && currentPage.value > 0) {
-        (previewParams.params as any).page = currentPage.value
-        (previewParams.params as any).pageSize = pageSize.value
+        previewParams.params.page = currentPage.value
+        previewParams.params.pageSize = pageSize.value
       }
 
       const response = await reportApi.preview(previewParams)
