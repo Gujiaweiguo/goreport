@@ -78,7 +78,7 @@ export class SecureTokenStorage {
 			this.setItem(this.buildExpiresKey(token), expiresAt.toString())
 		} catch (error) {
 			console.error('[SecureTokenStorage] Failed to set token:', error)
-			this.clear()
+			this.clearToken()
 			throw error
 		}
 	}

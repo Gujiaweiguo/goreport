@@ -13,7 +13,7 @@ import {
 } from 'echarts/components'
 import { BarChart, LineChart, PieChart } from 'echarts/charts'
 import { CanvasRenderer } from 'echarts/renderers'
-import type { ECharts, EChartsOption } from 'echarts'
+import type { EChartsType, EChartsOption } from 'echarts'
 
 echarts.use([
   TitleComponent,
@@ -38,7 +38,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const chartRef = ref<HTMLDivElement>()
-let chartInstance: ECharts | null = null
+let chartInstance: ReturnType<typeof echarts.init> | null = null
 
 function initChart() {
   if (!chartRef.value) return

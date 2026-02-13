@@ -244,7 +244,7 @@ async function loadDataSources() {
   try {
     const response = await datasourceApi.list()
     if (response.data.success) {
-      dataSources.value = (response.data.result || []).map(ds => ({
+      dataSources.value = (response.data.result?.datasources || []).map(ds => ({
         label: `${ds.name} (${ds.type})`,
         value: ds.id
       }))

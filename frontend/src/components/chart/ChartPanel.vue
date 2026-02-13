@@ -62,7 +62,7 @@ const emit = defineEmits<{
 const charts = ref<Chart[]>([])
 const chartEditor = reactive({
   visible: false,
-  data: null as Chart | null,
+  data: null as any,
   mode: 'create' as 'create' | 'update'
 })
 
@@ -93,10 +93,10 @@ function handleCreateChart() {
     name: '',
     code: '',
     type: 'bar',
-    config: {
+    config: JSON.stringify({
       title: '新图表',
       series: []
-    },
+    }),
     status: 1,
     createdAt: '',
     updatedAt: ''
@@ -111,7 +111,7 @@ function handleEditChart(chart: Chart) {
   chartEditor.visible = true
 }
 
-function handleChartUpdate(data: Chart) {
+function handleChartUpdate(data: any) {
   chartEditor.data = data
 }
 
@@ -150,7 +150,9 @@ function handleDragStart(chart: Chart, event: DragEvent) {
     type: 'chart',
     data: chart
   }))
-  event.dataTransfer?.effectAllowed = 'copy'
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'copy'
+  }
 }
 
 onMounted(async () => {

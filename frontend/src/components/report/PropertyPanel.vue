@@ -335,7 +335,7 @@ async function loadDatasources() {
   try {
     const response = await datasourceApi.list()
     if (response.data.success) {
-      datasources.value = response.data.result || []
+      datasources.value = response.data.result?.datasources || []
     } else {
       ElMessage.error(response.data.message || '加载数据源失败')
     }

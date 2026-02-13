@@ -578,7 +578,7 @@ const loadDatasources = async () => {
   try {
     const response = await datasourceApi.list()
     if (response.data.success) {
-      datasources.value = response.data.result || []
+      datasources.value = response.data.result?.datasources || []
       return
     }
     throw new Error(response.data.message || '加载数据源失败')
