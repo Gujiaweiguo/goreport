@@ -21,16 +21,20 @@ describe('datasourceApi', () => {
   it('calls list endpoint with default pagination', () => {
     datasourceApi.list()
     expect(apiClient.get).toHaveBeenCalledWith('/api/v1/datasources', {
-      page: 1,
-      pageSize: 10
+      params: {
+        page: 1,
+        pageSize: 10
+      }
     })
   })
 
   it('calls list endpoint with explicit pagination', () => {
     datasourceApi.list(2, 50)
     expect(apiClient.get).toHaveBeenCalledWith('/api/v1/datasources', {
-      page: 2,
-      pageSize: 50
+      params: {
+        page: 2,
+        pageSize: 50
+      }
     })
   })
 
