@@ -299,6 +299,59 @@ func TestDatasetHandler_Delete_Success(t *testing.T) {
 	mockSvc.AssertExpectations(t)
 }
 
+func TestDatasetHandler_Delete_NoTenant(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	router := gin.New()
+	router.DELETE("/:id", func(c *gin.Context) {
+		c.Set("roles", []string{"admin"})
+		handler.Delete(c)
+	})
+
+	req := httptest.NewRequest(http.MethodDelete, "/ds-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDatasetHandler_Delete_NoPermission(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	router := gin.New()
+	router.DELETE("/:id", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"viewer"})
+		handler.Delete(c)
+	})
+
+	req := httptest.NewRequest(http.MethodDelete, "/ds-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDatasetHandler_Delete_ServiceError(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	mockSvc.On("Delete", mock.Anything, "ds-1", "tenant-1").Return(errors.New("delete failed"))
+
+	router := gin.New()
+	router.DELETE("/:id", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.Delete(c)
+	})
+
+	req := httptest.NewRequest(http.MethodDelete, "/ds-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
 func TestDatasetHandler_GetSchema_Success(t *testing.T) {
 	handler, mockSvc, _ := setupDatasetTestHandler()
 
@@ -557,6 +610,396 @@ func TestDatasetHandler_GetMeasures_Error(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/ds-1/measures", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_CreateComputedField_Success(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	expr := "price * quantity"
+	mockSvc.On("CreateComputedField", mock.Anything, mock.MatchedBy(func(req *CreateFieldRequest) bool {
+		return req.DatasetID == "ds-1" && req.Name == "total" && req.Expression != nil && *req.Expression == expr
+	})).Return(&models.DatasetField{
+		ID:         "f-1",
+		DatasetID:  "ds-1",
+		Name:       "total",
+		IsComputed: true,
+		Expression: &expr,
+	}, nil)
+
+	body := `{"name":"total","expression":"price * quantity"}`
+	router := gin.New()
+	router.POST("/:id/computed-fields", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.CreateComputedField(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/ds-1/computed-fields", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	assert.Contains(t, w.Body.String(), `"success":true`)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_CreateComputedField_NoTenant(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	body := `{"name":"total","expression":"price * quantity"}`
+	router := gin.New()
+	router.POST("/:id/computed-fields", handler.CreateComputedField)
+
+	req := httptest.NewRequest(http.MethodPost, "/ds-1/computed-fields", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDatasetHandler_CreateComputedField_NoPermission(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	body := `{"name":"total","expression":"price * quantity"}`
+	router := gin.New()
+	router.POST("/:id/computed-fields", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"viewer"})
+		handler.CreateComputedField(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/ds-1/computed-fields", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDatasetHandler_CreateComputedField_InvalidRequest(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	body := `{"invalid json`
+	router := gin.New()
+	router.POST("/:id/computed-fields", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.CreateComputedField(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/ds-1/computed-fields", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestDatasetHandler_CreateComputedField_ServiceError(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	mockSvc.On("CreateComputedField", mock.Anything, mock.Anything).Return(nil, errors.New("field creation failed"))
+
+	body := `{"name":"total","expression":"price * quantity"}`
+	router := gin.New()
+	router.POST("/:id/computed-fields", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.CreateComputedField(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/ds-1/computed-fields", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_UpdateField_Success(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	displayName := "Total Amount"
+	mockSvc.On("UpdateField", mock.Anything, mock.MatchedBy(func(req *UpdateFieldRequest) bool {
+		return req.FieldID == "f-1" && req.DisplayName != nil && *req.DisplayName == "Total Amount"
+	})).Return(&models.DatasetField{
+		ID:          "f-1",
+		DatasetID:   "ds-1",
+		Name:        "total",
+		DisplayName: &displayName,
+	}, nil)
+
+	body := `{"displayName":"Total Amount"}`
+	router := gin.New()
+	router.PUT("/:id/fields/:fieldId", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.UpdateField(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPut, "/ds-1/fields/f-1", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_UpdateField_NoTenant(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	body := `{"displayName":"Total Amount"}`
+	router := gin.New()
+	router.PUT("/:id/fields/:fieldId", handler.UpdateField)
+
+	req := httptest.NewRequest(http.MethodPut, "/ds-1/fields/f-1", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDatasetHandler_UpdateField_NoPermission(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	body := `{"displayName":"Total Amount"}`
+	router := gin.New()
+	router.PUT("/:id/fields/:fieldId", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"viewer"})
+		handler.UpdateField(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPut, "/ds-1/fields/f-1", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDatasetHandler_UpdateField_MissingFieldID(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	body := `{"displayName":"Total Amount"}`
+	router := gin.New()
+	router.PUT("/:id/fields/", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.UpdateField(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPut, "/ds-1/fields/", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusNotFound)
+}
+
+func TestDatasetHandler_UpdateField_ServiceError(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	mockSvc.On("UpdateField", mock.Anything, mock.Anything).Return(nil, errors.New("field update failed"))
+
+	body := `{"displayName":"Total Amount"}`
+	router := gin.New()
+	router.PUT("/:id/fields/:fieldId", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.UpdateField(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPut, "/ds-1/fields/f-1", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_BatchUpdateFields_Success(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	mockSvc.On("BatchUpdateFields", mock.Anything, "ds-1", "tenant-1", mock.Anything).Return(&BatchUpdateFieldsResponse{
+		Success:       true,
+		UpdatedFields: []string{"f-1", "f-2"},
+	}, nil)
+
+	body := `{"fields":[{"fieldId":"f-1","displayName":"Name"},{"fieldId":"f-2","displayName":"Value"}]}`
+	router := gin.New()
+	router.PUT("/:id/fields/batch", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.BatchUpdateFields(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPut, "/ds-1/fields/batch", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_BatchUpdateFields_PartialFailure(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	mockSvc.On("BatchUpdateFields", mock.Anything, "ds-1", "tenant-1", mock.Anything).Return(&BatchUpdateFieldsResponse{
+		Success:       false,
+		UpdatedFields: []string{"f-1"},
+		Errors:        []BatchFieldError{{FieldID: "f-2", Message: "field not found"}},
+	}, nil)
+
+	body := `{"fields":[{"fieldId":"f-1","displayName":"Name"},{"fieldId":"f-2","displayName":"Value"}]}`
+	router := gin.New()
+	router.PUT("/:id/fields/batch", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.BatchUpdateFields(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPut, "/ds-1/fields/batch", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "partial failures")
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_BatchUpdateFields_NoTenant(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	body := `{"fields":[{"fieldId":"f-1","displayName":"Name"}]}`
+	router := gin.New()
+	router.PUT("/:id/fields/batch", handler.BatchUpdateFields)
+
+	req := httptest.NewRequest(http.MethodPut, "/ds-1/fields/batch", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDatasetHandler_BatchUpdateFields_EmptyFields(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	body := `{"fields":[]}`
+	router := gin.New()
+	router.PUT("/:id/fields/batch", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.BatchUpdateFields(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPut, "/ds-1/fields/batch", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestDatasetHandler_BatchUpdateFields_DatasetNotFound(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	mockSvc.On("BatchUpdateFields", mock.Anything, "ds-1", "tenant-1", mock.Anything).Return(nil, errors.New("dataset not found"))
+
+	body := `{"fields":[{"fieldId":"f-1","displayName":"Name"}]}`
+	router := gin.New()
+	router.PUT("/:id/fields/batch", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.BatchUpdateFields(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPut, "/ds-1/fields/batch", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_DeleteField_Success(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	mockSvc.On("DeleteField", mock.Anything, "f-1", "tenant-1").Return(nil)
+
+	router := gin.New()
+	router.DELETE("/:id/fields/:fieldId", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.DeleteField(c)
+	})
+
+	req := httptest.NewRequest(http.MethodDelete, "/ds-1/fields/f-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_DeleteField_NoTenant(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	router := gin.New()
+	router.DELETE("/:id/fields/:fieldId", handler.DeleteField)
+
+	req := httptest.NewRequest(http.MethodDelete, "/ds-1/fields/f-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDatasetHandler_DeleteField_NoPermission(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	router := gin.New()
+	router.DELETE("/:id/fields/:fieldId", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"viewer"})
+		handler.DeleteField(c)
+	})
+
+	req := httptest.NewRequest(http.MethodDelete, "/ds-1/fields/f-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDatasetHandler_DeleteField_ServiceError(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	mockSvc.On("DeleteField", mock.Anything, "f-1", "tenant-1").Return(errors.New("delete failed"))
+
+	router := gin.New()
+	router.DELETE("/:id/fields/:fieldId", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.DeleteField(c)
+	})
+
+	req := httptest.NewRequest(http.MethodDelete, "/ds-1/fields/f-1", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

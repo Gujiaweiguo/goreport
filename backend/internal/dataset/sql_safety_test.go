@@ -1,6 +1,9 @@
 package dataset
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidateSQLSafety(t *testing.T) {
 	tests := []struct {
@@ -109,8 +112,27 @@ func TestValidateSQLSafety(t *testing.T) {
 			query:   "SELECT * FROM (SELECT * FROM (SELECT * FROM orders) AS sub1) AS sub2",
 			wantErr: false,
 		},
+		{
+			name:    "reject query too long",
+			query:   "SELECT * FROM orders WHERE " + strings.Repeat("id = 1 AND ", 3000),
+			wantErr: true,
+		},
+		{
+			name:    "reject MERGE statement",
+			query:   "MERGE INTO target USING source ON (target.id = source.id)",
+			wantErr: true,
+		},
+		{
+			name:    "reject REPLACE statement",
+			query:   "REPLACE INTO users VALUES (1, 'test')",
+			wantErr: true,
+		},
+		{
+			name:    "reject CALL statement",
+			query:   "CALL my_procedure()",
+			wantErr: true,
+		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateSQLSafety(tt.query)
