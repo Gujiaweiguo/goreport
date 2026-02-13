@@ -78,8 +78,8 @@ const chartTypeLabel = (type: string) => {
 async function loadCharts() {
   try {
     const response = await chartApi.list()
-    if (response.success) {
-      charts.value = response.result || []
+    if (response.data.success) {
+      charts.value = response.data.result || []
     }
   } catch (error: any) {
     ElMessage.error('加载图表列表失败')
@@ -135,7 +135,7 @@ async function handleSaveChart() {
       })
     }
 
-    if (response.success) {
+    if (response.data.success) {
       ElMessage.success(chartEditor.mode === 'create' ? '图表已创建' : '图表已更新')
       chartEditor.visible = false
       await loadCharts()

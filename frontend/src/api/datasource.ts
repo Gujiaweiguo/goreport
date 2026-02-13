@@ -56,8 +56,10 @@ const normalizeDatasourcePayload = <T extends { type?: string }>(data: T): T => 
 export const datasourceApi = {
   list: (page?: number, pageSize?: number) => {
     return apiClient.get<ApiResponse<{datasources: DataSource[], total: number, page: number, pageSize: number}>>('/api/v1/datasources', {
-      page: page || 1,
-      pageSize: pageSize || 10
+      params: {
+        page: page || 1,
+        pageSize: pageSize || 10
+      }
     })
   },
 
@@ -103,9 +105,11 @@ export const datasourceApi = {
 
   search: (keyword: string, page?: number, pageSize?: number) => {
     return apiClient.get<ApiResponse<{datasources: DataSource[], total: number, page: number, pageSize: number}>>(`/api/v1/datasources/search`, {
-      keyword,
-      page: page || 1,
-      pageSize: pageSize || 10
+      params: {
+        keyword,
+        page: page || 1,
+        pageSize: pageSize || 10
+      }
     })
   },
 
