@@ -55,6 +55,10 @@ const dataConfig = reactive<ChartDataConfig>({
   dataSourceId: '',
   tableName: '',
   fields: [],
+  datasetId: '',
+  dimension: '',
+  measure: '',
+  aggregation: 'SUM',
   params: [],
   filter: ''
 })

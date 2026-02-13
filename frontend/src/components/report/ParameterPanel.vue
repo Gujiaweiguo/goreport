@@ -200,6 +200,10 @@ function showAddOptionDialog(param: Parameter) {
   addOptionDialog.paramIndex = index
 }
 
+function showOptionsEditor(param: Parameter) {
+  showAddOptionDialog(param)
+}
+
 function handleAddOptionConfirm() {
   if (!addOptionDialog.label || !addOptionDialog.value) {
     ElMessage.warning('请填写选项标签和值')

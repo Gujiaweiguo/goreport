@@ -34,6 +34,7 @@ export interface PreviewReportRequest {
 
 export interface PreviewReportResponse {
   html: string
+  totalRows?: number
 }
 
 export interface ApiResponse<T = any> {
@@ -69,5 +70,9 @@ export const reportApi = {
 
   preview: (data: PreviewReportRequest) => {
     return apiClient.post<ApiResponse<PreviewReportResponse>>('/api/v1/jmreport/preview', data)
+  },
+
+  export: (data: PreviewReportRequest & { format: string }) => {
+    return apiClient.post<ApiResponse<Blob>>('/api/v1/jmreport/export', data)
   }
 }
