@@ -189,7 +189,7 @@ const insertField = (field: DatasetField) => {
   if (textarea) {
     const start = textarea.selectionStart
     const end = textarea.selectionEnd
-    const value = formData.value.expression
+    const value = formData.value.expression || ''
     const fieldRef = `[${field.name}]`
     formData.value.expression = value.substring(0, start) + fieldRef + value.substring(end)
     textarea.focus()
@@ -201,7 +201,7 @@ const insertFunction = (fn: any) => {
   if (textarea) {
     const start = textarea.selectionStart
     const end = textarea.selectionEnd
-    const value = formData.value.expression
+    const value = formData.value.expression || ''
     formData.value.expression = value.substring(0, start) + fn.name + '()' + value.substring(end)
     textarea.focus()
     const cursorPos = start + fn.name.length + 1

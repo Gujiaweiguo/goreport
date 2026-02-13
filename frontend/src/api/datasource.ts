@@ -39,6 +39,11 @@ export interface ApiResponse<T = any> {
   message: string
 }
 
+export interface SelectOption {
+  label: string
+  value: string
+}
+
 const normalizeDatasourceType = (type?: string) => {
   if (type === 'postgresql') {
     return 'postgres'

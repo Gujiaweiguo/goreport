@@ -84,7 +84,7 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item v-if="editForm.isComputed" label="默认排序">
+        <el-form-item v-if="isEdit" label="默认排序">
           <el-select v-model="editForm.sortOrder">
             <el-option value="asc">升序</el-option>
             <el-option value="desc">降序</el-option>
@@ -92,11 +92,11 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item v-if="!editForm.isComputed && editForm.type === 'dimension'" label="可分组">
+        <el-form-item v-if="!isEdit && editForm.type === 'dimension'" label="可分组">
           <el-switch v-model="editForm.isGroupable" />
         </el-form-item>
 
-        <el-form-item v-if="!editForm.isComputed" label="可排序">
+        <el-form-item v-if="!isEdit" label="可排序">
           <el-switch v-model="editForm.isSortable" />
         </el-form-item>
       </el-form>
@@ -124,6 +124,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'refresh'): void
+  (e: 'openComputedFieldEditor'): void
 }>()
 
 const activeTab = ref('dimensions')

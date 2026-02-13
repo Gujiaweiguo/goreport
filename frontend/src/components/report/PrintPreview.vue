@@ -103,7 +103,7 @@
   }
 
   const printPreviewStyle = computed(() => {
-    const dim = paperSizeDimensions[settings.paperSize]
+    const dim = paperSizeDimensions[settings.paperSize as keyof typeof paperSizeDimensions]
     const isLandscape = settings.orientation === 'landscape'
 
     return {

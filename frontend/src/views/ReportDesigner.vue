@@ -86,7 +86,12 @@ interface CellStyle {
   groupBy?: boolean
   params?: Array<{ key: string; value: string }>
   filter?: string
-  previewData?: any[]  // NEW: store query results at cell level
+  previewData?: any[]
+}
+
+interface Aggregation {
+  function: string
+  field: string
 }
 
 interface DesignerCell {
@@ -105,7 +110,8 @@ const canvasRef = ref<HTMLCanvasElement | null>(null)
 const canvasWrapperRef = ref<HTMLDivElement | null>(null)
 const editorRef = ref<InputInstance>()
   const selectedCell = ref<DesignerCell | null>(null)
-  const previewData = ref<any[]>([])
+const previewData = ref<any[]>([])
+const loadingPreviewData = ref(false)
 const dpr = window.devicePixelRatio || 1
 
 const gridConfig = reactive({
@@ -348,7 +354,7 @@ function commitEdit() {
   renderGrid()
 }
 
-function handleCellUpdate(cell: DesignerCell) {
+function handleCellUpdate(cell: any) {
   const key = getCellKey(cell.row, cell.col)
   const updatedCell = {
     ...cell,
@@ -436,7 +442,7 @@ async function loadReport(id: string) {
           }
           for (const cell of config.cells) {
             const key = getCellKey(cell.row, cell.col)
-            cells.value.set(key, cell)
+            cells.set(key, cell)
           }
         }
         renderGrid()
