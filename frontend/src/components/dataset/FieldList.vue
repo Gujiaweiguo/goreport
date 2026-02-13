@@ -169,12 +169,12 @@ const saveField = async () => {
       editForm.value
     )
 
-    if (response.success) {
+    if (response.data.success) {
       ElMessage.success('保存成功')
       editDialogVisible.value = false
       emit('refresh')
     } else {
-      ElMessage.error(response.message || '保存失败')
+      ElMessage.error(response.data.message || '保存失败')
     }
   } catch (error) {
     ElMessage.error('保存失败')
@@ -186,11 +186,11 @@ const saveField = async () => {
 const deleteField = async (field: DatasetField) => {
   try {
     const response = await datasetApi.deleteField(props.datasetId, field.id)
-    if (response.success) {
+    if (response.data.success) {
       ElMessage.success('删除成功')
       emit('refresh')
     } else {
-      ElMessage.error(response.message || '删除失败')
+      ElMessage.error(response.data.message || '删除失败')
     }
   } catch (error) {
     ElMessage.error('删除失败')

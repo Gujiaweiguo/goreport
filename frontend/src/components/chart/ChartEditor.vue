@@ -155,10 +155,10 @@ function handleMeasureChange() {
 async function loadDatasets() {
   try {
     const response = await datasetApi.list()
-    if (response.success) {
-      datasets.value = response.result || []
+    if (response.data.success) {
+      datasets.value = response.data.result || []
     } else {
-      ElMessage.error(response.message || '加载数据集失败')
+      ElMessage.error(response.data.message || '加载数据集失败')
     }
   } catch (error: any) {
     ElMessage.error('加载数据集失败')
@@ -170,11 +170,11 @@ async function loadDatasetSchema() {
   
   try {
     const response = await datasetApi.getSchema(formData.datasetId)
-    if (response.success) {
-      dimensions.value = response.result.dimensions || []
-      measures.value = response.result.measures || []
+    if (response.data.success) {
+      dimensions.value = response.data.result.dimensions || []
+      measures.value = response.data.result.measures || []
     } else {
-      ElMessage.error(response.message || '加载数据集 Schema 失败')
+      ElMessage.error(response.data.message || '加载数据集 Schema 失败')
     }
   } catch (error: any) {
     ElMessage.error('加载数据集 Schema 失败')

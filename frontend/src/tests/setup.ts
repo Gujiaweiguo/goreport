@@ -1,9 +1,13 @@
 import { vi } from 'vitest'
 
+declare global {
+  var window: Window & typeof globalThis
+}
+
 // Mock window.location to avoid jsdom navigation errors
-delete (global as any).window.location
-global.window = Object.create(window)
-Object.defineProperty(global.window, 'location', {
+delete (globalThis as any).window?.location
+;(globalThis as any).window = Object.create(window)
+Object.defineProperty((globalThis as any).window, 'location', {
   value: {
     href: 'http://localhost:3000',
     origin: 'http://localhost:3000',
@@ -19,7 +23,7 @@ Object.defineProperty(global.window, 'location', {
 })
 
 // Mock matchMedia
-Object.defineProperty(global.window, 'matchMedia', {
+Object.defineProperty((globalThis as any).window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation(query => ({
     matches: false,
@@ -34,14 +38,14 @@ Object.defineProperty(global.window, 'matchMedia', {
 })
 
 // Mock ResizeObserver
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
+;(globalThis as any).ResizeObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),
 }))
 
 // Mock IntersectionObserver
-global.IntersectionObserver = vi.fn().mockImplementation(() => ({
+;(globalThis as any).IntersectionObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),

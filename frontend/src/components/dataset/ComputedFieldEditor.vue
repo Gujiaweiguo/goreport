@@ -248,12 +248,12 @@ const save = async () => {
     saving.value = true
     const response = await datasetApi.createField(props.datasetId, formData.value)
 
-    if (response.success) {
+    if (response.data.success) {
       ElMessage.success('保存成功')
       handleClose()
       emit('refresh')
     } else {
-      ElMessage.error(response.message || '保存失败')
+      ElMessage.error(response.data.message || '保存失败')
     }
   } catch (error) {
     ElMessage.error('保存失败')
