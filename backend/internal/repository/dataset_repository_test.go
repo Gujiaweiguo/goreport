@@ -194,3 +194,89 @@ func TestDatasetRepository_List(t *testing.T) {
 		t.Errorf("Expected total at least 3, got %d", total)
 	}
 }
+
+func TestDatasetRepository_SoftDelete(t *testing.T) {
+	db := setupTestDB(t)
+	repo := NewDatasetRepository(db)
+
+	dataset := &models.Dataset{
+		ID:        "soft-delete-test-id",
+		TenantID:  "tenant-1",
+		Name:      "Soft Delete Test",
+		Type:      "sql",
+		Config:    `{"sql": "SELECT 1"}`,
+		Status:    1,
+		CreatedBy: "user-1",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	err := repo.Create(context.Background(), dataset)
+	if err != nil {
+		t.Fatalf("Failed to create dataset: %v", err)
+	}
+
+	err = repo.SoftDelete(context.Background(), "soft-delete-test-id")
+	if err != nil {
+		t.Errorf("SoftDelete() error = %v", err)
+	}
+
+	_, err = repo.GetByID(context.Background(), "soft-delete-test-id")
+	if err == nil {
+		t.Error("Expected error for soft-deleted dataset")
+	}
+}
+
+func TestDatasetRepository_GetByIDWithFields(t *testing.T) {
+	db := setupTestDB(t)
+	repo := NewDatasetRepository(db)
+	fieldRepo := NewDatasetFieldRepository(db)
+
+	dataset := &models.Dataset{
+		ID:        "with-fields-test-id",
+		TenantID:  "tenant-1",
+		Name:      "With Fields Test",
+		Type:      "sql",
+		Config:    `{"sql": "SELECT 1"}`,
+		Status:    1,
+		CreatedBy: "user-1",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	err := repo.Create(context.Background(), dataset)
+	if err != nil {
+		t.Fatalf("Failed to create dataset: %v", err)
+	}
+
+	displayName := "ID"
+	field := &models.DatasetField{
+		ID:          "field-1",
+		DatasetID:   "with-fields-test-id",
+		Name:        "id",
+		DisplayName: &displayName,
+		DataType:    "string",
+		Type:        "dimension",
+		CreatedAt:   time.Now(),
+	}
+	err = fieldRepo.Create(context.Background(), field)
+	if err != nil {
+		t.Fatalf("Failed to create field: %v", err)
+	}
+
+	result, err := repo.GetByIDWithFields(context.Background(), "with-fields-test-id")
+	if err != nil {
+		t.Errorf("GetByIDWithFields() error = %v", err)
+	}
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+	if len(result.Fields) == 0 {
+		t.Error("Expected fields to be loaded")
+	}
+}
+
+func TestNewDatasetRepository(t *testing.T) {
+	repo := NewDatasetRepository(nil)
+	if repo == nil {
+		t.Error("Expected non-nil repository")
+	}
+}
