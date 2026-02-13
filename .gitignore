@@ -17,3 +17,9 @@ server
 e2e-*.png
 e2e-test-report.md
 frontend/.vitest-cache/
+
+# Coverage reports
+coverage.out
+coverage*.out
+coverage*.html
+*.prof
