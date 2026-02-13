@@ -141,3 +141,126 @@ func TestCacheKeyBuilding(t *testing.T) {
 	assert.Contains(t, key, "datasource:tables")
 	assert.Contains(t, key, "ds-1")
 }
+
+func TestHashParams(t *testing.T) {
+	t.Run("empty params", func(t *testing.T) {
+		result := HashParams(nil)
+		assert.Equal(t, "none", result)
+	})
+
+	t.Run("empty map", func(t *testing.T) {
+		result := HashParams(map[string]interface{}{})
+		assert.Equal(t, "none", result)
+	})
+
+	t.Run("with params", func(t *testing.T) {
+		params := map[string]interface{}{
+			"key1": "value1",
+			"key2": 123,
+		}
+		result := HashParams(params)
+		assert.Len(t, result, 8)
+	})
+}
+
+func TestCache_GetHitRate(t *testing.T) {
+	t.Run("no requests", func(t *testing.T) {
+		cache := &Cache{metrics: &Metrics{}}
+		assert.Equal(t, 0.0, cache.GetHitRate())
+	})
+
+	t.Run("with hits and misses", func(t *testing.T) {
+		cache := &Cache{metrics: &Metrics{Hits: 3, Misses: 1}}
+		assert.Equal(t, 0.75, cache.GetHitRate())
+	})
+
+	t.Run("all hits", func(t *testing.T) {
+		cache := &Cache{metrics: &Metrics{Hits: 5, Misses: 0}}
+		assert.Equal(t, 1.0, cache.GetHitRate())
+	})
+}
+
+func TestCache_Close(t *testing.T) {
+	t.Run("nil provider", func(t *testing.T) {
+		cache := &Cache{provider: nil}
+		err := cache.Close()
+		assert.NoError(t, err)
+	})
+
+	t.Run("with provider", func(t *testing.T) {
+		provider := &fakeProvider{store: map[string][]byte{}}
+		cache := &Cache{provider: provider}
+		err := cache.Close()
+		assert.NoError(t, err)
+	})
+}
+
+func TestCache_ExportMetrics(t *testing.T) {
+	cache := &Cache{
+		metrics:  &Metrics{Hits: 10, Misses: 5, Failures: 2, Errors: 1},
+		degraded: false,
+	}
+
+	metrics := cache.ExportMetrics()
+	assert.Equal(t, "10", metrics["cache_hits"])
+	assert.Equal(t, "5", metrics["cache_misses"])
+	assert.Equal(t, "2", metrics["cache_failures"])
+	assert.Equal(t, "1", metrics["cache_errors"])
+	assert.Contains(t, metrics["cache_hit_rate"], "0.6667")
+	assert.Equal(t, "false", metrics["cache_degraded"])
+}
+
+func TestBuildPrefix(t *testing.T) {
+	prefix := BuildPrefix("tenant-1", "datasource")
+	assert.Contains(t, prefix, "tenant-1")
+	assert.Contains(t, prefix, "datasource")
+	assert.True(t, len(prefix) > 0 && prefix[len(prefix)-1] == ':')
+}
+
+func TestCache_Invalidate(t *testing.T) {
+	provider := &fakeProvider{store: map[string][]byte{}}
+	cache := &Cache{provider: provider, cfg: config.CacheConfig{DefaultTTL: 60}, metrics: &Metrics{}}
+	ctx := context.Background()
+
+	key := BuildKey("tenant-1", "domain", "id", "none")
+	provider.store[key] = []byte("value")
+
+	err := cache.Invalidate(ctx, "tenant-1", "domain")
+	assert.NoError(t, err)
+}
+
+func TestCache_NonDegradedFailure(t *testing.T) {
+	provider := &fakeProvider{
+		store:   map[string][]byte{},
+		failGet: errors.New("redis error"),
+	}
+	cache := &Cache{provider: provider, cfg: config.CacheConfig{DefaultTTL: 60}, metrics: &Metrics{}, degraded: false}
+	ctx := context.Background()
+
+	_, _, err := cache.Get(ctx, "tenant-1", "domain", "id", nil)
+	assert.Error(t, err)
+}
+
+func TestCache_Set_NonDegradedFailure(t *testing.T) {
+	provider := &fakeProvider{
+		store:   map[string][]byte{},
+		failSet: errors.New("redis error"),
+	}
+	cache := &Cache{provider: provider, cfg: config.CacheConfig{DefaultTTL: 60}, metrics: &Metrics{}, degraded: false}
+	ctx := context.Background()
+
+	err := cache.Set(ctx, "tenant-1", "domain", "id", nil, []byte("value"))
+	assert.Error(t, err)
+}
+
+func TestCache_Invalidate_NonDegradedFailure(t *testing.T) {
+	provider := &fakeProvider{
+		store:            map[string][]byte{},
+		failDeletePrefix: errors.New("redis error"),
+	}
+	cache := &Cache{provider: provider, cfg: config.CacheConfig{DefaultTTL: 60}, metrics: &Metrics{}, degraded: false}
+	ctx := context.Background()
+
+	err := cache.Invalidate(ctx, "tenant-1", "domain")
+	assert.Error(t, err)
+}

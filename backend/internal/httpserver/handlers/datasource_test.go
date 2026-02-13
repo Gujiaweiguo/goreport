@@ -266,3 +266,159 @@ func TestBuildDSN(t *testing.T) {
 	assert.Contains(t, dsn, "localhost:3306")
 	assert.Contains(t, dsn, "testdb")
 }
+
+func TestUpdateDatasource_Success(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := newTestDataSourceHandler(repo)
+
+	repo.On("GetByID", mock.Anything, "ds-1").Return(&models.DataSource{
+		ID:       "ds-1",
+		Name:     "old-name",
+		TenantID: "tenant-1",
+		Host:     "localhost",
+		Port:     3306,
+		Database: "olddb",
+	}, nil).Once()
+	repo.On("Update", mock.Anything, mock.MatchedBy(func(ds *models.DataSource) bool {
+		return ds.Name == "new-name" && ds.Database == "newdb"
+	})).Return(nil).Once()
+
+	body := `{"name":"new-name","database":"newdb"}`
+	w := performRequest(t, http.MethodPut, "/datasource/ds-1", body, "tenant-1", func(r *gin.Engine, h *DataSourceHandler) {
+		r.PUT("/datasource/:id", h.UpdateDatasource)
+	}, h)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"success":true`)
+	repo.AssertExpectations(t)
+}
+
+func TestUpdateDatasource_NotFound(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := newTestDataSourceHandler(repo)
+
+	repo.On("GetByID", mock.Anything, "ds-1").Return(nil, assert.AnError).Once()
+
+	body := `{"name":"new-name"}`
+	w := performRequest(t, http.MethodPut, "/datasource/ds-1", body, "tenant-1", func(r *gin.Engine, h *DataSourceHandler) {
+		r.PUT("/datasource/:id", h.UpdateDatasource)
+	}, h)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	repo.AssertExpectations(t)
+}
+
+func TestUpdateDatasource_InvalidRequest(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := newTestDataSourceHandler(repo)
+
+	repo.On("GetByID", mock.Anything, "ds-1").Return(&models.DataSource{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}, nil).Once()
+
+	body := `{invalid json}`
+	w := performRequest(t, http.MethodPut, "/datasource/ds-1", body, "tenant-1", func(r *gin.Engine, h *DataSourceHandler) {
+		r.PUT("/datasource/:id", h.UpdateDatasource)
+	}, h)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	repo.AssertExpectations(t)
+}
+
+func TestUpdateDatasource_UpdateError(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := newTestDataSourceHandler(repo)
+
+	repo.On("GetByID", mock.Anything, "ds-1").Return(&models.DataSource{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}, nil).Once()
+	repo.On("Update", mock.Anything, mock.Anything).Return(assert.AnError).Once()
+
+	body := `{"name":"new-name"}`
+	w := performRequest(t, http.MethodPut, "/datasource/ds-1", body, "tenant-1", func(r *gin.Engine, h *DataSourceHandler) {
+		r.PUT("/datasource/:id", h.UpdateDatasource)
+	}, h)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	repo.AssertExpectations(t)
+}
+
+func TestDeleteDatasource_NotFound(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := newTestDataSourceHandler(repo)
+
+	repo.On("GetByID", mock.Anything, "ds-1").Return(nil, assert.AnError).Once()
+
+	w := performRequest(t, http.MethodDelete, "/datasource/ds-1", "", "tenant-1", func(r *gin.Engine, h *DataSourceHandler) {
+		r.DELETE("/datasource/:id", h.DeleteDatasource)
+	}, h)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	repo.AssertExpectations(t)
+}
+
+func TestDeleteDatasource_CrossTenant(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := newTestDataSourceHandler(repo)
+
+	repo.On("GetByID", mock.Anything, "ds-1").Return(&models.DataSource{
+		ID:       "ds-1",
+		TenantID: "tenant-2",
+	}, nil).Once()
+
+	w := performRequest(t, http.MethodDelete, "/datasource/ds-1", "", "tenant-1", func(r *gin.Engine, h *DataSourceHandler) {
+		r.DELETE("/datasource/:id", h.DeleteDatasource)
+	}, h)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	repo.AssertExpectations(t)
+}
+
+func TestDeleteDatasource_DeleteError(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := newTestDataSourceHandler(repo)
+
+	repo.On("GetByID", mock.Anything, "ds-1").Return(&models.DataSource{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}, nil).Once()
+	repo.On("Delete", mock.Anything, "ds-1", "tenant-1").Return(assert.AnError).Once()
+
+	w := performRequest(t, http.MethodDelete, "/datasource/ds-1", "", "tenant-1", func(r *gin.Engine, h *DataSourceHandler) {
+		r.DELETE("/datasource/:id", h.DeleteDatasource)
+	}, h)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	repo.AssertExpectations(t)
+}
+
+func TestCreateDatasources_RepoError(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := newTestDataSourceHandler(repo)
+
+	repo.On("Create", mock.Anything, mock.Anything).Return(assert.AnError).Once()
+
+	body := `{"name":"ds","type":"mysql","host":"localhost","port":3306,"database":"goreport","username":"root","password":"root"}`
+	w := performRequest(t, http.MethodPost, "/datasource/create", body, "tenant-1", func(r *gin.Engine, h *DataSourceHandler) {
+		r.POST("/datasource/create", h.CreateDatasource)
+	}, h)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	repo.AssertExpectations(t)
+}
+
+func TestListDatasources_Error(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := newTestDataSourceHandler(repo)
+
+	repo.On("List", mock.Anything, "tenant-1", 1, 10).Return(nil, int64(0), assert.AnError).Once()
+
+	w := performRequest(t, http.MethodGet, "/datasource/list", "", "tenant-1", func(r *gin.Engine, h *DataSourceHandler) {
+		r.GET("/datasource/list", h.ListDatasources)
+	}, h)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	repo.AssertExpectations(t)
+}

@@ -323,3 +323,243 @@ func TestDatasetHandler_GetSchema_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	mockSvc.AssertExpectations(t)
 }
+
+func TestDatasetHandler_Update_Success(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	mockSvc.On("Update", mock.Anything, mock.MatchedBy(func(req *UpdateRequest) bool {
+		return req.ID == "ds-1" && *req.Name == "Updated Name"
+	})).Return(&models.Dataset{
+		ID:       "ds-1",
+		Name:     "Updated Name",
+		TenantID: "tenant-1",
+	}, nil)
+
+	body := `{"name":"Updated Name"}`
+	router := gin.New()
+	router.PUT("/:id", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.Update(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPut, "/ds-1", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_Update_NoTenant(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	body := `{"name":"Updated Name"}`
+	router := gin.New()
+	router.PUT("/:id", handler.Update)
+
+	req := httptest.NewRequest(http.MethodPut, "/ds-1", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDatasetHandler_Preview_Success(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	mockSvc.On("Preview", mock.Anything, "ds-1", "tenant-1").Return([]map[string]interface{}{
+		{"id": 1, "name": "test"},
+	}, nil)
+
+	router := gin.New()
+	router.GET("/:id/preview", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.Preview(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/ds-1/preview", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_Preview_Error(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	mockSvc.On("Preview", mock.Anything, "ds-1", "tenant-1").Return(nil, errors.New("preview failed"))
+
+	router := gin.New()
+	router.GET("/:id/preview", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.Preview(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/ds-1/preview", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_Preview_NoTenant(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	router := gin.New()
+	router.GET("/:id/preview", handler.Preview)
+
+	req := httptest.NewRequest(http.MethodGet, "/ds-1/preview", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDatasetHandler_QueryData_Success(t *testing.T) {
+	handler, _, mockExec := setupDatasetTestHandler()
+
+	mockExec.On("Query", mock.Anything, mock.Anything).Return(&QueryResponse{
+		Data:     []map[string]interface{}{{"id": 1, "name": "test"}},
+		Total:    1,
+		Page:     1,
+		PageSize: 10,
+	}, nil)
+
+	body := `{"fields":["id","name"]}`
+	router := gin.New()
+	router.POST("/:id/query", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.QueryData(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/ds-1/query", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockExec.AssertExpectations(t)
+}
+
+func TestDatasetHandler_QueryData_Error(t *testing.T) {
+	handler, _, mockExec := setupDatasetTestHandler()
+
+	mockExec.On("Query", mock.Anything, mock.Anything).Return(nil, errors.New("query failed"))
+
+	body := `{"fields":["id","name"]}`
+	router := gin.New()
+	router.POST("/:id/query", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.QueryData(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/ds-1/query", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockExec.AssertExpectations(t)
+}
+
+func TestDatasetHandler_QueryData_NoTenant(t *testing.T) {
+	handler, _, _ := setupDatasetTestHandler()
+
+	body := `{"fields":["id","name"]}`
+	router := gin.New()
+	router.POST("/:id/query", handler.QueryData)
+
+	req := httptest.NewRequest(http.MethodPost, "/ds-1/query", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDatasetHandler_GetDimensions_Success(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	dimName := "Name"
+	mockSvc.On("ListDimensions", mock.Anything, "ds-1", "tenant-1").Return([]*models.DatasetField{
+		{ID: "f1", Name: "name", Type: "dimension", DisplayName: &dimName},
+	}, nil)
+
+	router := gin.New()
+	router.GET("/:id/dimensions", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.GetDimensions(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/ds-1/dimensions", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_GetDimensions_Error(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	mockSvc.On("ListDimensions", mock.Anything, "ds-1", "tenant-1").Return(nil, errors.New("not found"))
+
+	router := gin.New()
+	router.GET("/:id/dimensions", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.GetDimensions(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/ds-1/dimensions", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_GetMeasures_Success(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	measureName := "Amount"
+	mockSvc.On("ListMeasures", mock.Anything, "ds-1", "tenant-1").Return([]*models.DatasetField{
+		{ID: "f1", Name: "amount", Type: "measure", DisplayName: &measureName},
+	}, nil)
+
+	router := gin.New()
+	router.GET("/:id/measures", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.GetMeasures(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/ds-1/measures", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestDatasetHandler_GetMeasures_Error(t *testing.T) {
+	handler, mockSvc, _ := setupDatasetTestHandler()
+
+	mockSvc.On("ListMeasures", mock.Anything, "ds-1", "tenant-1").Return(nil, errors.New("not found"))
+
+	router := gin.New()
+	router.GET("/:id/measures", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.GetMeasures(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/ds-1/measures", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	mockSvc.AssertExpectations(t)
+}

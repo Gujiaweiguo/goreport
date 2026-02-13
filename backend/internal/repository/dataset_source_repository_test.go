@@ -5,10 +5,29 @@ import (
 	"testing"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/gujiaweiguo/goreport/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func createTestDatasetForSource(t *testing.T, db *gorm.DB, id, tenantID string) *models.Dataset {
+	t.Helper()
+	dataset := &models.Dataset{
+		ID:        id,
+		TenantID:  tenantID,
+		Name:      "Test Dataset " + id,
+		Type:      "sql",
+		Config:    "{}",
+		Status:    1,
+		CreatedBy: "test-user",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	require.NoError(t, db.Create(dataset).Error)
+	return dataset
+}
 
 func TestNewDatasetSourceRepository(t *testing.T) {
 	repo := NewDatasetSourceRepository(nil)
@@ -19,6 +38,8 @@ func TestDatasetSourceRepository_CreateAndGetByID(t *testing.T) {
 	db := setupTestDB(t)
 	repo := NewDatasetSourceRepository(db)
 	ctx := context.Background()
+
+	createTestDatasetForSource(t, db, "dataset-1", "tenant-1")
 
 	source := &models.DatasetSource{
 		ID:           "source-test-1",
@@ -44,6 +65,8 @@ func TestDatasetSourceRepository_List(t *testing.T) {
 	db := setupTestDB(t)
 	repo := NewDatasetSourceRepository(db)
 	ctx := context.Background()
+
+	createTestDatasetForSource(t, db, "list-dataset", "tenant-1")
 
 	sources := []*models.DatasetSource{
 		{
@@ -80,6 +103,8 @@ func TestDatasetSourceRepository_Update(t *testing.T) {
 	repo := NewDatasetSourceRepository(db)
 	ctx := context.Background()
 
+	createTestDatasetForSource(t, db, "update-dataset", "tenant-1")
+
 	source := &models.DatasetSource{
 		ID:           "update-source-1",
 		DatasetID:    "update-dataset",
@@ -106,6 +131,8 @@ func TestDatasetSourceRepository_Delete(t *testing.T) {
 	db := setupTestDB(t)
 	repo := NewDatasetSourceRepository(db)
 	ctx := context.Background()
+
+	createTestDatasetForSource(t, db, "delete-dataset", "tenant-1")
 
 	source := &models.DatasetSource{
 		ID:           "delete-source-1",

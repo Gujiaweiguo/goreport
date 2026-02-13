@@ -48,15 +48,16 @@ func setupTenant(t *testing.T, db *gorm.DB) string {
 
 func newTestDataSource(id, tenantID, name string) *models.DataSource {
 	return &models.DataSource{
-		ID:       id,
-		TenantID: tenantID,
-		Name:     name,
-		Type:     "mysql",
-		Host:     "127.0.0.1",
-		Port:     3306,
-		Database: "goreport",
-		Username: "root",
-		Password: "root",
+		ID:           id,
+		TenantID:     tenantID,
+		Name:         name,
+		Type:         "mysql",
+		Host:         "127.0.0.1",
+		Port:         3306,
+		Database:     "goreport",
+		DatabaseName: "goreport",
+		Username:     "root",
+		Password:     "root",
 	}
 }
 

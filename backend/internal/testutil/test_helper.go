@@ -3,15 +3,15 @@ package testutil
 import (
 	"os"
 	"testing"
+	"time"
 
+	"github.com/gujiaweiguo/goreport/internal/models"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
-// SetupMySQLTestDB 在 MySQL 环境中创建测试数据库连接
-// 优先使用 TEST_DB_DSN，回退到 DB_DSN
-// 如果两者都不存在，则跳过测试
 func SetupMySQLTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
 	dsn := os.Getenv("TEST_DB_DSN")
 	if dsn == "" {
 		dsn = os.Getenv("DB_DSN")
@@ -28,25 +28,57 @@ func SetupMySQLTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-// EnsureTenants 确保测试所需的租户数据存在
-// 如果租户不存在，则创建它们
+func SetupRepositoryTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db := SetupMySQLTestDB(t)
+
+	err := db.AutoMigrate(
+		&models.Tenant{},
+		&models.User{},
+		&models.DataSource{},
+		&models.Dataset{},
+		&models.DatasetField{},
+		&models.DatasetSource{},
+		&models.Dashboard{},
+		&models.Chart{},
+	)
+	if err != nil {
+		t.Fatalf("Failed to migrate database: %v", err)
+	}
+
+	t.Cleanup(func() {
+		CloseDB(db)
+	})
+
+	return db
+}
+
 func EnsureTenants(db *gorm.DB, t *testing.T) {
+	t.Helper()
 	tenantIDs := []string{"test-tenant", "tenant-a", "tenant-1"}
+	now := time.Now()
 
 	for _, tenantID := range tenantIDs {
-		err := db.Exec(
-			"INSERT IGNORE INTO tenants (id, name, code, status) VALUES (?, ?, ?, 1)",
-			tenantID,
-			"Test "+tenantID,
-			tenantID,
-		).Error
-		if err != nil {
-			t.Fatalf("Failed to prepare tenant fixture: %v", err)
+		var tenant models.Tenant
+		err := db.Where("id = ?", tenantID).First(&tenant).Error
+		if err == gorm.ErrRecordNotFound {
+			tenant = models.Tenant{
+				ID:        tenantID,
+				Name:      "Test " + tenantID,
+				Code:      tenantID,
+				Status:    1,
+				CreatedAt: now,
+				UpdatedAt: now,
+			}
+			if err := db.Create(&tenant).Error; err != nil {
+				t.Fatalf("Failed to prepare tenant fixture: %v", err)
+			}
+		} else if err != nil {
+			t.Fatalf("Failed to check tenant: %v", err)
 		}
 	}
 }
 
-// CleanupTenantData 清理指定租户的测试数据
 func CleanupTenantData(db *gorm.DB, tenantIDs []string) {
 	hasDashboards := db.Migrator().HasTable("dashboards")
 	hasDatasets := db.Migrator().HasTable("datasets")
@@ -73,7 +105,6 @@ func CleanupTenantData(db *gorm.DB, tenantIDs []string) {
 	}
 }
 
-// CloseDB 安全关闭数据库连接
 func CloseDB(db *gorm.DB) {
 	sqlDB, err := db.DB()
 	if err == nil {

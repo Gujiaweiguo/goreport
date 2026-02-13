@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/gujiaweiguo/goreport/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,10 +17,29 @@ func TestNewDatasetFieldRepository(t *testing.T) {
 	assert.NotNil(t, repo)
 }
 
+func createTestDataset(t *testing.T, db *gorm.DB, id, tenantID string) *models.Dataset {
+	t.Helper()
+	dataset := &models.Dataset{
+		ID:        id,
+		TenantID:  tenantID,
+		Name:      "Test Dataset " + id,
+		Type:      "sql",
+		Config:    "{}",
+		Status:    1,
+		CreatedBy: "test-user",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	require.NoError(t, db.Create(dataset).Error)
+	return dataset
+}
+
 func TestDatasetFieldRepository_CreateAndGetByID(t *testing.T) {
 	db := setupTestDB(t)
 	repo := NewDatasetFieldRepository(db)
 	ctx := context.Background()
+
+	createTestDataset(t, db, "dataset-1", "tenant-1")
 
 	displayName := "Test Field"
 	field := &models.DatasetField{
@@ -28,6 +49,7 @@ func TestDatasetFieldRepository_CreateAndGetByID(t *testing.T) {
 		DisplayName: &displayName,
 		Type:        "dimension",
 		DataType:    "string",
+		Config:      "{}",
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -46,6 +68,8 @@ func TestDatasetFieldRepository_List(t *testing.T) {
 	repo := NewDatasetFieldRepository(db)
 	ctx := context.Background()
 
+	createTestDataset(t, db, "list-dataset", "tenant-1")
+
 	displayName1 := "Field 1"
 	displayName2 := "Field 2"
 	fields := []*models.DatasetField{
@@ -57,6 +81,7 @@ func TestDatasetFieldRepository_List(t *testing.T) {
 			Type:        "dimension",
 			DataType:    "string",
 			SortIndex:   1,
+			Config:      "{}",
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 		},
@@ -68,6 +93,7 @@ func TestDatasetFieldRepository_List(t *testing.T) {
 			Type:        "measure",
 			DataType:    "number",
 			SortIndex:   2,
+			Config:      "{}",
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 		},
@@ -87,6 +113,8 @@ func TestDatasetFieldRepository_ListByType(t *testing.T) {
 	repo := NewDatasetFieldRepository(db)
 	ctx := context.Background()
 
+	createTestDataset(t, db, "type-dataset", "tenant-1")
+
 	displayName := "Dim Field"
 	field := &models.DatasetField{
 		ID:          "type-field-1",
@@ -95,6 +123,7 @@ func TestDatasetFieldRepository_ListByType(t *testing.T) {
 		DisplayName: &displayName,
 		Type:        "dimension",
 		DataType:    "string",
+		Config:      "{}",
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -110,6 +139,8 @@ func TestDatasetFieldRepository_Update(t *testing.T) {
 	repo := NewDatasetFieldRepository(db)
 	ctx := context.Background()
 
+	createTestDataset(t, db, "update-dataset", "tenant-1")
+
 	displayName := "Original"
 	field := &models.DatasetField{
 		ID:          "update-field-1",
@@ -118,6 +149,7 @@ func TestDatasetFieldRepository_Update(t *testing.T) {
 		DisplayName: &displayName,
 		Type:        "dimension",
 		DataType:    "string",
+		Config:      "{}",
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -138,6 +170,8 @@ func TestDatasetFieldRepository_Delete(t *testing.T) {
 	repo := NewDatasetFieldRepository(db)
 	ctx := context.Background()
 
+	createTestDataset(t, db, "delete-dataset", "tenant-1")
+
 	displayName := "To Delete"
 	field := &models.DatasetField{
 		ID:          "delete-field-1",
@@ -146,6 +180,7 @@ func TestDatasetFieldRepository_Delete(t *testing.T) {
 		DisplayName: &displayName,
 		Type:        "dimension",
 		DataType:    "string",
+		Config:      "{}",
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -162,6 +197,8 @@ func TestDatasetFieldRepository_DeleteComputedFields(t *testing.T) {
 	repo := NewDatasetFieldRepository(db)
 	ctx := context.Background()
 
+	createTestDataset(t, db, "computed-dataset", "tenant-1")
+
 	displayName := "Computed"
 	field := &models.DatasetField{
 		ID:          "computed-field-1",
@@ -171,6 +208,7 @@ func TestDatasetFieldRepository_DeleteComputedFields(t *testing.T) {
 		Type:        "measure",
 		DataType:    "number",
 		IsComputed:  true,
+		Config:      "{}",
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
