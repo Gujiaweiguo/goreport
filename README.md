@@ -172,26 +172,46 @@ make clean        # 清理容器和卷
 
 ### 质量门（当前阶段）
 
-PR 合并前触发 3 个检查 job：
+PR 合并前触发以下检查 jobs：
 
 | Job | 说明 | 状态 |
 |-----|------|------|
-| `backend-check` | 后端测试 + 覆盖率 | ✅ Required |
+| `backend-lint` | Go 代码风格检查 (golangci-lint) | ✅ Required |
+| `backend-check` | 后端单元测试 + 覆盖率 | ✅ Required |
+| `backend-check-with-db` | 数据库集成测试 (repository/dataset/datasource) | ✅ Required |
 | `frontend-check` | 前端 build + test | ✅ Required |
 | `smoke-security` | 依赖安全扫描 | 🔍 Non-blocking |
 
+### Branch Protection Rules 配置
+
+在 GitHub 仓库 Settings > Branches > Branch protection rules 中配置：
+
+```
+Require status checks to pass before merging:
+  ✓ backend-lint
+  ✓ backend-check
+  ✓ backend-check-with-db
+  ✓ frontend-check
+```
+
 ### 观察期项目（暂不阻断）
 
-- **TypeScript 类型检查**：存在历史类型错误，待修复后转为 Required
-- **测试覆盖率阈值**：当前约 25%，待补齐测试后设定阈值
+- **测试覆盖率阈值**：当前约 45%，待补齐测试后设定更高阈值
 - **npm audit**：观察期，1-2 周后转为 Required
 
 ### 本地复现 CI
 
 ```bash
-# 后端检查
+# 后端检查（无 DB）
 cd backend && go test -coverprofile=coverage.out ./... -v
 ./scripts/ci/check-go-coverage.sh 45
+
+# 后端检查（有 DB，需要 Docker）
+docker run -d --name mysql-test -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=goreport_test -p 3306:3306 mysql:8.0
+sleep 30  # 等待 MySQL 启动
+mysql -h 127.0.0.1 -u root -proot goreport_test < backend/db/init.sql
+TEST_DB_DSN="root:root@tcp(127.0.0.1:3306)/goreport_test?charset=utf8mb4&parseTime=True&loc=Local" \
+  go test ./internal/repository/... ./internal/dataset/... ./internal/datasource/... -v
 
 # 前端检查
 cd frontend && npm ci
