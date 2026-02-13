@@ -130,3 +130,122 @@ func TestDataSourceRepository_Delete(t *testing.T) {
 	_, err := repo.GetByID(ctx, ds.ID)
 	assert.Error(t, err)
 }
+
+func TestDataSourceRepository_Search(t *testing.T) {
+	db, repo := setupDataSourceRepo(t)
+	ctx := context.Background()
+	tenantID := setupTenant(t, db)
+
+	require.NoError(t, repo.Create(ctx, newTestDataSource(testID("ds"), tenantID, "MySQL-Production")))
+	require.NoError(t, repo.Create(ctx, newTestDataSource(testID("ds"), tenantID, "MySQL-Dev")))
+	require.NoError(t, repo.Create(ctx, newTestDataSource(testID("ds"), tenantID, "PostgreSQL-Main")))
+
+	results, total, err := repo.Search(ctx, tenantID, "MySQL", 1, 10)
+	require.NoError(t, err)
+	assert.Len(t, results, 2)
+	assert.Equal(t, int64(2), total)
+
+	results, total, err = repo.Search(ctx, tenantID, "Production", 1, 10)
+	require.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.Equal(t, int64(1), total)
+
+	results, total, err = repo.Search(ctx, tenantID, "", 1, 10)
+	require.NoError(t, err)
+	assert.Len(t, results, 3)
+	assert.Equal(t, int64(3), total)
+}
+
+func TestDataSourceRepository_Copy(t *testing.T) {
+	db, repo := setupDataSourceRepo(t)
+	ctx := context.Background()
+	tenantID := setupTenant(t, db)
+
+	original := newTestDataSource(testID("ds"), tenantID, "Original-DS")
+	original.Host = "db.example.com"
+	original.Port = 5432
+	require.NoError(t, repo.Create(ctx, original))
+
+	copy, err := repo.Copy(ctx, original.ID, tenantID)
+	require.NoError(t, err)
+	assert.NotNil(t, copy)
+	assert.NotEqual(t, original.ID, copy.ID)
+	assert.Equal(t, "Original-DS (副本)", copy.Name)
+	assert.Equal(t, "db.example.com", copy.Host)
+	assert.Equal(t, 5432, copy.Port)
+	assert.Equal(t, tenantID, copy.TenantID)
+
+	list, _, err := repo.List(ctx, tenantID, 1, 10)
+	require.NoError(t, err)
+	assert.Len(t, list, 2)
+}
+
+func TestDataSourceRepository_Copy_WrongTenant(t *testing.T) {
+	db, repo := setupDataSourceRepo(t)
+	ctx := context.Background()
+	tenantID := setupTenant(t, db)
+	otherTenantID := setupTenant(t, db)
+
+	ds := newTestDataSource(testID("ds"), tenantID, "DS")
+	require.NoError(t, repo.Create(ctx, ds))
+
+	_, err := repo.Copy(ctx, ds.ID, otherTenantID)
+	assert.Error(t, err)
+	assert.Equal(t, gorm.ErrRecordNotFound, err)
+}
+
+func TestDataSourceRepository_Move(t *testing.T) {
+	db, repo := setupDataSourceRepo(t)
+	ctx := context.Background()
+	tenantID := setupTenant(t, db)
+
+	ds := newTestDataSource(testID("ds"), tenantID, "MoveTest")
+	require.NoError(t, repo.Create(ctx, ds))
+
+	err := repo.Move(ctx, ds.ID, tenantID)
+	require.NoError(t, err)
+}
+
+func TestDataSourceRepository_Rename(t *testing.T) {
+	db, repo := setupDataSourceRepo(t)
+	ctx := context.Background()
+	tenantID := setupTenant(t, db)
+
+	ds := newTestDataSource(testID("ds"), tenantID, "OldName")
+	require.NoError(t, repo.Create(ctx, ds))
+
+	err := repo.Rename(ctx, ds.ID, tenantID, "NewName")
+	require.NoError(t, err)
+
+	renamed, err := repo.GetByID(ctx, ds.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "NewName", renamed.Name)
+}
+
+func TestDataSourceRepository_Rename_EmptyName(t *testing.T) {
+	db, repo := setupDataSourceRepo(t)
+	ctx := context.Background()
+	tenantID := setupTenant(t, db)
+
+	ds := newTestDataSource(testID("ds"), tenantID, "Name")
+	require.NoError(t, repo.Create(ctx, ds))
+
+	err := repo.Rename(ctx, ds.ID, tenantID, "")
+	assert.Error(t, err)
+	assert.Equal(t, gorm.ErrInvalidData, err)
+}
+
+func TestDataSourceRepository_Rename_Duplicate(t *testing.T) {
+	db, repo := setupDataSourceRepo(t)
+	ctx := context.Background()
+	tenantID := setupTenant(t, db)
+
+	ds1 := newTestDataSource(testID("ds"), tenantID, "DS1")
+	ds2 := newTestDataSource(testID("ds"), tenantID, "DS2")
+	require.NoError(t, repo.Create(ctx, ds1))
+	require.NoError(t, repo.Create(ctx, ds2))
+
+	err := repo.Rename(ctx, ds2.ID, tenantID, "DS1")
+	assert.Error(t, err)
+	assert.Equal(t, gorm.ErrDuplicatedKey, err)
+}
