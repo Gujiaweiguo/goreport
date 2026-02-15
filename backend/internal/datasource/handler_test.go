@@ -3,6 +3,7 @@ package datasource
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1088,7 +1089,7 @@ func TestDatasourceHandler_TestConnection_Success(t *testing.T) {
 		handler.TestConnection(c)
 	})
 
-	body := `{"name":"Test","type":"mysql","host":"127.0.0.1","port":3306,"database":"goreport","username":"root","password":"root"}`
+	body := fmt.Sprintf(`{"name":"Test","type":"mysql","host":"127.0.0.1","port":3306,"database":"%s","username":"root","password":"root"}`, getTestDatabaseName())
 	req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
