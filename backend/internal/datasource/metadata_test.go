@@ -3,6 +3,7 @@ package datasource
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,6 +18,23 @@ func getTestDSNForMetadata() string {
 		dsn = os.Getenv("DB_DSN")
 	}
 	return dsn
+}
+
+func getTestDatabaseNameForMetadata() string {
+	dsn := getTestDSNForMetadata()
+	if dsn == "" {
+		return "goreport"
+	}
+	lastSlash := strings.LastIndex(dsn, "/")
+	if lastSlash == -1 {
+		return "goreport"
+	}
+	dbPart := dsn[lastSlash+1:]
+	questionIdx := strings.Index(dbPart, "?")
+	if questionIdx > 0 {
+		return dbPart[:questionIdx]
+	}
+	return dbPart
 }
 
 func skipIfNoDBForMetadata(t *testing.T) *gorm.DB {
@@ -39,7 +57,8 @@ func TestGetTables_Success(t *testing.T) {
 		sqlDB.Close()
 	}()
 
-	tables, err := GetTables(context.Background(), db, "goreport")
+	dbName := getTestDatabaseNameForMetadata()
+	tables, err := GetTables(context.Background(), db, dbName)
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, tables)
@@ -74,7 +93,8 @@ func TestGetFields_Success(t *testing.T) {
 		sqlDB.Close()
 	}()
 
-	fields, err := GetFields(context.Background(), db, "goreport", "users")
+	dbName := getTestDatabaseNameForMetadata()
+	fields, err := GetFields(context.Background(), db, dbName, "users")
 
 	if err != nil {
 		assert.Contains(t, err.Error(), "failed to query fields")

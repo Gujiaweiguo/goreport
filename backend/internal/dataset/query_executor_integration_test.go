@@ -61,6 +61,27 @@ func setupQueryIntegrationTest(t *testing.T) (*gorm.DB, repository.DatasetReposi
 	return db, datasetRepo, fieldRepo, datasourceRepo
 }
 
+func ensureTenantExists(db *gorm.DB, t *testing.T, tenantID string) {
+	t.Helper()
+	var tenant models.Tenant
+	err := db.Where("id = ?", tenantID).First(&tenant).Error
+	if err == gorm.ErrRecordNotFound {
+		tenant = models.Tenant{
+			ID:        tenantID,
+			Name:      "Test " + tenantID,
+			Code:      tenantID,
+			Status:    1,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		if err := db.Create(&tenant).Error; err != nil {
+			t.Fatalf("Failed to create tenant: %v", err)
+		}
+	} else if err != nil {
+		t.Fatalf("Failed to check tenant: %v", err)
+	}
+}
+
 func TestQueryExecutor_Query_Integration(t *testing.T) {
 	skipIfNoDBForQuery(t)
 
@@ -72,6 +93,7 @@ func TestQueryExecutor_Query_Integration(t *testing.T) {
 
 	ctx := context.Background()
 	tenantID := "test-query-integration"
+	ensureTenantExists(db, t, tenantID)
 	now := time.Now()
 	ts := fmt.Sprintf("%08x", now.UnixNano()&0xFFFFFFFF)
 
@@ -187,6 +209,7 @@ func TestQueryExecutor_Query_UnsupportedType(t *testing.T) {
 
 	ctx := context.Background()
 	tenantID := "test-query-unsupported"
+	ensureTenantExists(db, t, tenantID)
 	now := time.Now()
 	ts := fmt.Sprintf("%08x", now.UnixNano()&0xFFFFFFFF)
 
@@ -238,6 +261,7 @@ func TestQueryExecutor_Query_WithFilters(t *testing.T) {
 
 	ctx := context.Background()
 	tenantID := "test-query-filters"
+	ensureTenantExists(db, t, tenantID)
 	now := time.Now()
 	ts := fmt.Sprintf("%08x", now.UnixNano()&0xFFFFFFFF)
 
@@ -315,6 +339,7 @@ func TestQueryExecutor_Query_WithPagination(t *testing.T) {
 
 	ctx := context.Background()
 	tenantID := "test-query-pagination"
+	ensureTenantExists(db, t, tenantID)
 	now := time.Now()
 	ts := fmt.Sprintf("%08x", now.UnixNano()&0xFFFFFFFF)
 
