@@ -1,6 +1,6 @@
 {
-  "active_plan": "/opt/code/goreport/.sisyphus/plans/pre-release-full-regression.md",
-  "started_at": "2026-02-15T05:33:13.673Z",
+  "active_plan": "/opt/code/goreport/.sisyphus/plans/test-coverage-improvement.md",
+  "started_at": "2026-02-15T08:06:30.484Z",
   "session_ids": ["ses_3a044408dffe5JjUY97Z05WRPk"],
-  "plan_name": "pre-release-full-regression"
+  "plan_name": "test-coverage-improvement"
 }
