@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/gujiaweiguo/goreport/internal/render"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -234,4 +235,79 @@ func TestDefaultReportType(t *testing.T) {
 	assert.Equal(t, "report", defaultReportType(""))
 	assert.Equal(t, "dashboard", defaultReportType("dashboard"))
 	assert.Equal(t, "custom", defaultReportType("custom"))
+}
+
+func TestReportService_Preview_Success(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	renderEngine := render.NewEngine(nil, nil)
+	svc := NewService(mockRepo, renderEngine, nil)
+
+	existingReport := &Report{
+		ID:       "r-1",
+		TenantID: "tenant-1",
+		Name:     "Test Report",
+		Config:   `{"cells":[{"row":0,"col":0,"text":"Hello"}]}`,
+	}
+
+	req := &PreviewRequest{
+		ID:       "r-1",
+		TenantID: "tenant-1",
+		Params:   nil,
+	}
+
+	mockRepo.On("Get", mock.Anything, "r-1", "tenant-1").Return(existingReport, nil)
+
+	resp, err := svc.Preview(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Contains(t, resp.HTML, "Hello")
+	mockRepo.AssertExpectations(t)
+}
+
+func TestReportService_Preview_ReportNotFound(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	svc := NewService(mockRepo, nil, nil)
+
+	req := &PreviewRequest{
+		ID:       "not-exist",
+		TenantID: "tenant-1",
+		Params:   nil,
+	}
+
+	mockRepo.On("Get", mock.Anything, "not-exist", "tenant-1").Return(nil, errors.New("not found"))
+
+	resp, err := svc.Preview(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, ErrNotFound, err)
+	assert.Nil(t, resp)
+	mockRepo.AssertExpectations(t)
+}
+
+func TestReportService_Preview_InvalidConfig(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	renderEngine := render.NewEngine(nil, nil)
+	svc := NewService(mockRepo, renderEngine, nil)
+
+	existingReport := &Report{
+		ID:       "r-1",
+		TenantID: "tenant-1",
+		Name:     "Test Report",
+		Config:   `{invalid json}`,
+	}
+
+	req := &PreviewRequest{
+		ID:       "r-1",
+		TenantID: "tenant-1",
+		Params:   nil,
+	}
+
+	mockRepo.On("Get", mock.Anything, "r-1", "tenant-1").Return(existingReport, nil)
+
+	resp, err := svc.Preview(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	mockRepo.AssertExpectations(t)
 }

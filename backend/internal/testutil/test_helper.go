@@ -1,6 +1,8 @@
 package testutil
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"testing"
 	"time"
@@ -110,4 +112,92 @@ func CloseDB(db *gorm.DB) {
 	if err == nil {
 		_ = sqlDB.Close()
 	}
+}
+
+// TestFixture is the interface for test data factories.
+// Fixture implementations provide setup and cleanup operations for test data.
+type TestFixture interface {
+	// Setup creates test data in the database
+	Setup(db *gorm.DB) error
+	// Cleanup removes test data from the database
+	Cleanup(db *gorm.DB) error
+}
+
+// TenantTestContext provides an isolated test context for tenant-scoped tests.
+// Each context has unique tenant and user IDs to support parallel test execution.
+type TenantTestContext struct {
+	TenantID string
+	UserID   string
+	DB       *gorm.DB
+}
+
+// NewTenantTestContext creates a new isolated test context with unique IDs.
+// The tenant ID and user ID are generated using the test name to ensure uniqueness.
+func NewTenantTestContext(t *testing.T, db *gorm.DB) *TenantTestContext {
+	t.Helper()
+
+	// Generate unique IDs based on test name
+	testName := t.Name()
+	sanitizedName := sanitizeTestName(testName)
+	tenantID := "test-tenant-" + sanitizedName
+	userID := "test-user-" + sanitizedName
+
+	ctx := &TenantTestContext{
+		TenantID: tenantID,
+		UserID:   userID,
+		DB:       db,
+	}
+
+	// Ensure tenant exists
+	EnsureTenant(db, tenantID)
+
+	// Register cleanup
+	t.Cleanup(func() {
+		CleanupTenantData(db, []string{tenantID})
+	})
+
+	return ctx
+}
+
+// sanitizeTestName converts test name to a safe string for use in IDs
+func sanitizeTestName(name string) string {
+	result := make([]byte, 0, len(name))
+	for _, c := range name {
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' {
+			result = append(result, byte(c))
+		} else if c == '_' || c == '/' {
+			result = append(result, '-')
+		}
+	}
+	// Limit length
+	if len(result) > 32 {
+		result = result[:32]
+	}
+	return string(result)
+}
+
+// EnsureTenant ensures a tenant exists in the database
+func EnsureTenant(db *gorm.DB, tenantID string) error {
+	now := time.Now()
+	var tenant models.Tenant
+	err := db.Where("id = ?", tenantID).First(&tenant).Error
+	if err == gorm.ErrRecordNotFound {
+		tenant = models.Tenant{
+			ID:        tenantID,
+			Name:      "Test " + tenantID,
+			Code:      tenantID,
+			Status:    1,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}
+		return db.Create(&tenant).Error
+	}
+	return err
+}
+
+// GenerateUniqueID generates a unique ID for test data
+func GenerateUniqueID(prefix string) string {
+	b := make([]byte, 3)
+	rand.Read(b)
+	return prefix + "-" + time.Now().Format("20060102150405") + "-" + hex.EncodeToString(b)
 }

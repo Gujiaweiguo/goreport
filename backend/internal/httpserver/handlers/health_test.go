@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -25,10 +26,31 @@ func TestHealthHandler_Check_Struct(t *testing.T) {
 	assert.NotNil(t, handler)
 }
 
-func TestHealthHandler_Check_WithMockDB(t *testing.T) {
-	db, err := gorm.Open(mysql.Open("root:invalid@tcp(localhost:9999)/test?parseTime=true"), &gorm.Config{})
+func TestHealthHandler_Check_NilDB(t *testing.T) {
+	handler := NewHealthHandler(nil)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/health", nil)
+
+	handler.Check(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "ok")
+}
+
+func TestHealthHandler_Check_WithDB(t *testing.T) {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		dsn = os.Getenv("DB_DSN")
+	}
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN or DB_DSN not set")
+	}
+
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		t.Skip("cannot create mock db connection")
+		t.Skip("cannot connect to database")
 	}
 
 	handler := NewHealthHandler(db)
@@ -40,4 +62,6 @@ func TestHealthHandler_Check_WithMockDB(t *testing.T) {
 	handler.Check(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "ok")
+	assert.Contains(t, w.Body.String(), "database")
 }

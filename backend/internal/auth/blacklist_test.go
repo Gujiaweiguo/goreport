@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -44,7 +45,8 @@ func TestBlacklist_RevokeAndCheck_WithRedis(t *testing.T) {
 
 	InitBlacklist(c)
 
-	token := "token-test-revoke"
+	// Use unique token to avoid conflicts with other tests
+	token := fmt.Sprintf("token-test-revoke-%d", time.Now().UnixNano())
 	assert.False(t, IsTokenRevoked(context.Background(), token))
 
 	err = RevokeToken(context.Background(), token, time.Now().Add(2*time.Minute))
@@ -52,7 +54,15 @@ func TestBlacklist_RevokeAndCheck_WithRedis(t *testing.T) {
 	assert.True(t, IsTokenRevoked(context.Background(), token))
 
 	// 过期时间已过时应忽略写入。
-	err = RevokeToken(context.Background(), "expired-token", time.Now().Add(-time.Minute))
+	expiredToken := fmt.Sprintf("expired-token-%d", time.Now().UnixNano())
+	err = RevokeToken(context.Background(), expiredToken, time.Now().Add(-time.Minute))
 	require.NoError(t, err)
-	assert.False(t, IsTokenRevoked(context.Background(), "expired-token"))
+	assert.False(t, IsTokenRevoked(context.Background(), expiredToken))
+}
+
+func TestBlacklist_EmptyToken(t *testing.T) {
+	blacklistStore = nil
+	err := RevokeToken(context.Background(), "", time.Now().Add(time.Minute))
+	require.NoError(t, err)
+	assert.False(t, IsTokenRevoked(context.Background(), ""))
 }
