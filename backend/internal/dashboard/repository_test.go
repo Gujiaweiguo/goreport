@@ -228,7 +228,7 @@ func TestRepository_Get_ContextCancellation(t *testing.T) {
 	dashboard := newTestDashboard(testDashboardID("dash"), tenantID, "Context Test")
 	require.NoError(t, repo.Create(dashboard))
 
-	// This test verifies the repository works with a cancelled context
+	// This test verifies the repository works with a canceled context
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 

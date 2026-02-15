@@ -149,7 +149,9 @@ func NewTenantTestContext(t *testing.T, db *gorm.DB) *TenantTestContext {
 	}
 
 	// Ensure tenant exists
-	EnsureTenant(db, tenantID)
+	if err := EnsureTenant(db, tenantID); err != nil {
+		t.Fatalf("failed to ensure tenant %s: %v", tenantID, err)
+	}
 
 	// Register cleanup
 	t.Cleanup(func() {

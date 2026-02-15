@@ -166,7 +166,7 @@ func TestServer_ContextTimeout(t *testing.T) {
 		case <-time.After(100 * time.Millisecond):
 			c.JSON(200, gin.H{"status": "completed"})
 		case <-ctx.Done():
-			c.JSON(499, gin.H{"error": "context cancelled"})
+			c.JSON(499, gin.H{"error": "context canceled"})
 		}
 	})
 
