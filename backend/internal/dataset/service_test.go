@@ -3,6 +3,7 @@ package dataset
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/gujiaweiguo/goreport/internal/models"
@@ -873,7 +874,7 @@ func TestDatasetService_UpdateField_Success(t *testing.T) {
 
 func TestDatasetService_UpdateField_FieldNotFound(t *testing.T) {
 	mockFieldRepo := &mockDatasetFieldRepository{}
-	svc := NewService(nil, mockFieldRepo, nil, nil)
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
 
 	req := &UpdateFieldRequest{
 		FieldID:  "f1",
@@ -1058,7 +1059,7 @@ func TestDatasetService_BatchUpdateFields_MissingFieldID(t *testing.T) {
 
 func TestDatasetService_DeleteField_NotFound(t *testing.T) {
 	mockFieldRepo := &mockDatasetFieldRepository{}
-	svc := NewService(nil, mockFieldRepo, nil, nil)
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
 
 	mockFieldRepo.On("GetByID", mock.Anything, "f1").Return(nil, errors.New("not found"))
 
@@ -1070,7 +1071,7 @@ func TestDatasetService_DeleteField_NotFound(t *testing.T) {
 
 func TestDatasetService_DeleteField_NonComputedField(t *testing.T) {
 	mockFieldRepo := &mockDatasetFieldRepository{}
-	svc := NewService(nil, mockFieldRepo, nil, nil)
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
 
 	existingField := &models.DatasetField{
 		ID:         "f1",
@@ -1225,4 +1226,187 @@ func TestDatasetService_ListMeasures_WrongTenant(t *testing.T) {
 	assert.Equal(t, "dataset not found", err.Error())
 	assert.Nil(t, fields)
 	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ResolveComputedFieldDependencies_Success(t *testing.T) {
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
+
+	exprTotal := "[amount] + [calc_tax]"
+	exprTax := "[amount] * 0.1"
+	root := &models.DatasetField{ID: "f-total", DatasetID: "ds-1", Name: "total", IsComputed: true, Expression: &exprTotal}
+	tax := &models.DatasetField{ID: "f-tax", DatasetID: "ds-1", Name: "calc_tax", IsComputed: true, Expression: &exprTax}
+	amount := &models.DatasetField{ID: "f-amount", DatasetID: "ds-1", Name: "amount", IsComputed: false}
+	all := []*models.DatasetField{amount, tax, root}
+
+	mockFieldRepo.On("GetByID", mock.Anything, "f-total").Return(root, nil)
+	mockFieldRepo.On("GetByID", mock.Anything, "f-tax").Return(tax, nil)
+	mockFieldRepo.On("List", mock.Anything, "ds-1").Return(all, nil).Times(3)
+
+	deps, err := svc.ResolveComputedFieldDependencies(context.Background(), "ds-1", "f-total")
+
+	assert.NoError(t, err)
+	assert.Len(t, deps, 2)
+	assert.Equal(t, "f-tax", deps[0].ID)
+	assert.Equal(t, "f-total", deps[1].ID)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ResolveComputedFieldDependencies_FieldNotComputed(t *testing.T) {
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
+
+	base := &models.DatasetField{ID: "f-amount", DatasetID: "ds-1", Name: "amount", IsComputed: false}
+	mockFieldRepo.On("GetByID", mock.Anything, "f-amount").Return(base, nil)
+
+	deps, err := svc.ResolveComputedFieldDependencies(context.Background(), "ds-1", "f-amount")
+
+	assert.NoError(t, err)
+	assert.Len(t, deps, 0)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ResolveComputedFieldDependencies_Circular(t *testing.T) {
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
+
+	exprA := "[b]"
+	exprB := "[a]"
+	a := &models.DatasetField{ID: "f-a", DatasetID: "ds-1", Name: "a", IsComputed: true, Expression: &exprA}
+	b := &models.DatasetField{ID: "f-b", DatasetID: "ds-1", Name: "b", IsComputed: true, Expression: &exprB}
+	all := []*models.DatasetField{a, b}
+
+	mockFieldRepo.On("GetByID", mock.Anything, "f-a").Return(a, nil)
+	mockFieldRepo.On("GetByID", mock.Anything, "f-b").Return(b, nil)
+	mockFieldRepo.On("List", mock.Anything, "ds-1").Return(all, nil).Times(2)
+
+	deps, err := svc.ResolveComputedFieldDependencies(context.Background(), "ds-1", "f-a")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "circular dependency detected")
+	assert.Nil(t, deps)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ResolveComputedFieldDependencies_FieldWrongDataset(t *testing.T) {
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
+
+	field := &models.DatasetField{ID: "f-1", DatasetID: "ds-2", Name: "x", IsComputed: false}
+	mockFieldRepo.On("GetByID", mock.Anything, "f-1").Return(field, nil)
+
+	deps, err := svc.ResolveComputedFieldDependencies(context.Background(), "ds-1", "f-1")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "does not belong to dataset")
+	assert.Nil(t, deps)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ResolveComputedFieldDependencies_GetByIDError(t *testing.T) {
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
+
+	mockFieldRepo.On("GetByID", mock.Anything, "f-1").Return(nil, errors.New("not found"))
+
+	deps, err := svc.ResolveComputedFieldDependencies(context.Background(), "ds-1", "f-1")
+
+	assert.Error(t, err)
+	assert.Nil(t, deps)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_extractFields_NonSQL(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil).(*service)
+	ds := &models.Dataset{ID: "ds-1", Type: "api"}
+
+	err := svc.extractFields(context.Background(), ds)
+
+	assert.NoError(t, err)
+}
+
+func TestDatasetService_extractFields_SQLWithoutDatasource(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil).(*service)
+	ds := &models.Dataset{ID: "ds-1", Type: "sql"}
+
+	err := svc.extractFields(context.Background(), ds)
+
+	assert.NoError(t, err)
+}
+
+func TestDatasetService_executeSQLPreview_Integration(t *testing.T) {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		dsn = os.Getenv("DB_DSN")
+	}
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN or DB_DSN not set")
+	}
+
+	mockDSRepo := &mockDatasourceRepository{}
+	svc := NewService(nil, nil, nil, mockDSRepo).(*service)
+
+	datasourceID := "ds-preview"
+	dataset := &models.Dataset{
+		ID:           "dataset-preview",
+		Type:         "sql",
+		DatasourceID: &datasourceID,
+		Config:       `{"query":"SELECT 1 AS id, 'ok' AS name"}`,
+	}
+
+	mockDSRepo.On("GetByID", mock.Anything, datasourceID).Return(&models.DataSource{
+		ID:       datasourceID,
+		Host:     "127.0.0.1",
+		Port:     3306,
+		Database: "goreport",
+		Username: "root",
+		Password: "root",
+	}, nil)
+
+	rows, err := svc.executeSQLPreview(context.Background(), dataset)
+
+	assert.NoError(t, err)
+	assert.NotEmpty(t, rows)
+	assert.Equal(t, "1", rows[0]["id"])
+	assert.Equal(t, "ok", rows[0]["name"])
+	mockDSRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_extractSQLFields_Integration(t *testing.T) {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		dsn = os.Getenv("DB_DSN")
+	}
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN or DB_DSN not set")
+	}
+
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	mockDSRepo := &mockDatasourceRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, mockDSRepo).(*service)
+
+	datasourceID := "ds-extract"
+	dataset := &models.Dataset{
+		ID:           "dataset-extract",
+		Type:         "sql",
+		DatasourceID: &datasourceID,
+		Config:       `{"query":"SELECT 1 AS id, 'ok' AS name"}`,
+	}
+
+	mockDSRepo.On("GetByID", mock.Anything, datasourceID).Return(&models.DataSource{
+		ID:       datasourceID,
+		Host:     "127.0.0.1",
+		Port:     3306,
+		Database: "goreport",
+		Username: "root",
+		Password: "root",
+	}, nil)
+	mockFieldRepo.On("DeleteComputedFields", mock.Anything, dataset.ID).Return(nil)
+	mockFieldRepo.On("Create", mock.Anything, mock.AnythingOfType("*models.DatasetField")).Return(nil)
+
+	err := svc.extractSQLFields(context.Background(), dataset)
+
+	assert.NoError(t, err)
+	mockDSRepo.AssertExpectations(t)
+	mockFieldRepo.AssertExpectations(t)
 }
