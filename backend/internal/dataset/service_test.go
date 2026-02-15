@@ -4,12 +4,33 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/gujiaweiguo/goreport/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+func getTestDatabaseNameForService() string {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		dsn = os.Getenv("DB_DSN")
+	}
+	if dsn == "" {
+		return "goreport"
+	}
+	lastSlash := strings.LastIndex(dsn, "/")
+	if lastSlash == -1 {
+		return "goreport"
+	}
+	dbPart := dsn[lastSlash+1:]
+	questionIdx := strings.Index(dbPart, "?")
+	if questionIdx > 0 {
+		return dbPart[:questionIdx]
+	}
+	return dbPart
+}
 
 type mockDatasetRepository struct {
 	mock.Mock
@@ -1358,7 +1379,7 @@ func TestDatasetService_executeSQLPreview_Integration(t *testing.T) {
 		ID:       datasourceID,
 		Host:     "127.0.0.1",
 		Port:     3306,
-		Database: "goreport",
+		Database: getTestDatabaseNameForService(),
 		Username: "root",
 		Password: "root",
 	}, nil)
@@ -1397,7 +1418,7 @@ func TestDatasetService_extractSQLFields_Integration(t *testing.T) {
 		ID:       datasourceID,
 		Host:     "127.0.0.1",
 		Port:     3306,
-		Database: "goreport",
+		Database: getTestDatabaseNameForService(),
 		Username: "root",
 		Password: "root",
 	}, nil)

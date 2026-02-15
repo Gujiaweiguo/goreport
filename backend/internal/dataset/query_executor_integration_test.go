@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,6 +22,23 @@ func getTestDSNForQuery() string {
 		dsn = os.Getenv("DB_DSN")
 	}
 	return dsn
+}
+
+func getTestDatabaseNameForQuery() string {
+	dsn := getTestDSNForQuery()
+	if dsn == "" {
+		return "goreport"
+	}
+	lastSlash := strings.LastIndex(dsn, "/")
+	if lastSlash == -1 {
+		return "goreport"
+	}
+	dbPart := dsn[lastSlash+1:]
+	questionIdx := strings.Index(dbPart, "?")
+	if questionIdx > 0 {
+		return dbPart[:questionIdx]
+	}
+	return dbPart
 }
 
 func skipIfNoDBForQuery(t *testing.T) {
@@ -65,7 +83,7 @@ func TestQueryExecutor_Query_Integration(t *testing.T) {
 		Type:      "mysql",
 		Host:      "127.0.0.1",
 		Port:      3306,
-		Database:  "goreport",
+		Database:  getTestDatabaseNameForQuery(),
 		Username:  "root",
 		Password:  "root",
 		CreatedAt: now,
@@ -231,7 +249,7 @@ func TestQueryExecutor_Query_WithFilters(t *testing.T) {
 		Type:      "mysql",
 		Host:      "127.0.0.1",
 		Port:      3306,
-		Database:  "goreport",
+		Database:  getTestDatabaseNameForQuery(),
 		Username:  "root",
 		Password:  "root",
 		CreatedAt: now,
@@ -308,7 +326,7 @@ func TestQueryExecutor_Query_WithPagination(t *testing.T) {
 		Type:      "mysql",
 		Host:      "127.0.0.1",
 		Port:      3306,
-		Database:  "goreport",
+		Database:  getTestDatabaseNameForQuery(),
 		Username:  "root",
 		Password:  "root",
 		CreatedAt: now,

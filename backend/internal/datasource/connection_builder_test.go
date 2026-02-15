@@ -3,6 +3,7 @@ package datasource
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +18,23 @@ func getTestDSNForConnection() string {
 		dsn = os.Getenv("DB_DSN")
 	}
 	return dsn
+}
+
+func getTestDatabaseName() string {
+	dsn := getTestDSNForConnection()
+	if dsn == "" {
+		return "goreport"
+	}
+	lastSlash := strings.LastIndex(dsn, "/")
+	if lastSlash == -1 {
+		return "goreport"
+	}
+	dbPart := dsn[lastSlash+1:]
+	questionIdx := strings.Index(dbPart, "?")
+	if questionIdx > 0 {
+		return dbPart[:questionIdx]
+	}
+	return dbPart
 }
 
 func skipIfNoDBForConnection(t *testing.T) {
@@ -203,7 +221,7 @@ func TestConnectionBuilder_Connect_Success(t *testing.T) {
 	ds := &models.DataSource{
 		Host:     "127.0.0.1",
 		Port:     3306,
-		Database: "goreport",
+		Database: getTestDatabaseName(),
 		Username: "root",
 		Password: "root",
 	}
@@ -228,7 +246,7 @@ func TestConnectionBuilder_Connect_Timeout(t *testing.T) {
 	ds := &models.DataSource{
 		Host:     "192.168.255.255",
 		Port:     3306,
-		Database: "goreport",
+		Database: getTestDatabaseName(),
 		Username: "root",
 		Password: "root",
 	}
@@ -249,7 +267,7 @@ func TestConnectionBuilder_TestConnection_Success(t *testing.T) {
 	ds := &models.DataSource{
 		Host:     "127.0.0.1",
 		Port:     3306,
-		Database: "goreport",
+		Database: getTestDatabaseName(),
 		Username: "root",
 		Password: "root",
 	}
@@ -268,7 +286,7 @@ func TestConnectionBuilder_TestConnection_InvalidCredentials(t *testing.T) {
 	ds := &models.DataSource{
 		Host:     "127.0.0.1",
 		Port:     3306,
-		Database: "goreport",
+		Database: getTestDatabaseName(),
 		Username: "invalid_user_xyz",
 		Password: "invalid_password",
 	}
@@ -276,4 +294,104 @@ func TestConnectionBuilder_TestConnection_InvalidCredentials(t *testing.T) {
 	err := builder.TestConnection(ctx, ds)
 
 	assert.Error(t, err)
+}
+
+func TestConnectionBuilder_Connect_WithQueryTimeout(t *testing.T) {
+	skipIfNoDBForConnection(t)
+
+	builder := NewConnectionBuilder()
+	ctx := context.Background()
+
+	ds := &models.DataSource{
+		Host:                "127.0.0.1",
+		Port:                3306,
+		Database:            getTestDatabaseName(),
+		Username:            "root",
+		Password:            "root",
+		QueryTimeoutSeconds: 60,
+	}
+
+	db, tunnel, err := builder.Connect(ctx, ds)
+
+	require.NoError(t, err)
+	assert.NotNil(t, db)
+	assert.Nil(t, tunnel)
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	sqlDB.Close()
+}
+
+func TestConnectionBuilder_Connect_WithMaxConnections(t *testing.T) {
+	skipIfNoDBForConnection(t)
+
+	builder := NewConnectionBuilder()
+	ctx := context.Background()
+
+	ds := &models.DataSource{
+		Host:           "127.0.0.1",
+		Port:           3306,
+		Database:       getTestDatabaseName(),
+		Username:       "root",
+		Password:       "root",
+		MaxConnections: 10,
+	}
+
+	db, tunnel, err := builder.Connect(ctx, ds)
+
+	require.NoError(t, err)
+	assert.NotNil(t, db)
+	assert.Nil(t, tunnel)
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	sqlDB.Close()
+}
+
+func TestConnectionBuilder_Connect_WithBothSettings(t *testing.T) {
+	skipIfNoDBForConnection(t)
+
+	builder := NewConnectionBuilder()
+	ctx := context.Background()
+
+	ds := &models.DataSource{
+		Host:                "127.0.0.1",
+		Port:                3306,
+		Database:            getTestDatabaseName(),
+		Username:            "root",
+		Password:            "root",
+		QueryTimeoutSeconds: 30,
+		MaxConnections:      20,
+	}
+
+	db, tunnel, err := builder.Connect(ctx, ds)
+
+	require.NoError(t, err)
+	assert.NotNil(t, db)
+	assert.Nil(t, tunnel)
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	sqlDB.Close()
+}
+
+func TestConnectionBuilder_TestConnection_WithSettings(t *testing.T) {
+	skipIfNoDBForConnection(t)
+
+	builder := NewConnectionBuilder()
+	ctx := context.Background()
+
+	ds := &models.DataSource{
+		Host:                "127.0.0.1",
+		Port:                3306,
+		Database:            getTestDatabaseName(),
+		Username:            "root",
+		Password:            "root",
+		QueryTimeoutSeconds: 30,
+		MaxConnections:      10,
+	}
+
+	err := builder.TestConnection(ctx, ds)
+
+	assert.NoError(t, err)
 }

@@ -90,7 +90,7 @@ cp .env.prod.example .env.prod
 # 编辑 .env.prod 配置数据库密码等
 
 # 启动服务
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f deploy/docker-compose.prod.yml up -d
 
 # 访问系统
 open http://localhost

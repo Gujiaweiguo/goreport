@@ -283,3 +283,270 @@ func TestEngine_Render_LargeDataset(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, html, "Data 0")
 }
+
+func TestEngine_Render_EmptyRowCol(t *testing.T) {
+	db, _ := gorm.Open(mysql.Open("user:pass@tcp(localhost:3306)/db"), &gorm.Config{})
+	engine := NewEngine(db, nil)
+
+	config := `{
+		"cells": [
+			{"row": 0, "col": 0, "text": "A"},
+			{"row": 0, "col": 1, "text": ""}
+		]
+	}`
+
+	html, err := engine.Render(context.Background(), config, nil, "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Contains(t, html, "A")
+}
+
+func TestEngine_Render_ContextCancellation(t *testing.T) {
+	db, _ := gorm.Open(mysql.Open("user:pass@tcp(localhost:3306)/db"), &gorm.Config{})
+	engine := NewEngine(db, nil)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	config := `{"cells": [{"row": 0, "col": 0, "text": "Test"}]}`
+
+	html, err := engine.Render(ctx, config, nil, "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Contains(t, html, "Test")
+}
+
+func TestCell_Fields(t *testing.T) {
+	dsID := "ds-123"
+	tableName := "users"
+	fieldName := "name"
+
+	cell := Cell{
+		Row:          1,
+		Col:          2,
+		Value:        "value",
+		Text:         "text",
+		DatasourceID: &dsID,
+		TableName:    &tableName,
+		FieldName:    &fieldName,
+	}
+
+	assert.Equal(t, 1, cell.Row)
+	assert.Equal(t, 2, cell.Col)
+	assert.Equal(t, "value", cell.Value)
+	assert.Equal(t, "text", cell.Text)
+	assert.Equal(t, &dsID, cell.DatasourceID)
+	assert.Equal(t, &tableName, cell.TableName)
+	assert.Equal(t, &fieldName, cell.FieldName)
+}
+
+func TestReportConfig_Fields(t *testing.T) {
+	config := ReportConfig{
+		Cells: []Cell{
+			{Row: 0, Col: 0, Text: "A"},
+			{Row: 1, Col: 1, Text: "B"},
+		},
+	}
+
+	assert.Len(t, config.Cells, 2)
+	assert.Equal(t, "A", config.Cells[0].Text)
+	assert.Equal(t, "B", config.Cells[1].Text)
+}
+
+func TestEngine_Render_WithDatasourceCell(t *testing.T) {
+	t.Skip("Requires actual database connection")
+	db, _ := gorm.Open(mysql.Open("user:pass@tcp(localhost:3306)/db"), &gorm.Config{})
+	engine := NewEngine(db, nil)
+
+	dsID := "ds-1"
+	tableName := "users"
+	fieldName := "name"
+
+	// Cell with datasource binding but DB lookup will fail
+	config := `{
+		"cells": [
+			{"row": 0, "col": 0, "text": "Fallback", "datasourceId": "` + dsID + `", "tableName": "` + tableName + `", "fieldName": "` + fieldName + `"}
+		]
+	}`
+
+	// Should use fallback text when datasource lookup fails
+	html, err := engine.Render(context.Background(), config, nil, "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Contains(t, html, "Fallback")
+}
+
+func TestEngine_Render_WithAllOptionalFields(t *testing.T) {
+	t.Skip("Requires actual database connection")
+	db, _ := gorm.Open(mysql.Open("user:pass@tcp(localhost:3306)/db"), &gorm.Config{})
+	engine := NewEngine(db, nil)
+
+	dsID := "ds-1"
+	tableName := "users"
+	fieldName := "name"
+
+	// Cell with all optional fields
+	config := `{
+		"cells": [
+			{
+				"row": 0,
+				"col": 0,
+				"value": "CellValue",
+				"text": "CellText",
+				"datasourceId": "` + dsID + `",
+				"tableName": "` + tableName + `",
+				"fieldName": "` + fieldName + `"
+			}
+		]
+	}`
+
+	html, err := engine.Render(context.Background(), config, nil, "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Contains(t, html, "CellValue")
+}
+
+func TestEngine_Render_WithNegativePage(t *testing.T) {
+	db, _ := gorm.Open(mysql.Open("user:pass@tcp(localhost:3306)/db"), &gorm.Config{})
+	engine := NewEngine(db, nil)
+
+	config := `{
+		"cells": [
+			{"row": 0, "col": 0, "text": "Row 0"},
+			{"row": 1, "col": 0, "text": "Row 1"}
+		]
+	}`
+
+	html, err := engine.Render(context.Background(), config, map[string]interface{}{
+		"page":     float64(-1),
+		"pageSize": float64(10),
+	}, "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Contains(t, html, "Row 0")
+}
+
+func TestEngine_Render_WithZeroPageSize(t *testing.T) {
+	db, _ := gorm.Open(mysql.Open("user:pass@tcp(localhost:3306)/db"), &gorm.Config{})
+	engine := NewEngine(db, nil)
+
+	config := `{
+		"cells": [
+			{"row": 0, "col": 0, "text": "Row 0"},
+			{"row": 1, "col": 0, "text": "Row 1"}
+		]
+	}`
+
+	html, err := engine.Render(context.Background(), config, map[string]interface{}{
+		"page":     float64(0),
+		"pageSize": float64(0),
+	}, "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Contains(t, html, "Row 0")
+	assert.Contains(t, html, "Row 1")
+}
+
+func TestEngine_Render_WithCacheNil(t *testing.T) {
+	db, _ := gorm.Open(mysql.Open("user:pass@tcp(localhost:3306)/db"), &gorm.Config{})
+	engine := NewEngine(db, nil)
+
+	// Verify cache is nil
+	assert.Nil(t, engine.cache)
+
+	config := `{
+		"cells": [
+			{"row": 0, "col": 0, "text": "Test"}
+		]
+	}`
+
+	html, err := engine.Render(context.Background(), config, nil, "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Contains(t, html, "Test")
+}
+
+func TestEngine_Render_WithCacheEnabled(t *testing.T) {
+	db, _ := gorm.Open(mysql.Open("user:pass@tcp(localhost:3306)/db"), &gorm.Config{})
+	cfg := config.CacheConfig{Enabled: false}
+	cacheObj, _ := cache.New(cfg)
+	engine := NewEngine(db, cacheObj)
+
+	// Verify cache is not nil (but degraded since disabled)
+	assert.NotNil(t, engine.cache)
+
+	config := `{
+		"cells": [
+			{"row": 0, "col": 0, "text": "Test"}
+		]
+	}`
+
+	html, err := engine.Render(context.Background(), config, nil, "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Contains(t, html, "Test")
+}
+
+func TestEngine_Render_LargeRowCol(t *testing.T) {
+	db, _ := gorm.Open(mysql.Open("user:pass@tcp(localhost:3306)/db"), &gorm.Config{})
+	engine := NewEngine(db, nil)
+
+	config := `{
+		"cells": [
+			{"row": 1000, "col": 500, "text": "Far Cell"}
+		]
+	}`
+
+	html, err := engine.Render(context.Background(), config, nil, "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Contains(t, html, "Far Cell")
+}
+
+func TestEngine_Render_OnlyTextNoValue(t *testing.T) {
+	db, _ := gorm.Open(mysql.Open("user:pass@tcp(localhost:3306)/db"), &gorm.Config{})
+	engine := NewEngine(db, nil)
+
+	config := `{
+		"cells": [
+			{"row": 0, "col": 0, "text": "OnlyText"}
+		]
+	}`
+
+	html, err := engine.Render(context.Background(), config, nil, "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Contains(t, html, "OnlyText")
+}
+
+func TestEngine_Render_OnlyValueNoText(t *testing.T) {
+	db, _ := gorm.Open(mysql.Open("user:pass@tcp(localhost:3306)/db"), &gorm.Config{})
+	engine := NewEngine(db, nil)
+
+	config := `{
+		"cells": [
+			{"row": 0, "col": 0, "value": "OnlyValue"}
+		]
+	}`
+
+	html, err := engine.Render(context.Background(), config, nil, "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Contains(t, html, "OnlyValue")
+}
+
+func TestEngine_Render_EmptyValueAndText(t *testing.T) {
+	db, _ := gorm.Open(mysql.Open("user:pass@tcp(localhost:3306)/db"), &gorm.Config{})
+	engine := NewEngine(db, nil)
+
+	config := `{
+		"cells": [
+			{"row": 0, "col": 0, "value": "", "text": ""}
+		]
+	}`
+
+	html, err := engine.Render(context.Background(), config, nil, "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Contains(t, html, "<td></td>")
+}

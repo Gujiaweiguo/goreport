@@ -7,7 +7,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-COMPOSE_FILE="docker-compose.test.yml"
+COMPOSE_FILE="deploy/docker-compose.test.yml"
 
 print_info() {
     echo -e "${GREEN}[INFO]${NC} $1"

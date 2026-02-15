@@ -65,7 +65,7 @@ goreport/
 │   ├── package.json
 │   ├── vite.config.ts
 │   └── Dockerfile.dev
-├── docker-compose.yml         # 开发环境配置
+├── deploy/docker-compose.yml         # 开发环境配置
 ├── Makefile                 # 常用命令
 └── openspec/                # 需求规范
     ├── specs/              # 规格定义

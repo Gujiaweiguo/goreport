@@ -36,7 +36,7 @@ func GetFields(ctx context.Context, db *gorm.DB, database, tableName string) ([]
 			column_name AS name,
 			data_type AS type,
 			(is_nullable = 'YES') AS nullable,
-			COALESCE(column_comment, table_comment) AS comment
+			column_comment AS comment
 		FROM information_schema.columns
 		WHERE table_schema = ? AND table_name = ?
 		ORDER BY ordinal_position

@@ -210,4 +210,148 @@ func TestAPIExpressionBuilder_Functions(t *testing.T) {
 			t.Errorf("IF() = %v, want yes", result)
 		}
 	})
+
+	t.Run("SUBSTRING with length", func(t *testing.T) {
+		result := fnMap["SUBSTRING"]("hello", 0, 3)
+		if result != "hel" {
+			t.Errorf("SUBSTRING() = %v, want hel", result)
+		}
+	})
+
+	t.Run("SUBSTRING without length", func(t *testing.T) {
+		result := fnMap["SUBSTRING"]("hello", 2)
+		if result != "llo" {
+			t.Errorf("SUBSTRING() = %v, want llo", result)
+		}
+	})
+
+	t.Run("SUBSTRING out of range", func(t *testing.T) {
+		result := fnMap["SUBSTRING"]("hello", 100, 3)
+		if result != "" {
+			t.Errorf("SUBSTRING() = %v, want empty", result)
+		}
+	})
+
+	t.Run("SUBSTRING negative start", func(t *testing.T) {
+		result := fnMap["SUBSTRING"]("hello", -1, 3)
+		if result != "" {
+			t.Errorf("SUBSTRING() = %v, want empty", result)
+		}
+	})
+
+	t.Run("CEIL positive", func(t *testing.T) {
+		result := fnMap["CEIL"](3)
+		if result != 3 {
+			t.Errorf("CEIL() = %v, want 3", result)
+		}
+	})
+
+	t.Run("CEIL negative", func(t *testing.T) {
+		result := fnMap["CEIL"](-3)
+		if result != -4 {
+			t.Errorf("CEIL() = %v, want -4", result)
+		}
+	})
+
+	t.Run("FLOOR positive", func(t *testing.T) {
+		result := fnMap["FLOOR"](3)
+		if result != 4 {
+			t.Errorf("FLOOR() = %v, want 4", result)
+		}
+	})
+
+	t.Run("FLOOR negative", func(t *testing.T) {
+		result := fnMap["FLOOR"](-3)
+		if result != -3 {
+			t.Errorf("FLOOR() = %v, want -3", result)
+		}
+	})
+
+	t.Run("ABS", func(t *testing.T) {
+		result := fnMap["ABS"](-5)
+		if result != -5 {
+			t.Errorf("ABS() = %v, want -5", result)
+		}
+	})
+
+	t.Run("SUM", func(t *testing.T) {
+		result := fnMap["SUM"](10)
+		if result != 10 {
+			t.Errorf("SUM() = %v, want 10", result)
+		}
+	})
+
+	t.Run("AVG", func(t *testing.T) {
+		result := fnMap["AVG"](10)
+		if result != 10 {
+			t.Errorf("AVG() = %v, want 10", result)
+		}
+	})
+
+	t.Run("COUNT", func(t *testing.T) {
+		result := fnMap["COUNT"]()
+		if result != 0 {
+			t.Errorf("COUNT() = %v, want 0", result)
+		}
+	})
+
+	t.Run("MAX", func(t *testing.T) {
+		result := fnMap["MAX"](10)
+		if result != 10 {
+			t.Errorf("MAX() = %v, want 10", result)
+		}
+	})
+
+	t.Run("MIN", func(t *testing.T) {
+		result := fnMap["MIN"](10)
+		if result != 10 {
+			t.Errorf("MIN() = %v, want 10", result)
+		}
+	})
+
+	t.Run("ROUND", func(t *testing.T) {
+		result := fnMap["ROUND"](3.14)
+		if result != 3.14 {
+			t.Errorf("ROUND() = %v, want 3.14", result)
+		}
+	})
+
+	t.Run("functions with no args", func(t *testing.T) {
+		if fnMap["LENGTH"]() != 0 {
+			t.Error("LENGTH with no args should return 0")
+		}
+		if fnMap["UPPER"]() != "" {
+			t.Error("UPPER with no args should return empty")
+		}
+		if fnMap["LOWER"]() != "" {
+			t.Error("LOWER with no args should return empty")
+		}
+		if fnMap["TRIM"]() != "" {
+			t.Error("TRIM with no args should return empty")
+		}
+		if fnMap["ROUND"]() != 0 {
+			t.Error("ROUND with no args should return 0")
+		}
+		if fnMap["CEIL"]() != 0 {
+			t.Error("CEIL with no args should return 0")
+		}
+		if fnMap["FLOOR"]() != 0 {
+			t.Error("FLOOR with no args should return 0")
+		}
+		if fnMap["ABS"]() != 0 {
+			t.Error("ABS with no args should return 0")
+		}
+		if fnMap["SUM"]() != 0 {
+			t.Error("SUM with no args should return 0")
+		}
+		if fnMap["AVG"]() != 0 {
+			t.Error("AVG with no args should return 0")
+		}
+		if fnMap["MAX"]() != nil {
+			t.Error("MAX with no args should return nil")
+		}
+		if fnMap["MIN"]() != nil {
+			t.Error("MIN with no args should return nil")
+		}
+	})
 }

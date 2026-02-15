@@ -1,0 +1,100 @@
+# goReport 开发环境 Docker Compose 配置
+# 一键启动完整开发环境：前端 + 后端 + MySQL + Redis
+
+networks:
+  goreport-network:
+    driver: bridge
+
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: goreport-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: goreport
+      MYSQL_USER: goreport
+      MYSQL_PASSWORD: goreport
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ../backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - goreport-network
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: goreport-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - goreport-network
+
+  # Go 后端
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.dev
+    container_name: goreport-backend
+    restart: unless-stopped
+    ports:
+      - "8085:8085"
+    volumes:
+      - ../backend:/app
+      - go-mod-cache:/go/pkg/mod
+    environment:
+      - SERVER_ADDR=:8085
+      - DB_DSN=root:root@tcp(goreport-mysql:3306)/goreport?charset=utf8mb4&parseTime=True&loc=Local
+      - REDIS_ADDR=goreport-redis:6379
+      - REDIS_PASSWORD=
+      - JWT_SECRET=${JWT_SECRET:-}
+      - JWT_ISSUER=goreport
+      - JWT_AUDIENCE=goreport
+      - GIN_MODE=debug
+    networks:
+      - goreport-network
+
+  # Vue 前端
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile.dev
+    container_name: goreport-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../frontend:/app/frontend
+      - /app/frontend/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8085
+      - VITE_WS_URL=ws://localhost:8085
+      - VITE_PROXY_TARGET=http://backend:8085
+    depends_on:
+      - backend
+    networks:
+      - goreport-network
+
+volumes:
+  mysql-data:
+  redis-data:
+  go-mod-cache:

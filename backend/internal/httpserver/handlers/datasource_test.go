@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -14,6 +15,14 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+func getTestDSN() string {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		dsn = os.Getenv("DB_DSN")
+	}
+	return dsn
+}
 
 type mockDataSourceRepo struct {
 	mock.Mock
@@ -421,4 +430,325 @@ func TestListDatasources_Error(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	repo.AssertExpectations(t)
+}
+
+type mockMetadataProvider struct {
+	mock.Mock
+}
+
+func (m *mockMetadataProvider) GetTables(ctx context.Context, tenantID, datasourceID, dsn string) ([]string, error) {
+	args := m.Called(ctx, tenantID, datasourceID, dsn)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *mockMetadataProvider) GetFields(ctx context.Context, tenantID, datasourceID, dsn, tableName string) ([]map[string]interface{}, error) {
+	args := m.Called(ctx, tenantID, datasourceID, dsn, tableName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]map[string]interface{}), args.Error(1)
+}
+
+func TestGetTables_MissingID(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.GET("/datasource/:id/tables", h.GetTables)
+
+	req := httptest.NewRequest(http.MethodGet, "/datasource//tables", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestGetTables_NotFound(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	repo.On("GetByID", mock.Anything, "ds-1").Return(nil, assert.AnError).Once()
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.GET("/datasource/:id/tables", h.GetTables)
+
+	req := httptest.NewRequest(http.MethodGet, "/datasource/ds-1/tables", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	repo.AssertExpectations(t)
+}
+
+func TestGetTables_CrossTenant(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	repo.On("GetByID", mock.Anything, "ds-1").Return(&models.DataSource{
+		ID:       "ds-1",
+		TenantID: "tenant-2",
+	}, nil).Once()
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.GET("/datasource/:id/tables", h.GetTables)
+
+	req := httptest.NewRequest(http.MethodGet, "/datasource/ds-1/tables", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	repo.AssertExpectations(t)
+}
+
+func TestGetFields_MissingID(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.GET("/datasource/:id/fields/:table", h.GetFields)
+
+	req := httptest.NewRequest(http.MethodGet, "/datasource//fields/users", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestGetFields_MissingTable(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.GET("/datasource/:id/fields/:table", h.GetFields)
+
+	req := httptest.NewRequest(http.MethodGet, "/datasource/ds-1/fields/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.NotEqual(t, http.StatusOK, w.Code)
+}
+
+func TestGetFields_NotFound(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	repo.On("GetByID", mock.Anything, "ds-1").Return(nil, assert.AnError).Once()
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.GET("/datasource/:id/fields/:table", h.GetFields)
+
+	req := httptest.NewRequest(http.MethodGet, "/datasource/ds-1/fields/users", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	repo.AssertExpectations(t)
+}
+
+func TestGetFields_CrossTenant(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	repo.On("GetByID", mock.Anything, "ds-1").Return(&models.DataSource{
+		ID:       "ds-1",
+		TenantID: "tenant-2",
+	}, nil).Once()
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.GET("/datasource/:id/fields/:table", h.GetFields)
+
+	req := httptest.NewRequest(http.MethodGet, "/datasource/ds-1/fields/users", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	repo.AssertExpectations(t)
+}
+
+func TestTestDatasource_InvalidRequest(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.POST("/datasource/test", h.TestDatasource)
+
+	req := httptest.NewRequest(http.MethodPost, "/datasource/test", strings.NewReader(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestTestDatasource_MissingFields(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.POST("/datasource/test", h.TestDatasource)
+
+	req := httptest.NewRequest(http.MethodPost, "/datasource/test", strings.NewReader(`{"host": "localhost"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestGetFields_DatasourceNotFound(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	repo.On("GetByID", mock.Anything, "nonexistent").Return(nil, assert.AnError).Once()
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.GET("/datasource/:id/fields/:table", h.GetFields)
+
+	req := httptest.NewRequest(http.MethodGet, "/datasource/nonexistent/fields/users", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	repo.AssertExpectations(t)
+}
+
+func TestUpdateDatasource_EmptyID(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.PUT("/datasource/:id", h.UpdateDatasource)
+
+	req := httptest.NewRequest(http.MethodPut, "/datasource/", strings.NewReader(`{"name": "test"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestDeleteDatasource_EmptyID(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.DELETE("/datasource/:id", h.DeleteDatasource)
+
+	req := httptest.NewRequest(http.MethodDelete, "/datasource/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestTestDatasource_DB_Integration(t *testing.T) {
+	dsn := getTestDSN()
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN or DB_DSN not set")
+	}
+
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.POST("/datasource/test", h.TestDatasource)
+
+	body := `{"name":"test","type":"mysql","host":"127.0.0.1","port":3306,"username":"root","password":"root","database":"goreport"}`
+	req := httptest.NewRequest(http.MethodPost, "/datasource/test", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "success")
+}
+
+func TestTestDatasource_DB_InvalidHost(t *testing.T) {
+	repo := &mockDataSourceRepo{}
+	h := &DataSourceHandler{repo: repo}
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Next()
+	})
+	r.POST("/datasource/test", h.TestDatasource)
+
+	body := `{"name":"test","type":"mysql","host":"invalid-host-xyz","port":3306,"username":"root","password":"root","database":"test"}`
+	req := httptest.NewRequest(http.MethodPost, "/datasource/test", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "connection failed")
 }

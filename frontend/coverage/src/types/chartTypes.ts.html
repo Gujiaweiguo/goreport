@@ -1,0 +1,265 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for src/types/chartTypes.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/types</a> chartTypes.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>0/60</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>0/60</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >// 图表类型常量定义<span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" ></span></span></span>
+<span class="cstat-no" title="statement not covered" >export const CHART_TYPES = {</span>
+<span class="cstat-no" title="statement not covered" >  // 基础图表</span>
+<span class="cstat-no" title="statement not covered" >  bar: { key: 'bar', name: '柱状图', category: '基础图表', description: '用于横向对比不同维度的数据表现。\n适合展示销量、访问量和排行。', scene: '分类对比、指标排行、月度趋势对照', icon: 'Histogram' },</span>
+<span class="cstat-no" title="statement not covered" >  line: { key: 'line', name: '折线图', category: '基础图表', description: '强调连续时间维度上的变化趋势。\n可用于观察峰值和转折点。', scene: '趋势分析、实时监控、同比环比', icon: 'TrendCharts' },</span>
+<span class="cstat-no" title="statement not covered" >  pie: { key: 'pie', name: '饼图', category: '基础图表', description: '突出整体与部分之间的占比关系。\n数据类别不宜过多以保证可读性。', scene: '占比结构、渠道份额、成本构成', icon: 'PieChart' },</span>
+<span class="cstat-no" title="statement not covered" >  scatter: { key: 'scatter', name: '散点图', category: '基础图表', description: '展示两个变量间的相关性与分布。\n便于发现异常点与聚类。', scene: '相关性分析、离群点检测、样本分布', icon: 'Grid' },</span>
+<span class="cstat-no" title="statement not covered" >  </span>
+<span class="cstat-no" title="statement not covered" >  // 饼图扩展</span>
+<span class="cstat-no" title="statement not covered" >  'pie-extended': { key: 'pie-extended', name: '环形图', category: '饼图', description: '在饼图基础上保留中心留白区域。\n可放置关键 KPI 指标密度。', scene: '核心指标卡、占比+总量联合展示', icon: 'PieChart' },</span>
+<span class="cstat-no" title="statement not covered" >  'donut': { key: 'donut', name: '南丁玫瑰图', category: '饼图', description: '使用半径或面积表达维度差异。\n视觉冲击更强，适合展示层级差。', scene: '品牌偏好、地域贡献、层级比较', icon: 'DataAnalysis' },</span>
+<span class="cstat-no" title="statement not covered" >  </span>
+<span class="cstat-no" title="statement not covered" >  // 仪表盘/数据看板</span>
+<span class="cstat-no" title="statement not covered" >  gauge: { key: 'gauge', name: '仪表盘', category: '仪表盘', description: '适合单值指标的状态展示。\n可配阈值区间体现风险等级。', scene: '完成率、健康度、风险预警', icon: 'DataBoard' },</span>
+<span class="cstat-no" title="statement not covered" >  </span>
+<span class="cstat-no" title="statement not covered" >  // 高级图表</span>
+<span class="cstat-no" title="statement not covered" >  'graph': { key: 'graph', name: '关系图', category: '关系图', description: '以节点和连线刻画实体关系网络。\n适合展示连接强度和传播链路。', scene: '组织关系、社交网络、调用链路', icon: 'Share' },</span>
+<span class="cstat-no" title="statement not covered" >  'sankey': { key: 'sankey', name: '桑基图', category: '关系图', description: '展示流量在多个阶段间的流向。\n节点宽度体现体量变化。', scene: '转化漏斗、能耗流向、资金去向', icon: 'Connection' },</span>
+<span class="cstat-no" title="statement not covered" >  'tree': { key: 'tree', name: '树图', category: '关系图', description: '用于层级结构和父子关系表达。\n支持自上而下的结构浏览。', scene: '组织架构、目录结构、权限树', icon: 'DataLine' },</span>
+<span class="cstat-no" title="statement not covered" >  'relation': { key: 'relation', name: '关系图', category: '关系图', description: '刻画实体间的关联关系和流向。', scene: '关联分析、依赖追踪、影响分析', icon: 'Share' },</span>
+<span class="cstat-no" title="statement not covered" >  </span>
+<span class="cstat-no" title="statement not covered" >  // 地理图</span>
+<span class="cstat-no" title="statement not covered" >  geo: { key: 'geo', name: '地理图', category: '地理图', items: [{ key: 'map', label: '地图', description: '支持区域数据对比和下钻。' }] },</span>
+<span class="cstat-no" title="statement not covered" >  </span>
+<span class="cstat-no" title="statement not covered" >  // 数据分析</span>
+<span class="cstat-no" title="statement not covered" >  'heatmap': { key: 'heatmap', name: '热力图', category: '高级图表', description: '通过颜色深浅展示数据密度和分布。\n适用于大规模数据集的异常检测。', scene: '异常检测、数据密度、用户行为分析', icon: 'DataAnalysis' },</span>
+<span class="cstat-no" title="statement not covered" >  'treemap': { key: 'treemap', name: '树图', category: '高级图表', description: '层级结构展示数据分布和占比。', scene: '目录分析、销售漏斗、用户路径', icon: 'DataLine' },</span>
+<span class="cstat-no" title="statement not covered" >  'funnel': { key: 'funnel', name: '漏斗图', category: '高级图表', description: '展示数据在各个阶段的转化率。\n适用于转化漏斗、用户行为分析。', scene: '转化漏斗、流失分析、用户路径', icon: 'TrendCharts' },</span>
+<span class="cstat-no" title="statement not covered" >  'wordcloud': { key: 'wordcloud', name: '词云', category: '高级图表', description: '展示文本词频统计和重要性。\n适用于关键词分析和文本挖掘。', scene: '关键词分析、舆情监控、文本挖掘', icon: 'DataAnalysis' },</span>
+<span class="cstat-no" title="statement not covered" >  'parallel': { key: 'parallel', name: '平行坐标图', category: '高级图表', description: '在多维空间中展示数据相关性。\n适用于多维数据对比和雷达图。', scene: '多维度对比、绩效评估、能力矩阵', icon: 'DataAnalysis' },</span>
+<span class="cstat-no" title="statement not covered" >  'radar': { key: 'radar', name: '雷达图', category: '高级图表', description: '以多维数据展示对比分析。\n适用于能力评估、绩效分析、多指标对比。', scene: '能力评估、绩效分析、多指标对比', icon: 'TrendCharts' },</span>
+<span class="cstat-no" title="statement not covered" >  'boxplot': { key: 'boxplot', name: '箱线图', category: '高级图表', description: '展示数据分布、异常值和离群点。\n适用于统计分析、质量控制、异常检测。', scene: '统计分析、质量控制、异常检测', icon: 'DataAnalysis' },</span>
+<span class="cstat-no" title="statement not covered" >  </span>
+<span class="cstat-no" title="statement not covered" >  // 组合图表</span>
+<span class="cstat-no" title="statement not covered" >  'combo': { key: 'combo', name: '组合图', category: '组合图表', description: '组合多种图表类型在同一画布。\n适用于综合数据分析和复杂场景展示。', scene: '综合看板、复杂报表、多维度分析', icon: 'TrendCharts' },</span>
+<span class="cstat-no" title="statement not covered" >  'bar-line': { key: 'bar-line', name: '柱线图', category: '组合图表', description: '在柱状图基础上叠加折线展示趋势。\n适用于业务趋势对比。', scene: '趋势分析、多周期对比', icon: 'TrendCharts' },</span>
+<span class="cstat-no" title="statement not covered" >  'line-area': { key: 'line-area', name: '面积图', category: '组合图表', description: '折线与区域填充结合。\n适用于趋势分析和数据对比。', scene: '趋势分析、多周期对比', icon: 'TrendCharts' },</span>
+<span class="cstat-no" title="statement not covered" >  'multi-y': { key: 'multi-y', name: '多轴图', category: '组合图表', description: '多个 Y 轴共享 X 轴，展示多维度数据。', scene: '多维度对比、交叉分析', icon: 'TrendCharts' },</span>
+<span class="cstat-no" title="statement not covered" >  'scatter-line': { key: 'scatter-line', name: '散点折线', category: '组合图表', description: '散点图与回归线结合。\n适用于趋势分析和相关性分析。', scene: '趋势分析、相关性分析', icon: 'TrendCharts' },</span>
+<span class="cstat-no" title="statement not covered" >  'candlestick': { key: 'candlestick', name: 'K线图', category: '组合图表', description: '展示金融数据的开高低收和波动。\n适用于金融分析、趋势追踪。', scene: '金融分析、趋势追踪', icon: 'TrendCharts' },</span>
+<span class="cstat-no" title="statement not covered" >  'effectscatter': { key: 'effectscatter', name: '效果散点', category: '组合图表', description: '带连线效果的散点图。\n适用于展示数据分布和聚类。', scene: '数据分布、聚类分析', icon: 'DataAnalysis' },</span>
+<span class="cstat-no" title="statement not covered" >  </span>
+<span class="cstat-no" title="statement not covered" >  // 3D 图表</span>
+<span class="cstat-no" title="statement not covered" >  'map3d': { key: 'map3d', name: '3D地图', category: '地理图', items: [{ key: 'map', label: '地图' }], description: '在三维空间展示数据分布和地理位置。', scene: '地理分析、区域对比、位置追踪', icon: 'DataLine' },</span>
+<span class="cstat-no" title="statement not covered" >  'mapbox3d': { key: 'mapbox3d', name: '3D 立方体图', category: '地理图', items: [{ key: 'mapbox', label: '3D 立方' }], description: '3D 立方图展示数据分布和比较。', scene: '地理分析、区域对比', icon: 'DataLine' }</span>
+<span class="cstat-no" title="statement not covered" >} as const</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >export const SCENES = {</span>
+<span class="cstat-no" title="statement not covered" >  '分类对比': '分类对比、指标排行、月度趋势对照',</span>
+<span class="cstat-no" title="statement not covered" >  '趋势分析': '趋势分析、实时监控、同比环比',</span>
+<span class="cstat-no" title="statement not covered" >  '占比结构': '占比结构、渠道份额、成本构成',</span>
+<span class="cstat-no" title="statement not covered" >  '品牌偏好': '品牌偏好、地域贡献、层级比较',</span>
+<span class="cstat-no" title="statement not covered" >  '组织关系': '组织架构、目录结构、权限树',</span>
+<span class="cstat-no" title="statement not covered" >  '关联分析': '关联分析、依赖追踪、影响分析',</span>
+<span class="cstat-no" title="statement not covered" >  '转化漏斗': '转化漏斗、流失分析、用户路径',</span>
+<span class="cstat-no" title="statement not covered" >  '异常检测': '异常检测、数据密度、用户行为分析',</span>
+<span class="cstat-no" title="statement not covered" >  '核心指标': '核心指标卡、占比+总量联合展示',</span>
+<span class="cstat-no" title="statement not covered" >  '多维度对比': '多维度对比、交叉分析、绩效评估、能力矩阵',</span>
+<span class="cstat-no" title="statement not covered" >  '综合看板': '综合看板、复杂报表、多维度分析'</span>
+<span class="cstat-no" title="statement not covered" >} as const</span>
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-02-15T09:43:26.576Z
+            </div>
+        <script src="../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
+    </body>
+</html>
+    

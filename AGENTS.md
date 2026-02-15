@@ -18,215 +18,126 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 <!-- OPENSPEC:END -->
 
 # AGENTS.md
-# Guidance for agentic coding in this repository.
 
-## Scope and layout
-- Primary runnable project lives in `backend/` (Go) and `frontend/` (Vue).
-- Main Go entrypoint: `backend/cmd/server/main.go`.
-- Additional Go tooling entrypoint: `backend/cmd/tools/create-user/main.go`.
-- Docs reference running from project root with Docker Compose.
+**Updated:** 2026-02-14
 
-## Build, lint, test, run
+## OVERVIEW
 
-### Go Backend
-- Build:
-  - `cd backend && go build -o bin/server cmd/server/main.go`
-  - Or use `make build-backend`
-  - Full local build (frontend + backend): `make build`
-  - Production image build: `make build-prod`
-- Run:
-  - `cd backend && go run cmd/server/main.go`
-  - Or use `make dev` to start all services
-- Test:
-  - `cd backend && go test ./... -v`
-  - Or use `make test`
+GoReport - 报表设计与数据可视化平台。Go 1.23 后端 + Vue 3 前端。支持多数据源、Canvas 报表设计器、ECharts 图表。
 
-### Frontend
-- Install dependencies:
-  - `cd frontend && npm install`
-- Run dev server:
-  - `cd frontend && npm run dev`
-- Build:
-  - `cd frontend && npm run build`
-- Test:
-  - `cd frontend && npm run test`
-  - `cd frontend && npm run test:run`
-  - `cd frontend && npm run test:coverage`
+## COMMANDS
 
-### Docker
-- Start all services:
-  - `make dev`
-- View logs:
-  - `make dev-logs`
-- View status:
-  - `make dev-ps`
-- Stop services:
-  - `make dev-down`
-- Build and start production stack:
-  - `make build-prod`
-
-### Database bootstrap
-- Initialize DB schema:
-  - `backend/db/init.sql` is automatically loaded by Docker Compose.
-  - Or manually: `mysql -uroot -p < backend/db/init.sql`
-
-### Lint/format
-- Go: Uses `gofmt` (standard)
-  - `gofmt -w backend/`
-- No explicit frontend linter configured.
-
-## Code style guidelines
-
-### Language and frameworks
-- Go 1.22+
-- Gin web framework
-- GORM for database
-- JWT for authentication
-- Vue 3 + TypeScript
-- Vite build tool
-- Element Plus UI library
-
-### Project structure (Go)
-- `backend/cmd/server/` - Application entry point
-- `backend/internal/` - Internal packages
-  - `auth/` - JWT authentication
-  - `cache/` - Cache abstractions and providers
-  - `chart/` - Chart domain
-  - `config/` - Configuration management
-  - `dashboard/` - Dashboard domain
-  - `dataset/` - Dataset domain and query execution
-  - `datasource/` - Datasource domain and metadata
-  - `database/` - Database initialization
-  - `render/` - Report render engine
-  - `report/` - Report domain
-  - `models/` - Data models
-  - `repository/` - Data access layer
-  - `httpserver/` - HTTP handlers
-  - `middleware/` - HTTP middleware
-  - `testutil/` - Shared test utilities
-
-### Go code style
-- Standard Go formatting (`gofmt`)
-- Follow `gofmt` output style (tabs/spaces as generated)
-- Package comments for public packages
-- Exported functions/structs have comments
-- Error handling: check errors explicitly, never ignore
-- Use `gorm` tags for model fields
-- Use `json` tags for API structs
-
-### Naming conventions
-- Go: Follow standard Go conventions
-  - `PascalCase` for exported names
-  - `camelCase` for unexported names
-  - `UPPER_SNAKE_CASE` for constants
-- Frontend: Vue/TypeScript conventions
-  - Components: `PascalCase.vue`
-  - Functions: `camelCase`
-  - Constants: `UPPER_SNAKE_CASE`
-
-### Error handling (Go)
-- Always check errors
-- Return errors to caller
-- Log errors at appropriate level
-- Use custom error types when needed
-
-### HTTP conventions
-- RESTful API design
-- Versioned routes: `/api/v1/...`
-- JSON request/response bodies
-- Standard HTTP status codes
-- JWT in `Authorization` header
-
-### Auth conventions
-- JWT for stateless authentication
-- Token format: `Bearer <token>`
-- Claims include: user_id, tenant_id, exp
-- Middleware extracts user info to context
-
-### Comments and docs
-- Go: Package and function comments
-- English preferred for technical terms
-- Chinese OK for business logic comments
-
-## Testing guidance
-
-### Go testing
-- Standard `go test`
-- Table-driven tests preferred
-- Mock external dependencies
-- Test files: `*_test.go`
-
-### Frontend testing
-- Test runner: `vitest`
-- Script entrypoint: `frontend/package.json`
-
-### Running tests
 ```bash
-# All tests
-cd backend && go test ./... -v
-make test
+# === 开发环境 ===
+make dev                    # 启动所有服务 (Docker Compose)
+make dev-logs               # 查看日志
+make dev-down               # 停止服务
 
-# Frontend tests
-cd frontend && npm run test
-cd frontend && npm run test:run
-cd frontend && npm run test:coverage
-make test-frontend
+# === 后端测试 ===
+cd backend && go test ./... -cover                              # 所有测试
+cd backend && go test -v ./internal/dataset/...                 # 单个包
+cd backend && go test -v -run TestDatasetHandler_Create ./internal/dataset/...  # 单个测试
 
-# Full/in-container tests
-make test-full
-make test-backend-docker
+# 带 DB 测试 (需要 MySQL)
+DB_DSN="root:root@tcp(localhost:3306)/goreport?parseTime=True" go test ./internal/repository/... ./internal/dataset/... -v
 
-# Specific package
-cd backend && go test ./internal/dashboard -v
+# === 后端 Lint ===
+cd backend && golangci-lint run                        # 全部
+cd backend && golangci-lint run ./internal/dataset/... # 单个包
 
-# Coverage
-cd backend && go test ./... -cover
+# === 前端 ===
+cd frontend && npm run dev                 # 开发服务器
+cd frontend && npm run build               # 生产构建
+cd frontend && npm run typecheck           # TypeScript 检查
+cd frontend && npm run test:run            # 所有测试
+cd frontend && npm run test:run -- src/api/dataset.test.ts  # 单个测试文件
+cd frontend && npm run test:run -- -t "batch update"        # 匹配测试名
+
+# === 覆盖率 ===
+cd backend && go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out
+cd frontend && npm run test:run -- --coverage
 ```
 
-## Environment assumptions
-- Go 1.22+ required
-- Node.js 20+ required
-- MySQL 8.0+ required
-- Redis optional
-- Docker recommended for local development
+## CODE STYLE
 
-## Docker notes
-- Docker Compose for local development
-- Production Dockerfile in `backend/Dockerfile` and `frontend/Dockerfile`
+### 后端 (Go)
 
-## Localization
-- Comments and log messages can be bilingual
-- Preserve existing language style
+**Import 顺序:** 标准库 → 第三方库 → 项目内部包
 
-## Repo-specific notes
-- `.gitignore` ignores `target/`, `logs/`, `node_modules/`, and IDE files
-- No CI configuration currently
-- Prefer `make dev-logs` / `make dev-ps`; `make logs` / `make ps` appear in help text but are not actual targets
+**命名:** 导出用 `PascalCase`，私有用 `camelCase`，接口用 `-er` 后缀
 
-## Cursor/Copilot rules
-- No `.cursor/rules/`, `.cursorrules`, or `.github/copilot-instructions.md` found
+**错误处理 - 永远不忽略:**
+```go
+result, err := h.service.Create(ctx, req)
+if err != nil {
+    c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": err.Error()})
+    return
+}
+c.JSON(http.StatusOK, gin.H{"success": true, "result": result, "message": "success"})
+```
 
-## 规则
-- 默认中文回复
-- 有歧义先提问；先给计划/方案，得到确认再执行
-- 最小改动，不做无关重构
-- 不新增依赖，需先说明并确认
-- 未明确要求不提交；不使用 --amend
+**Handler 模式:** 绑定请求 → 获取租户上下文 → 权限检查 → 业务逻辑 → 返回结果
 
-## OpenSpec（如使用）
-- 新功能/改接口/改表结构：先 Proposal，经批准后 Apply
-- 上线后 Archive，并执行 `openspec validate --strict --no-interactive`
+**测试:** 使用 `testify/mock` + `testify/assert`，测试前设置 `gin.SetMode(gin.TestMode)`
 
-## Sources consulted
-- `README.md`
-- `README.en-US.md`
-- `Makefile`
-- `backend/go.mod`
-- `backend/cmd/server/main.go`
-- `backend/cmd/tools/create-user/main.go`
-- `backend/internal/httpserver/server.go`
-- `frontend/package.json`
-- `docker-compose.yml`
-- `docker-compose.prod.yml`
-- `docker-compose.test.yml`
-- `.gitignore`
+### 前端 (TypeScript/Vue)
+
+**Import 顺序:** Vue/第三方库 → 项目内部 (使用 `@/` 别名)
+
+**命名:** 组件 `PascalCase.vue`，测试 `PascalCase.test.ts`，函数/变量 `camelCase`，类型 `PascalCase`
+
+**API 模式:** 每个领域一个文件 (`api/dataset.ts`)，导出 `interface` 和 `xxxApi` 对象
+
+**测试:** 使用 `vitest` + `@vue/test-utils`，`vi.mock()` mock 依赖
+
+## PROJECT STRUCTURE
+
+```
+goreport/
+├── backend/
+│   ├── cmd/server/              # HTTP 服务入口
+│   ├── internal/
+│   │   ├── auth/                # JWT 认证
+│   │   ├── cache/               # Redis 缓存 (含 Noop 降级)
+│   │   ├── dataset/             # 数据集领域
+│   │   ├── datasource/          # 数据源 + SSH 隧道
+│   │   ├── httpserver/          # 路由注册
+│   │   ├── models/              # GORM 模型
+│   │   ├── render/              # 报表渲染引擎
+│   │   ├── repository/          # 数据访问层
+│   │   └── testutil/            # 测试工具
+│   └── .golangci.yml
+├── frontend/src/
+│   ├── api/                     # HTTP 客户端
+│   ├── canvas/                  # Canvas 报表设计器
+│   ├── components/              # 按领域划分
+│   ├── stores/                  # Pinia 状态
+│   ├── tests/setup.ts           # Canvas/API mock
+│   └── views/                   # 页面组件
+└── openspec/                    # 规格驱动开发
+```
+
+## ANTI-PATTERNS
+
+| 禁止 | 原因 |
+|------|------|
+| 忽略 `err` | `if err != nil` 必须处理并返回 |
+| `as any`, `@ts-ignore` | 类型安全不可妥协 |
+| `--amend` 提交 | 禁止修改历史 |
+| 空 catch 块 | `catch(e) {}` 禁止 |
+| 跨租户访问 | 必须验证 `tenant_id` |
+| SQL 字符串拼接 | 使用 `sql_safety.go` |
+
+## TESTING NOTES
+
+- **后端 DSN**: 优先 `TEST_DB_DSN`，回退到 `DB_DSN`
+- **租户清理**: `testutil.CleanupTenantData(db, []string{"tenant-1"})`
+- **前端 Mock**: `tests/setup.ts` 提供 Canvas、ResizeObserver、Element Plus mock
+
+## OPENSPEC WORKFLOW
+
+新功能或破坏性变更需要创建 proposal:
+1. `openspec list --specs` 查看现有能力
+2. 在 `openspec/changes/[change-id]/` 创建 proposal.md, tasks.md, spec deltas
+3. `openspec validate [change-id] --strict --no-interactive`
+4. 获得批准后实施

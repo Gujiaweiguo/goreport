@@ -25,9 +25,14 @@ help:
 	@echo "  make docs-dev    - 查看开发指南"
 	@echo ""
 
+# Docker Compose 文件路径
+DC := docker compose -f deploy/docker-compose.yml
+DC_PROD := docker compose -f deploy/docker-compose.prod.yml
+DC_TEST := docker compose -f deploy/docker-compose.test.yml
+
 # 开发环境
 dev:
-	docker compose up -d
+	$(DC) up -d
 	@echo "开发环境已启动:"
 	@echo "  前端: http://localhost:3000"
 	@echo "  后端: http://localhost:8085"
@@ -35,17 +40,17 @@ dev:
 	@echo "  Redis: localhost:6379"
 
 dev-down:
-	docker compose down
+	$(DC) down
 
 dev-logs:
-	docker compose logs -f
+	$(DC) logs -f
 
 dev-ps:
-	docker compose ps
+	$(DC) ps
 
 # 构建
 build:
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml build
+	docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.prod.yml build
 
 # 测试
 test:
@@ -62,8 +67,8 @@ test-backend:
 	cd backend && go test ./... -v
 
 test-backend-docker:
-	docker compose up -d mysql backend
-	docker compose exec backend go test ./... -v
+	$(DC) up -d mysql backend
+	$(DC) exec backend go test ./... -v
 
 test-coverage:
 	cd backend && go test -coverprofile=coverage.out ./...
@@ -82,32 +87,31 @@ build: build-frontend build-backend
 
 # 生产部署
 build-prod:
-	docker compose -f docker-compose.prod.yml build
-	docker compose -f docker-compose.prod.yml up -d
+	$(DC_PROD) build
+	$(DC_PROD) up -d
 	@echo "生产环境已启动:"
 	@echo "  前端: http://localhost"
 	@echo "  后端: http://localhost:8085"
 
 # 清理
 clean:
-	docker compose down -v
+	$(DC) down -v
 	docker system prune -f
 
 # 数据库
 db-shell:
-	docker compose exec mysql mysql -uroot -proot goreport
+	$(DC) exec mysql mysql -uroot -proot goreport
 
 redis-cli:
-	docker compose exec redis redis-cli
+	$(DC) exec redis redis-cli
 
 # 文档
 docs:
 	@echo "可用文档："
 	@echo "  - 用户指南: docs/USER_GUIDE.md"
 	@echo "  - 开发指南: docs/DEVELOPMENT_GUIDE.md"
-	@echo "  - 测试计划: docs/TEST_PLAN.md"
-	@echo "  - 迁移指南: docs/MIGRATION_GUIDE.md"
 	@echo "  - 贡献指南: docs/CONTRIBUTING.md"
+	@echo "  - 部署清单: deploy/PRODUCTION_DEPLOYMENT_CHECKLIST.md"
 
 # 查看文档
 docs-user:

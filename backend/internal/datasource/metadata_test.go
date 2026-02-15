@@ -92,6 +92,6 @@ func TestGetFields_NonExistentTable(t *testing.T) {
 
 	fields, err := GetFields(context.Background(), db, "goreport", "non_existent_table_xyz")
 
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	assert.Empty(t, fields)
 }

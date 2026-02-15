@@ -1050,7 +1050,7 @@ func TestDatasourceHandler_GetFields_WithMetadata(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestDatasourceHandler_TestConnection_Failure(t *testing.T) {
