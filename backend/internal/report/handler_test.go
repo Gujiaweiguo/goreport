@@ -363,3 +363,79 @@ func TestReportHandler_Preview_Error(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	mockSvc.AssertExpectations(t)
 }
+
+func TestReportHandler_Update_NoTenant(t *testing.T) {
+	handler, _ := setupReportTestHandler()
+
+	body := `{"id":"r-1","name":"Updated Report"}`
+	router := gin.New()
+	router.PUT("/update", handler.Update)
+
+	req := httptest.NewRequest(http.MethodPut, "/update", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestReportHandler_Update_InvalidJSON(t *testing.T) {
+	handler, _ := setupReportTestHandler()
+
+	body := `{"invalid json`
+	router := gin.New()
+	router.PUT("/update", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		c.Set("roles", []string{"admin"})
+		handler.Update(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPut, "/update", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestReportHandler_Delete_NoTenant(t *testing.T) {
+	handler, _ := setupReportTestHandler()
+
+	router := gin.New()
+	router.DELETE("/delete", handler.Delete)
+
+	req := httptest.NewRequest(http.MethodDelete, "/delete?id=r-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestReportHandler_Get_NoTenant(t *testing.T) {
+	handler, _ := setupReportTestHandler()
+
+	router := gin.New()
+	router.GET("/get", handler.Get)
+
+	req := httptest.NewRequest(http.MethodGet, "/get?id=r-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestReportHandler_Get_MissingID(t *testing.T) {
+	handler, _ := setupReportTestHandler()
+
+	router := gin.New()
+	router.GET("/get", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.Get(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/get", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
