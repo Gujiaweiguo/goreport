@@ -2,11 +2,28 @@ package datasource
 
 import (
 	"context"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/gujiaweiguo/goreport/internal/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func getTestDSNForConnection() string {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		dsn = os.Getenv("DB_DSN")
+	}
+	return dsn
+}
+
+func skipIfNoDBForConnection(t *testing.T) {
+	if getTestDSNForConnection() == "" {
+		t.Skip("TEST_DB_DSN or DB_DSN not set")
+	}
+}
 
 func TestNewConnectionBuilder(t *testing.T) {
 	builder := NewConnectionBuilder()
@@ -175,4 +192,88 @@ func TestConnectionBuilder_BuildDSN_SpecialCharacters(t *testing.T) {
 	assert.Contains(t, dsn, "user@domain")
 	assert.Contains(t, dsn, "p@ss:word")
 	assert.Contains(t, dsn, "test_db")
+}
+
+func TestConnectionBuilder_Connect_Success(t *testing.T) {
+	skipIfNoDBForConnection(t)
+
+	builder := NewConnectionBuilder()
+	ctx := context.Background()
+
+	ds := &models.DataSource{
+		Host:     "127.0.0.1",
+		Port:     3306,
+		Database: "goreport",
+		Username: "root",
+		Password: "root",
+	}
+
+	db, tunnel, err := builder.Connect(ctx, ds)
+
+	require.NoError(t, err)
+	assert.NotNil(t, db)
+	assert.Nil(t, tunnel)
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	sqlDB.Close()
+}
+
+func TestConnectionBuilder_Connect_Timeout(t *testing.T) {
+	builder := NewConnectionBuilder()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	ds := &models.DataSource{
+		Host:     "192.168.255.255",
+		Port:     3306,
+		Database: "goreport",
+		Username: "root",
+		Password: "root",
+	}
+
+	db, tunnel, err := builder.Connect(ctx, ds)
+
+	assert.Error(t, err)
+	assert.Nil(t, db)
+	assert.Nil(t, tunnel)
+}
+
+func TestConnectionBuilder_TestConnection_Success(t *testing.T) {
+	skipIfNoDBForConnection(t)
+
+	builder := NewConnectionBuilder()
+	ctx := context.Background()
+
+	ds := &models.DataSource{
+		Host:     "127.0.0.1",
+		Port:     3306,
+		Database: "goreport",
+		Username: "root",
+		Password: "root",
+	}
+
+	err := builder.TestConnection(ctx, ds)
+
+	assert.NoError(t, err)
+}
+
+func TestConnectionBuilder_TestConnection_InvalidCredentials(t *testing.T) {
+	skipIfNoDBForConnection(t)
+
+	builder := NewConnectionBuilder()
+	ctx := context.Background()
+
+	ds := &models.DataSource{
+		Host:     "127.0.0.1",
+		Port:     3306,
+		Database: "goreport",
+		Username: "invalid_user_xyz",
+		Password: "invalid_password",
+	}
+
+	err := builder.TestConnection(ctx, ds)
+
+	assert.Error(t, err)
 }

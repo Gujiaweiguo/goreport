@@ -264,3 +264,26 @@ func TestCache_Invalidate_NonDegradedFailure(t *testing.T) {
 	err := cache.Invalidate(ctx, "tenant-1", "domain")
 	assert.Error(t, err)
 }
+
+func TestNew_EnabledButRedisUnavailable(t *testing.T) {
+	cache, err := New(config.CacheConfig{
+		Enabled:    true,
+		Addr:       "invalid-host:6379",
+		DefaultTTL: 60,
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, cache)
+	assert.True(t, cache.IsDegraded())
+}
+
+func TestNew_Disabled(t *testing.T) {
+	cache, err := New(config.CacheConfig{
+		Enabled:    false,
+		DefaultTTL: 60,
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, cache)
+	assert.True(t, cache.IsDegraded())
+}

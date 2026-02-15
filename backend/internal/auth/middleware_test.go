@@ -88,3 +88,27 @@ func TestAuthMiddleware_SetsClaimsInContext(t *testing.T) {
 	assert.Contains(t, body, `"username":"alice"`)
 	assert.Contains(t, body, `"tenantId":"tenant-1"`)
 }
+
+func TestGetUserID_EmptyContext(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(nil)
+
+	result := GetUserID(c)
+	assert.Empty(t, result)
+}
+
+func TestGetUsername_EmptyContext(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(nil)
+
+	result := GetUsername(c)
+	assert.Empty(t, result)
+}
+
+func TestGetTenantID_EmptyContext(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(nil)
+
+	result := GetTenantID(c)
+	assert.Empty(t, result)
+}

@@ -249,6 +249,35 @@ func TestEngine_FetchCellValue_Integration(t *testing.T) {
 	value, err := engine.fetchCellValue(ctx, cell, tenantID)
 
 	assert.NoError(t, err)
-	// Value should be non-empty
 	assert.NotEmpty(t, value)
+}
+
+func TestEngine_FetchCellValue_DataSourceNotFound(t *testing.T) {
+	skipIfNoDBForRender(t)
+
+	db := setupRenderIntegrationTest(t)
+	defer func() {
+		sqlDB, _ := db.DB()
+		sqlDB.Close()
+	}()
+
+	ctx := context.Background()
+	tenantID := "test-render-notfound"
+
+	nonExistentID := "non-existent-ds-xyz"
+	tableName := "data_sources"
+	fieldName := "type"
+
+	cell := Cell{
+		DatasourceID: &nonExistentID,
+		TableName:    &tableName,
+		FieldName:    &fieldName,
+	}
+
+	engine := NewEngine(db, nil)
+
+	value, err := engine.fetchCellValue(ctx, cell, tenantID)
+
+	assert.Error(t, err)
+	assert.Empty(t, value)
 }
