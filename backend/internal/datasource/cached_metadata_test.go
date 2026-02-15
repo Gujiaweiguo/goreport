@@ -230,3 +230,81 @@ func TestFieldInfo_JSON(t *testing.T) {
 	assert.Equal(t, field.Nullable, unmarshaled.Nullable)
 	assert.Equal(t, field.Comment, unmarshaled.Comment)
 }
+
+func TestCachedMetadataService_GetTables_EmptyDSN(t *testing.T) {
+	cfg := config.CacheConfig{Enabled: false}
+	c, _ := cache.New(cfg)
+	service := NewCachedMetadataService(c)
+
+	ctx := context.Background()
+	tenantID := "tenant-1"
+	datasourceID := "ds-1"
+	dsn := ""
+
+	tables, err := service.GetTables(ctx, tenantID, datasourceID, dsn)
+
+	assert.Error(t, err)
+	assert.Nil(t, tables)
+}
+
+func TestCachedMetadataService_GetFields_EmptyDSN(t *testing.T) {
+	cfg := config.CacheConfig{Enabled: false}
+	c, _ := cache.New(cfg)
+	service := NewCachedMetadataService(c)
+
+	ctx := context.Background()
+	tenantID := "tenant-1"
+	datasourceID := "ds-1"
+	dsn := ""
+
+	fields, err := service.GetFields(ctx, tenantID, datasourceID, dsn, "users")
+
+	assert.Error(t, err)
+	assert.Nil(t, fields)
+}
+
+func TestCachedMetadataService_GetTables_WithEnabledCache(t *testing.T) {
+	dsn := getTestDSNForCachedMetadata()
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN or DB_DSN not set")
+	}
+
+	cfg := config.CacheConfig{Enabled: true, DefaultTTL: 60}
+	c, _ := cache.New(cfg)
+	service := NewCachedMetadataService(c)
+
+	ctx := context.Background()
+	tenantID := "tenant-cache-enabled"
+	datasourceID := "ds-cache-enabled"
+
+	tables, err := service.GetTables(ctx, tenantID, datasourceID, dsn)
+	require.NoError(t, err)
+	assert.NotNil(t, tables)
+
+	tables2, err := service.GetTables(ctx, tenantID, datasourceID, dsn)
+	require.NoError(t, err)
+	assert.NotNil(t, tables2)
+}
+
+func TestCachedMetadataService_GetFields_WithEnabledCache(t *testing.T) {
+	dsn := getTestDSNForCachedMetadata()
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN or DB_DSN not set")
+	}
+
+	cfg := config.CacheConfig{Enabled: true, DefaultTTL: 60}
+	c, _ := cache.New(cfg)
+	service := NewCachedMetadataService(c)
+
+	ctx := context.Background()
+	tenantID := "tenant-fields-cache"
+	datasourceID := "ds-fields-cache"
+
+	fields, err := service.GetFields(ctx, tenantID, datasourceID, dsn, "tenants")
+	require.NoError(t, err)
+	assert.NotNil(t, fields)
+
+	fields2, err := service.GetFields(ctx, tenantID, datasourceID, dsn, "tenants")
+	require.NoError(t, err)
+	assert.NotNil(t, fields2)
+}

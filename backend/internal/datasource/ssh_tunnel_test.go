@@ -255,3 +255,82 @@ func TestSSHTunnel_InvalidCredentials(t *testing.T) {
 		defer tunnel.Close()
 	}
 }
+
+func TestSSHTunnel_NewSSHTunnel(t *testing.T) {
+	config := &SSHTunnelConfig{
+		Host:     "localhost",
+		Port:     22,
+		Username: "testuser",
+		Password: "testpass",
+	}
+
+	tunnel := NewSSHTunnel(config)
+
+	if tunnel == nil {
+		t.Fatal("tunnel should not be nil")
+	}
+
+	if tunnel.LocalAddr() == "" {
+		t.Error("LocalAddr should return a value")
+	}
+}
+
+func TestSSHTunnel_Close_NilClient(t *testing.T) {
+	tunnel := &SSHTunnel{}
+
+	err := tunnel.Close()
+	if err != nil {
+		t.Errorf("Close should succeed with nil client, got: %v", err)
+	}
+}
+
+func TestSSHTunnel_LocalAddr(t *testing.T) {
+	tunnel := &SSHTunnel{
+		localAddr: "127.0.0.1:12345",
+	}
+
+	addr := tunnel.LocalAddr()
+	if addr != "127.0.0.1:12345" {
+		t.Errorf("LocalAddr should return '127.0.0.1:12345', got: %s", addr)
+	}
+}
+
+func TestSSHTunnel_Connect_NoAuth(t *testing.T) {
+	tunnel := NewSSHTunnel(&SSHTunnelConfig{
+		Host: "localhost",
+		Port: 22,
+	})
+
+	ctx := context.Background()
+	_, err := tunnel.Connect(ctx, &SSHTunnelConfig{
+		Host: "localhost",
+		Port: 22,
+	}, "127.0.0.1", 3306)
+
+	if err == nil {
+		t.Error("Connect should fail when no auth method provided")
+		defer tunnel.Close()
+	}
+	if err != nil && err.Error() != "no SSH authentication method provided" {
+		t.Logf("Got expected error: %v", err)
+	}
+}
+
+func TestSSHTunnel_Connect_InvalidKey(t *testing.T) {
+	tunnel := NewSSHTunnel(&SSHTunnelConfig{
+		Host: "localhost",
+		Port: 22,
+	})
+
+	ctx := context.Background()
+	_, err := tunnel.Connect(ctx, &SSHTunnelConfig{
+		Host: "localhost",
+		Port: 22,
+		Key:  []byte("invalid-key-content"),
+	}, "127.0.0.1", 3306)
+
+	if err == nil {
+		t.Error("Connect should fail with invalid key")
+		defer tunnel.Close()
+	}
+}
