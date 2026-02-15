@@ -89,17 +89,17 @@ func CleanupTenantData(db *gorm.DB, tenantIDs []string) {
 	hasReports := db.Migrator().HasTable("reports")
 
 	for _, tenantID := range tenantIDs {
-		if hasDashboards {
-			_ = db.Exec("DELETE FROM dashboards WHERE tenant_id = ?", tenantID).Error
+		if hasDatasetFields && hasDatasets {
+			_ = db.Exec("DELETE df FROM dataset_fields df INNER JOIN datasets d ON df.dataset_id = d.id WHERE d.tenant_id = ?", tenantID).Error
+		}
+		if hasDatasetSources && hasDatasets {
+			_ = db.Exec("DELETE ds FROM dataset_sources ds INNER JOIN datasets d ON ds.dataset_id = d.id WHERE d.tenant_id = ?", tenantID).Error
 		}
 		if hasDatasets {
 			_ = db.Exec("DELETE FROM datasets WHERE tenant_id = ?", tenantID).Error
 		}
-		if hasDatasetFields && hasDatasets {
-			_ = db.Exec("DELETE FROM dataset_fields WHERE dataset_id IN (SELECT id FROM datasets WHERE tenant_id = ?)", tenantID).Error
-		}
-		if hasDatasetSources && hasDatasets {
-			_ = db.Exec("DELETE FROM dataset_sources WHERE dataset_id IN (SELECT id FROM datasets WHERE tenant_id = ?)", tenantID).Error
+		if hasDashboards {
+			_ = db.Exec("DELETE FROM dashboards WHERE tenant_id = ?", tenantID).Error
 		}
 		if hasReports {
 			_ = db.Exec("DELETE FROM reports WHERE tenant_id = ?", tenantID).Error
