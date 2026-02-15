@@ -21,13 +21,14 @@ func (h *HealthHandler) Check(c *gin.Context) {
 		"status": "ok",
 	}
 
-	// 检查数据库连接
-	sqlDB, err := h.db.DB()
-	if err == nil {
-		if err := sqlDB.Ping(); err == nil {
-			status["database"] = "connected"
-		} else {
-			status["database"] = "disconnected"
+	if h.db != nil {
+		sqlDB, err := h.db.DB()
+		if err == nil {
+			if err := sqlDB.Ping(); err == nil {
+				status["database"] = "connected"
+			} else {
+				status["database"] = "disconnected"
+			}
 		}
 	}
 
