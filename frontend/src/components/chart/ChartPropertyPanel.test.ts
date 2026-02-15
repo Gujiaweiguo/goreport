@@ -187,7 +187,7 @@ describe('ChartPropertyPanel.vue', () => {
       vm.emitChange()
       
       const emitted = wrapper.emitted('update:modelValue')
-      const value = emitted[0][0]
+      const value = emitted![0][0]
       
       expect(value).toHaveProperty('title')
       expect(value).toHaveProperty('width')

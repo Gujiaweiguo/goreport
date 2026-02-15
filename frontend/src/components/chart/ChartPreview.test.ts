@@ -187,8 +187,8 @@ describe('ChartPreview.vue', () => {
         global: { stubs: globalStubs },
       })
       const previewBody = wrapper.find('.preview-body')
-      expect(previewBody.element.style.minHeight).toBe('300px')
-      expect(previewBody.element.style.padding).toBe('10px')
+      expect((previewBody.element as HTMLElement).style.minHeight).toBe('300px')
+      expect((previewBody.element as HTMLElement).style.padding).toBe('10px')
     })
 
     it('updates preview style when config changes', async () => {
@@ -204,8 +204,8 @@ describe('ChartPreview.vue', () => {
       await wrapper.setProps({ chartConfig: newConfig })
       
       const previewBody = wrapper.find('.preview-body')
-      expect(previewBody.element.style.minHeight).toBe('500px')
-      expect(previewBody.element.style.padding).toBe('20px')
+      expect((previewBody.element as HTMLElement).style.minHeight).toBe('500px')
+      expect((previewBody.element as HTMLElement).style.padding).toBe('20px')
     })
   })
 

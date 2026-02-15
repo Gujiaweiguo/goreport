@@ -77,7 +77,7 @@ describe('ChartTypeSelector.vue', () => {
       
       const emitted = wrapper.emitted('update:modelValue')
       expect(emitted).toBeTruthy()
-      expect(emitted[0][0]).toBe('bar')
+      expect(emitted![0][0]).toBe('bar')
     })
 
     it('emits change event with full item data', async () => {
@@ -89,9 +89,9 @@ describe('ChartTypeSelector.vue', () => {
       
       const emitted = wrapper.emitted('change')
       expect(emitted).toBeTruthy()
-      expect(emitted[0][0]).toHaveProperty('key')
-      expect(emitted[0][0]).toHaveProperty('name')
-      expect(emitted[0][0]).toHaveProperty('category')
+      expect(emitted![0][0]).toHaveProperty('key')
+      expect(emitted![0][0]).toHaveProperty('name')
+      expect(emitted![0][0]).toHaveProperty('category')
     })
 
     it('updates selection when modelValue prop changes', async () => {
@@ -105,7 +105,9 @@ describe('ChartTypeSelector.vue', () => {
       await nextTick()
       
       const emitted = wrapper.emitted('update:modelValue')
-      const lastEmit = emitted[emitted.length - 1]
+      expect(emitted).toBeTruthy()
+      const events = emitted!
+      const lastEmit = events[events.length - 1]
       expect(lastEmit[0]).toBe('line')
     })
   })

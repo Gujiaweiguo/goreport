@@ -277,7 +277,9 @@ describe('ChartEditor.vue', () => {
       vm.emitUpdate()
       
       const emitted = wrapper.emitted('update:modelValue')
-      const lastEmit = emitted[emitted.length - 1][0]
+      expect(emitted).toBeTruthy()
+      const events = emitted!
+      const lastEmit = events[events.length - 1][0] as any
       
       expect(lastEmit.title).toBe('New Title')
       expect(lastEmit.type).toBe('pie')

@@ -1,7 +1,15 @@
 import { vi } from 'vitest'
+import type { ComponentPublicInstance } from 'vue'
+
+declare module 'vue' {
+  interface ComponentCustomProperties {
+    [key: string]: any
+  }
+}
 
 declare global {
   var window: Window & typeof globalThis
+  type VM = ComponentPublicInstance & Record<string, any>
 }
 
 // Mock window.location to avoid jsdom navigation errors

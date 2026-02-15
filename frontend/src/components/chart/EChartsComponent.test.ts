@@ -36,7 +36,7 @@ const defaultOption = {
   xAxis: { type: 'category' },
   yAxis: { type: 'value' },
   series: [{ type: 'bar', data: [1, 2, 3] }],
-}
+} as any
 
 describe('EChartsComponent.vue', () => {
   beforeEach(() => {
@@ -237,7 +237,7 @@ describe('EChartsComponent.vue', () => {
           { name: 'Sales', type: 'bar', data: [2, 4, 6] },
           { name: 'Expenses', type: 'line', data: [1, 3, 5] },
         ],
-      }
+      } as any
       mount(EChartsComponent, {
         props: { option: complexOption },
       })
