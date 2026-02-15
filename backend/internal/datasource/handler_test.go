@@ -5,10 +5,13 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gujiaweiguo/goreport/internal/cache"
+	"github.com/gujiaweiguo/goreport/internal/config"
 	"github.com/gujiaweiguo/goreport/internal/models"
 	"github.com/stretchr/testify/assert"
 )
@@ -748,4 +751,408 @@ func TestDatasourceHandler_ListProfiles(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), `"success":true`)
+}
+
+func TestDatasourceHandler_GetTables_ServiceError(t *testing.T) {
+	svc := &mockService{getErr: errors.New("db error")}
+	handler := NewHandler(svc)
+	router := gin.New()
+	gin.SetMode(gin.TestMode)
+
+	router.GET("/tables/:id", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.GetTables(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/tables/ds-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestDatasourceHandler_GetTables_WrongTenant(t *testing.T) {
+	svc := &mockService{
+		datasource: &models.DataSource{ID: "ds-1", TenantID: "tenant-2"},
+	}
+	handler := NewHandler(svc)
+	router := gin.New()
+	gin.SetMode(gin.TestMode)
+
+	router.GET("/tables/:id", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.GetTables(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/tables/ds-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Contains(t, w.Body.String(), "permission denied")
+}
+
+func TestDatasourceHandler_GetTables_NoMetadata(t *testing.T) {
+	svc := &mockService{
+		datasource: &models.DataSource{ID: "ds-1", TenantID: "tenant-1"},
+	}
+	handler := NewHandler(svc)
+	router := gin.New()
+	gin.SetMode(gin.TestMode)
+
+	router.GET("/tables/:id", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.GetTables(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/tables/ds-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotImplemented, w.Code)
+	assert.Contains(t, w.Body.String(), "metadata service not available")
+}
+
+func TestDatasourceHandler_GetFields_ServiceError(t *testing.T) {
+	svc := &mockService{getErr: errors.New("db error")}
+	handler := NewHandler(svc)
+	router := gin.New()
+	gin.SetMode(gin.TestMode)
+
+	router.GET("/fields/:id/tables/:table", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.GetFields(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/fields/ds-1/tables/users", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestDatasourceHandler_GetFields_WrongTenant(t *testing.T) {
+	svc := &mockService{
+		datasource: &models.DataSource{ID: "ds-1", TenantID: "tenant-2"},
+	}
+	handler := NewHandler(svc)
+	router := gin.New()
+	gin.SetMode(gin.TestMode)
+
+	router.GET("/fields/:id/tables/:table", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.GetFields(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/fields/ds-1/tables/users", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDatasourceHandler_GetFields_NoMetadata(t *testing.T) {
+	svc := &mockService{
+		datasource: &models.DataSource{ID: "ds-1", TenantID: "tenant-1"},
+	}
+	handler := NewHandler(svc)
+	router := gin.New()
+	gin.SetMode(gin.TestMode)
+
+	router.GET("/fields/:id/tables/:table", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.GetFields(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/fields/ds-1/tables/users", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotImplemented, w.Code)
+}
+
+func TestDatasourceHandler_TestConnection_InvalidRequest(t *testing.T) {
+	svc := &mockService{}
+	handler, router := setupHandlerTest(t, svc)
+
+	router.POST("/test", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.TestConnection(c)
+	})
+
+	body := `{invalid json}`
+	req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "invalid request")
+}
+
+func TestDatasourceHandler_TestConnection_NoTenant(t *testing.T) {
+	svc := &mockService{}
+	handler, router := setupHandlerTest(t, svc)
+
+	router.POST("/test", handler.TestConnection)
+
+	body := `{"name":"Test","type":"mysql","host":"localhost","port":3306,"database":"testdb","username":"root","password":"root"}`
+	req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Contains(t, w.Body.String(), "tenant not found")
+}
+
+func TestDatasourceHandler_TestSavedConnection_NoID(t *testing.T) {
+	svc := &mockService{}
+	handler, router := setupHandlerTest(t, svc)
+
+	router.POST("/test", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.TestSavedConnection(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/test", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "id is required")
+}
+
+func TestDatasourceHandler_TestSavedConnection_NoTenant(t *testing.T) {
+	svc := &mockService{}
+	handler, router := setupHandlerTest(t, svc)
+
+	router.POST("/test/:id", handler.TestSavedConnection)
+
+	req := httptest.NewRequest(http.MethodPost, "/test/ds-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Contains(t, w.Body.String(), "tenant not found")
+}
+
+func TestDatasourceHandler_TestSavedConnection_ServiceError(t *testing.T) {
+	svc := &mockService{getErr: errors.New("db error")}
+	handler, router := setupHandlerTest(t, svc)
+
+	router.POST("/test/:id", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.TestSavedConnection(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/test/ds-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestDatasourceHandler_TestSavedConnection_WrongTenant(t *testing.T) {
+	svc := &mockService{
+		datasource: &models.DataSource{ID: "ds-1", TenantID: "tenant-2"},
+	}
+	handler, router := setupHandlerTest(t, svc)
+
+	router.POST("/test/:id", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.TestSavedConnection(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/test/ds-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Contains(t, w.Body.String(), "permission denied")
+}
+
+func TestDatasourceHandler_GetTables_SuccessWithMetadata(t *testing.T) {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		dsn = os.Getenv("DB_DSN")
+	}
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN or DB_DSN not set")
+	}
+
+	c, err := cache.New(config.CacheConfig{Enabled: false, DefaultTTL: 60})
+	assert.NoError(t, err)
+	metadata := NewCachedMetadataService(c)
+
+	svc := &mockService{
+		datasource: &models.DataSource{
+			ID:       "ds-1",
+			TenantID: "tenant-1",
+			Host:     "127.0.0.1",
+			Port:     3306,
+			Database: "goreport",
+			Username: "root",
+			Password: "root",
+		},
+	}
+	handler := NewHandlerWithMetadata(svc, metadata)
+	router := gin.New()
+	gin.SetMode(gin.TestMode)
+
+	router.GET("/tables/:id", func(ctx *gin.Context) {
+		ctx.Set("tenantId", "tenant-1")
+		handler.GetTables(ctx)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/tables/ds-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "success")
+}
+
+func TestDatasourceHandler_GetFields_WithMetadata(t *testing.T) {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		dsn = os.Getenv("DB_DSN")
+	}
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN or DB_DSN not set")
+	}
+
+	c, err := cache.New(config.CacheConfig{Enabled: false, DefaultTTL: 60})
+	assert.NoError(t, err)
+	metadata := NewCachedMetadataService(c)
+
+	svc := &mockService{
+		datasource: &models.DataSource{
+			ID:       "ds-1",
+			TenantID: "tenant-1",
+			Host:     "127.0.0.1",
+			Port:     3306,
+			Database: "goreport",
+			Username: "root",
+			Password: "root",
+		},
+	}
+	handler := NewHandlerWithMetadata(svc, metadata)
+	router := gin.New()
+	gin.SetMode(gin.TestMode)
+
+	router.GET("/fields/:id/tables/:table", func(ctx *gin.Context) {
+		ctx.Set("tenantId", "tenant-1")
+		handler.GetFields(ctx)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/fields/ds-1/tables/users", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestDatasourceHandler_TestConnection_Failure(t *testing.T) {
+	svc := &mockService{}
+	handler, router := setupHandlerTest(t, svc)
+
+	router.POST("/test", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.TestConnection(c)
+	})
+
+	body := `{"name":"Test","type":"mysql","host":"127.0.0.1","port":3306,"database":"goreport","username":"invalid-user","password":"invalid-pass"}`
+	req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestDatasourceHandler_TestConnection_Success(t *testing.T) {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		dsn = os.Getenv("DB_DSN")
+	}
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN or DB_DSN not set")
+	}
+
+	svc := &mockService{}
+	handler, router := setupHandlerTest(t, svc)
+
+	router.POST("/test", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.TestConnection(c)
+	})
+
+	body := `{"name":"Test","type":"mysql","host":"127.0.0.1","port":3306,"database":"goreport","username":"root","password":"root"}`
+	req := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestDatasourceHandler_TestSavedConnection_Success(t *testing.T) {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		dsn = os.Getenv("DB_DSN")
+	}
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN or DB_DSN not set")
+	}
+
+	svc := &mockService{
+		datasource: &models.DataSource{
+			ID:       "ds-1",
+			TenantID: "tenant-1",
+			Host:     "127.0.0.1",
+			Port:     3306,
+			Database: "goreport",
+			Username: "root",
+			Password: "root",
+		},
+	}
+	handler, router := setupHandlerTest(t, svc)
+
+	router.POST("/test/:id", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.TestSavedConnection(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/test/ds-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestDatasourceHandler_TestSavedConnection_Failure(t *testing.T) {
+	svc := &mockService{
+		datasource: &models.DataSource{
+			ID:       "ds-1",
+			TenantID: "tenant-1",
+			Host:     "127.0.0.1",
+			Port:     3306,
+			Database: "goreport",
+			Username: "invalid-user",
+			Password: "invalid-pass",
+		},
+	}
+	handler, router := setupHandlerTest(t, svc)
+
+	router.POST("/test/:id", func(c *gin.Context) {
+		c.Set("tenantId", "tenant-1")
+		handler.TestSavedConnection(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/test/ds-1", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
