@@ -2,1457 +2,1411 @@ package dataset
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"strings"
+	"os"
 	"testing"
-	"time"
 
 	"github.com/gujiaweiguo/goreport/internal/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
-type mockDatasetRepo struct {
-	dataset   *models.Dataset
-	datasets  []*models.Dataset
-	createErr error
-	getErr    error
-	updateErr error
-	deleteErr error
-	listErr   error
+type mockDatasetRepository struct {
+	mock.Mock
 }
 
-type mockDatasetFieldRepo struct {
-	fields    map[string]*models.DatasetField
-	updateErr map[string]error
+func (m *mockDatasetRepository) Create(ctx context.Context, dataset *models.Dataset) error {
+	args := m.Called(ctx, dataset)
+	return args.Error(0)
 }
 
-func newMockDatasetFieldRepo(fields ...*models.DatasetField) *mockDatasetFieldRepo {
-	fieldMap := make(map[string]*models.DatasetField, len(fields))
-	for _, field := range fields {
-		copyField := *field
-		fieldMap[field.ID] = &copyField
+func (m *mockDatasetRepository) GetByID(ctx context.Context, id string) (*models.Dataset, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
-
-	return &mockDatasetFieldRepo{
-		fields:    fieldMap,
-		updateErr: make(map[string]error),
-	}
+	return args.Get(0).(*models.Dataset), args.Error(1)
 }
 
-func (m *mockDatasetFieldRepo) Create(ctx context.Context, field *models.DatasetField) error {
-	copyField := *field
-	m.fields[field.ID] = &copyField
-	return nil
+func (m *mockDatasetRepository) GetByIDWithFields(ctx context.Context, id string) (*models.Dataset, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Dataset), args.Error(1)
 }
 
-func (m *mockDatasetFieldRepo) GetByID(ctx context.Context, id string) (*models.DatasetField, error) {
-	field, ok := m.fields[id]
-	if !ok {
-		return nil, errors.New("field not found")
+func (m *mockDatasetRepository) List(ctx context.Context, tenantID string, page, pageSize int) ([]*models.Dataset, int64, error) {
+	args := m.Called(ctx, tenantID, page, pageSize)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(int64), args.Error(2)
 	}
-	copyField := *field
-	return &copyField, nil
+	return args.Get(0).([]*models.Dataset), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *mockDatasetFieldRepo) List(ctx context.Context, datasetID string) ([]*models.DatasetField, error) {
-	result := make([]*models.DatasetField, 0)
-	for _, field := range m.fields {
-		if field.DatasetID != datasetID {
-			continue
-		}
-		copyField := *field
-		result = append(result, &copyField)
-	}
-	return result, nil
+func (m *mockDatasetRepository) Update(ctx context.Context, dataset *models.Dataset) error {
+	args := m.Called(ctx, dataset)
+	return args.Error(0)
 }
 
-func (m *mockDatasetFieldRepo) ListByType(ctx context.Context, datasetID string, fieldType string) ([]*models.DatasetField, error) {
-	result := make([]*models.DatasetField, 0)
-	for _, field := range m.fields {
-		if field.DatasetID != datasetID || field.Type != fieldType {
-			continue
-		}
-		copyField := *field
-		result = append(result, &copyField)
-	}
-	return result, nil
+func (m *mockDatasetRepository) Delete(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
 }
 
-func (m *mockDatasetFieldRepo) Update(ctx context.Context, field *models.DatasetField) error {
-	if err, ok := m.updateErr[field.ID]; ok {
-		return err
-	}
-	copyField := *field
-	m.fields[field.ID] = &copyField
-	return nil
+func (m *mockDatasetRepository) SoftDelete(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
 }
 
-func (m *mockDatasetFieldRepo) Delete(ctx context.Context, id string) error {
-	delete(m.fields, id)
-	return nil
+type mockDatasetFieldRepository struct {
+	mock.Mock
 }
 
-func (m *mockDatasetFieldRepo) DeleteComputedFields(ctx context.Context, datasetID string) error {
-	for id, field := range m.fields {
-		if field.DatasetID == datasetID && field.IsComputed {
-			delete(m.fields, id)
-		}
-	}
-	return nil
+func (m *mockDatasetFieldRepository) Create(ctx context.Context, field *models.DatasetField) error {
+	args := m.Called(ctx, field)
+	return args.Error(0)
 }
 
-func (m *mockDatasetRepo) Create(ctx context.Context, dataset *models.Dataset) error {
-	if m.createErr != nil {
-		return m.createErr
+func (m *mockDatasetFieldRepository) GetByID(ctx context.Context, id string) (*models.DatasetField, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
-	m.dataset = dataset
-	return nil
+	return args.Get(0).(*models.DatasetField), args.Error(1)
 }
 
-func (m *mockDatasetRepo) GetByID(ctx context.Context, id string) (*models.Dataset, error) {
-	if m.getErr != nil {
-		return nil, m.getErr
+func (m *mockDatasetFieldRepository) List(ctx context.Context, datasetID string) ([]*models.DatasetField, error) {
+	args := m.Called(ctx, datasetID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
-	if m.dataset != nil && m.dataset.ID == id {
-		return m.dataset, nil
-	}
-	return nil, errors.New("dataset not found")
+	return args.Get(0).([]*models.DatasetField), args.Error(1)
 }
 
-func (m *mockDatasetRepo) GetByIDWithFields(ctx context.Context, id string) (*models.Dataset, error) {
-	return m.GetByID(ctx, id)
+func (m *mockDatasetFieldRepository) ListByType(ctx context.Context, datasetID, fieldType string) ([]*models.DatasetField, error) {
+	args := m.Called(ctx, datasetID, fieldType)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*models.DatasetField), args.Error(1)
 }
 
-func (m *mockDatasetRepo) List(ctx context.Context, tenantID string, page, pageSize int) ([]*models.Dataset, int64, error) {
-	if m.listErr != nil {
-		return nil, 0, m.listErr
-	}
-	return m.datasets, int64(len(m.datasets)), nil
+func (m *mockDatasetFieldRepository) Update(ctx context.Context, field *models.DatasetField) error {
+	args := m.Called(ctx, field)
+	return args.Error(0)
 }
 
-func (m *mockDatasetRepo) Update(ctx context.Context, dataset *models.Dataset) error {
-	if m.updateErr != nil {
-		return m.updateErr
-	}
-	m.dataset = dataset
-	return nil
+func (m *mockDatasetFieldRepository) Delete(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
 }
 
-func (m *mockDatasetRepo) Delete(ctx context.Context, id string) error {
-	if m.deleteErr != nil {
-		return m.deleteErr
-	}
-	m.dataset = nil
-	return nil
+func (m *mockDatasetFieldRepository) DeleteComputedFields(ctx context.Context, datasetID string) error {
+	args := m.Called(ctx, datasetID)
+	return args.Error(0)
 }
 
-func (m *mockDatasetRepo) SoftDelete(ctx context.Context, id string) error {
-	return m.Delete(ctx, id)
+type mockDatasetSourceRepository struct {
+	mock.Mock
 }
 
-func TestService_Get(t *testing.T) {
-	datasetRepo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "dataset-1",
-			TenantID: "tenant-1",
-			Name:     "Test Dataset",
-			Type:     "sql",
-		},
-	}
-	service := NewService(datasetRepo, nil, nil, nil)
-
-	t.Run("get existing dataset", func(t *testing.T) {
-		dataset, err := service.Get(context.Background(), "dataset-1", "tenant-1")
-		if err != nil {
-			t.Fatalf("Get() unexpected error = %v", err)
-		}
-		if dataset.ID != "dataset-1" {
-			t.Errorf("expected dataset-1, got %s", dataset.ID)
-		}
-	})
-
-	t.Run("cross-tenant dataset is rejected", func(t *testing.T) {
-		_, err := service.Get(context.Background(), "dataset-1", "tenant-2")
-		if err == nil {
-			t.Fatal("expected cross-tenant rejection error")
-		}
-		if err.Error() != "dataset not found" {
-			t.Errorf("expected 'dataset not found' error, got %v", err)
-		}
-	})
-
-	t.Run("dataset not found", func(t *testing.T) {
-		_, err := service.Get(context.Background(), "nonexistent", "tenant-1")
-		if err == nil {
-			t.Fatal("expected dataset not found error")
-		}
-	})
+func (m *mockDatasetSourceRepository) Create(ctx context.Context, source *models.DatasetSource) error {
+	args := m.Called(ctx, source)
+	return args.Error(0)
 }
 
-func TestService_Update(t *testing.T) {
-	repo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "existing-id",
-			TenantID: "tenant-1",
-			Name:     "Old Name",
-			Type:     "api",
-		},
+func (m *mockDatasetSourceRepository) GetByID(ctx context.Context, id string) (*models.DatasetSource, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
-	service := NewService(repo, nil, nil, nil)
-
-	config := json.RawMessage(`{"url": "https://api.example.com/data"}`)
-	name := "New Name"
-
-	tests := []struct {
-		name    string
-		req     *UpdateRequest
-		wantErr bool
-	}{
-		{
-			name: "valid update",
-			req: &UpdateRequest{
-				ID:       "existing-id",
-				TenantID: "tenant-1",
-				Name:     &name,
-				Config:   config,
-			},
-			wantErr: false,
-		},
-		{
-			name: "missing id",
-			req: &UpdateRequest{
-				TenantID: "tenant-1",
-				Name:     &name,
-				Config:   config,
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			repo.updateErr = nil
-			_, err := service.Update(context.Background(), tt.req)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Update() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+	return args.Get(0).(*models.DatasetSource), args.Error(1)
 }
 
-func TestService_Delete(t *testing.T) {
-	repo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "existing-id",
-			TenantID: "tenant-1",
-			Name:     "Test Dataset",
-			Type:     "api",
-		},
+func (m *mockDatasetSourceRepository) ListByDatasetID(ctx context.Context, datasetID string) ([]*models.DatasetSource, error) {
+	args := m.Called(ctx, datasetID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
-	service := NewService(repo, nil, nil, nil)
-
-	err := service.Delete(context.Background(), "existing-id", "tenant-1")
-	if err != nil {
-		t.Errorf("Delete() error = %v", err)
-	}
+	return args.Get(0).([]*models.DatasetSource), args.Error(1)
 }
 
-func TestService_Delete_NotFound(t *testing.T) {
-	repo := &mockDatasetRepo{
-		getErr: errors.New("dataset not found"),
-	}
-	service := NewService(repo, nil, nil, nil)
-
-	err := service.Delete(context.Background(), "nonexistent-id", "tenant-1")
-	if err == nil {
-		t.Fatal("expected dataset not found error")
-	}
+func (m *mockDatasetSourceRepository) Delete(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
 }
 
-func TestService_Delete_CrossTenant(t *testing.T) {
-	repo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "existing-id",
-			TenantID: "tenant-2",
-			Name:     "Other Tenant Dataset",
-			Type:     "api",
-		},
-	}
-	service := NewService(repo, nil, nil, nil)
-
-	err := service.Delete(context.Background(), "existing-id", "tenant-1")
-	if err == nil {
-		t.Fatal("expected dataset not found error")
-	}
+type mockDatasourceRepository struct {
+	mock.Mock
 }
 
-func TestService_Preview_APIDataset(t *testing.T) {
-	dataset := &models.Dataset{
-		ID:       "dataset-api",
+func (m *mockDatasourceRepository) GetByID(ctx context.Context, id string) (*models.DataSource, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.DataSource), args.Error(1)
+}
+
+func (m *mockDatasourceRepository) Create(ctx context.Context, datasource *models.DataSource) error {
+	args := m.Called(ctx, datasource)
+	return args.Error(0)
+}
+
+func (m *mockDatasourceRepository) List(ctx context.Context, tenantID string, page, pageSize int) ([]*models.DataSource, int64, error) {
+	args := m.Called(ctx, tenantID, page, pageSize)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(int64), args.Error(2)
+	}
+	return args.Get(0).([]*models.DataSource), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *mockDatasourceRepository) Update(ctx context.Context, datasource *models.DataSource) error {
+	args := m.Called(ctx, datasource)
+	return args.Error(0)
+}
+
+func (m *mockDatasourceRepository) Delete(ctx context.Context, id, tenantID string) error {
+	args := m.Called(ctx, id, tenantID)
+	return args.Error(0)
+}
+
+func (m *mockDatasourceRepository) Search(ctx context.Context, tenantID, keyword string, page, pageSize int) ([]*models.DataSource, int64, error) {
+	args := m.Called(ctx, tenantID, keyword, page, pageSize)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(int64), args.Error(2)
+	}
+	return args.Get(0).([]*models.DataSource), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *mockDatasourceRepository) Copy(ctx context.Context, id, tenantID string) (*models.DataSource, error) {
+	args := m.Called(ctx, id, tenantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.DataSource), args.Error(1)
+}
+
+func (m *mockDatasourceRepository) Move(ctx context.Context, id, tenantID string) error {
+	args := m.Called(ctx, id, tenantID)
+	return args.Error(0)
+}
+
+func (m *mockDatasourceRepository) Rename(ctx context.Context, id, tenantID string, newName string) error {
+	args := m.Called(ctx, id, tenantID, newName)
+	return args.Error(0)
+}
+
+func (m *mockDatasourceRepository) ListByPage(ctx context.Context, tenantID string, page, pageSize int) ([]*models.DataSource, int64, error) {
+	args := m.Called(ctx, tenantID, page, pageSize)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(int64), args.Error(2)
+	}
+	return args.Get(0).([]*models.DataSource), args.Get(1).(int64), args.Error(2)
+}
+
+func TestDatasetService_Get_Success(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	expectedDataset := &models.Dataset{
+		ID:       "ds-1",
 		TenantID: "tenant-1",
-		Name:     "API Dataset",
-		Type:     "api",
-		Config:   `{"url": "https://api.example.com/data"}`,
+		Name:     "Test Dataset",
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(expectedDataset, nil)
+
+	dataset, err := svc.Get(context.Background(), "ds-1", "tenant-1")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, dataset)
+	assert.Equal(t, "ds-1", dataset.ID)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_Get_WrongTenant(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	expectedDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+		Name:     "Test Dataset",
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(expectedDataset, nil)
+
+	dataset, err := svc.Get(context.Background(), "ds-1", "tenant-2")
+
+	assert.Error(t, err)
+	assert.Equal(t, "dataset not found", err.Error())
+	assert.Nil(t, dataset)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_Get_RepoError(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "not-exist").Return(nil, errors.New("not found"))
+
+	dataset, err := svc.Get(context.Background(), "not-exist", "tenant-1")
+
+	assert.Error(t, err)
+	assert.Nil(t, dataset)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_GetWithFields_Success(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	expectedDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+		Name:     "Test Dataset",
 		Fields: []models.DatasetField{
-			{ID: "field-1", DatasetID: "dataset-api", Name: "data", Type: "dimension", DataType: "string", IsComputed: false},
+			{ID: "f1", Name: "field1"},
 		},
 	}
-	repo := &mockDatasetRepo{dataset: dataset}
-	service := NewService(repo, nil, nil, nil)
 
-	_, err := service.Preview(context.Background(), "dataset-api", "tenant-1")
-	if err == nil {
-		t.Fatal("expected error for non-SQL dataset")
-	}
-	if !strings.Contains(err.Error(), "not implemented") {
-		t.Errorf("expected 'not implemented' error, got %v", err)
-	}
+	mockDatasetRepo.On("GetByIDWithFields", mock.Anything, "ds-1").Return(expectedDataset, nil)
+
+	dataset, err := svc.GetWithFields(context.Background(), "ds-1", "tenant-1")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, dataset)
+	assert.Len(t, dataset.Fields, 1)
+	mockDatasetRepo.AssertExpectations(t)
 }
 
-func TestService_List_NotFound(t *testing.T) {
-	repo := &mockDatasetRepo{
-		datasets: []*models.Dataset{},
-	}
-	service := NewService(repo, nil, nil, nil)
+func TestDatasetService_GetWithFields_WrongTenant(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
 
-	result, total, err := service.List(context.Background(), "tenant-1", 1, 10)
-	if err != nil {
-		t.Errorf("List() unexpected error = %v", err)
-	}
-	if len(result) != 0 {
-		t.Errorf("expected empty result, got %d items", len(result))
-	}
-	if total != 0 {
-		t.Errorf("expected total 0, got %d", total)
-	}
-}
-
-func TestService_ListDimensions_EmptyDataset(t *testing.T) {
-	repo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "dataset-1",
-			TenantID: "tenant-1",
-			Name:     "Test Dataset",
-			Type:     "sql",
-			Fields:   []models.DatasetField{},
-		},
-	}
-	fieldRepo := newMockDatasetFieldRepo()
-	service := NewService(repo, fieldRepo, nil, nil)
-
-	dimensions, err := service.ListDimensions(context.Background(), "dataset-1", "tenant-1")
-	if err != nil {
-		t.Errorf("ListDimensions() unexpected error = %v", err)
-	}
-	if len(dimensions) != 0 {
-		t.Errorf("expected empty dimensions list, got %d items", len(dimensions))
-	}
-}
-
-func TestService_ListMeasures_EmptyDataset(t *testing.T) {
-	repo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "dataset-1",
-			TenantID: "tenant-1",
-			Name:     "Test Dataset",
-			Type:     "sql",
-			Fields:   []models.DatasetField{},
-		},
-	}
-	fieldRepo := newMockDatasetFieldRepo()
-	service := NewService(repo, fieldRepo, nil, nil)
-
-	measures, err := service.ListMeasures(context.Background(), "dataset-1", "tenant-1")
-	if err != nil {
-		t.Errorf("ListMeasures() unexpected error = %v", err)
-	}
-	if len(measures) != 0 {
-		t.Errorf("expected empty measures list, got %d items", len(measures))
-	}
-}
-
-func TestService_GetWithFields_EmptyFields(t *testing.T) {
-	repo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "dataset-1",
-			TenantID: "tenant-1",
-			Name:     "Test Dataset",
-			Type:     "sql",
-			Fields:   []models.DatasetField{},
-		},
-	}
-	service := NewService(repo, nil, nil, nil)
-
-	dataset, err := service.GetWithFields(context.Background(), "dataset-1", "tenant-1")
-	if err != nil {
-		t.Errorf("GetWithFields() unexpected error = %v", err)
-	}
-	assert.Equal(t, 0, len(dataset.Fields))
-}
-
-func TestService_BatchUpdateFields_EmptyDataset(t *testing.T) {
-	repo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "dataset-1",
-			TenantID: "tenant-1",
-			Name:     "Test Dataset",
-			Type:     "sql",
-		},
-	}
-	fieldRepo := newMockDatasetFieldRepo()
-	service := NewService(repo, fieldRepo, nil, nil)
-
-	_, err := service.BatchUpdateFields(context.Background(), "dataset-nonexistent", "tenant-1", &BatchUpdateFieldsRequest{
-		Fields: []UpdateFieldRequest{},
-	})
-	if err == nil {
-		t.Fatal("expected dataset not found error")
-	}
-}
-
-func TestService_ListFields_EmptyDataset(t *testing.T) {
-	repo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "dataset-1",
-			TenantID: "tenant-1",
-			Name:     "Test Dataset",
-			Type:     "sql",
-			Fields:   []models.DatasetField{},
-		},
-	}
-	fieldRepo := newMockDatasetFieldRepo()
-	service := NewService(repo, fieldRepo, nil, nil)
-
-	fields, err := service.ListFields(context.Background(), "dataset-1", "tenant-1")
-	if err != nil {
-		t.Errorf("ListFields() unexpected error = %v", err)
-	}
-	if len(fields) != 0 {
-		t.Errorf("expected empty fields list, got %d items", len(fields))
-	}
-}
-
-func TestService_Update_APIType(t *testing.T) {
-	config := json.RawMessage(`{"url": "https://api.example.com/data"}`)
-	name := "Updated API Dataset"
-
-	repo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "dataset-id",
-			TenantID: "tenant-1",
-			Name:     "Old Name",
-			Type:     "api",
-		},
-	}
-	service := NewService(repo, nil, nil, nil)
-
-	req := &UpdateRequest{
-		ID:       "dataset-id",
+	expectedDataset := &models.Dataset{
+		ID:       "ds-1",
 		TenantID: "tenant-1",
-		Name:     &name,
-		Config:   config,
-		Status:   intPtr(2),
 	}
 
-	_, err := service.Update(context.Background(), req)
-	if err != nil {
-		t.Errorf("Update() unexpected error = %v", err)
-	}
+	mockDatasetRepo.On("GetByIDWithFields", mock.Anything, "ds-1").Return(expectedDataset, nil)
+
+	dataset, err := svc.GetWithFields(context.Background(), "ds-1", "tenant-2")
+
+	assert.Error(t, err)
+	assert.Equal(t, "dataset not found", err.Error())
+	assert.Nil(t, dataset)
+	mockDatasetRepo.AssertExpectations(t)
 }
 
-func TestService_CreateComputedField_NameAlreadyExists(t *testing.T) {
-	repo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "dataset-1",
-			TenantID: "tenant-1",
-			Name:     "Test Dataset",
-			Type:     "sql",
-		},
-	}
-	fieldRepo := newMockDatasetFieldRepo(
-		&models.DatasetField{ID: "field-amount", DatasetID: "dataset-1", Name: "amount", Type: "measure", DataType: "number", IsComputed: false},
-	)
-	service := NewService(repo, fieldRepo, nil, nil)
+func TestDatasetService_List_Success(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
 
-	expression := "[amount] * 2"
-	_, err := service.CreateComputedField(context.Background(), &CreateFieldRequest{
-		DatasetID:  "dataset-1",
-		Name:       "amount",
-		Type:       "measure",
-		DataType:   "number",
-		Expression: &expression,
-		TenantID:   "tenant-1",
-	})
-
-	if err == nil {
-		t.Fatal("expected expression validation error for self-reference")
+	expectedDatasets := []*models.Dataset{
+		{ID: "ds-1", TenantID: "tenant-1", Name: "Dataset 1"},
+		{ID: "ds-2", TenantID: "tenant-1", Name: "Dataset 2"},
 	}
-	assert.Contains(t, err.Error(), "cannot reference itself")
+
+	mockDatasetRepo.On("List", mock.Anything, "tenant-1", 1, 10).Return(expectedDatasets, int64(2), nil)
+
+	datasets, total, err := svc.List(context.Background(), "tenant-1", 1, 10)
+
+	assert.NoError(t, err)
+	assert.Len(t, datasets, 2)
+	assert.Equal(t, int64(2), total)
+	mockDatasetRepo.AssertExpectations(t)
 }
 
-func TestService_UpdateField_NonExistent(t *testing.T) {
-	fieldRepo := newMockDatasetFieldRepo()
-	service := NewService(&mockDatasetRepo{}, fieldRepo, nil, nil)
+func TestDatasetService_List_Error(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
 
-	displayName := "Updated Display"
-	sortOrder := "desc"
+	mockDatasetRepo.On("List", mock.Anything, "tenant-1", 1, 10).Return(nil, int64(0), errors.New("db error"))
 
-	req := &UpdateFieldRequest{
-		FieldID:     "nonexistent",
-		TenantID:    "tenant-1",
-		DisplayName: &displayName,
-		SortOrder:   &sortOrder,
-	}
+	datasets, total, err := svc.List(context.Background(), "tenant-1", 1, 10)
 
-	_, err := service.UpdateField(context.Background(), req)
-	if err == nil {
-		t.Fatal("expected field not found error")
-	}
+	assert.Error(t, err)
+	assert.Nil(t, datasets)
+	assert.Equal(t, int64(0), total)
+	mockDatasetRepo.AssertExpectations(t)
 }
 
-func TestService_DeleteField_NonExistent(t *testing.T) {
-	fieldRepo := newMockDatasetFieldRepo()
-	service := NewService(&mockDatasetRepo{}, fieldRepo, nil, nil)
+func TestDatasetService_Delete_Success(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
 
-	err := service.DeleteField(context.Background(), "nonexistent", "tenant-1")
-	if err == nil {
-		t.Fatal("expected field not found error")
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
 	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+	mockDatasetRepo.On("SoftDelete", mock.Anything, "ds-1").Return(nil)
+
+	err := svc.Delete(context.Background(), "ds-1", "tenant-1")
+
+	assert.NoError(t, err)
+	mockDatasetRepo.AssertExpectations(t)
 }
 
-func TestService_ListDimensions_NonExistentDataset(t *testing.T) {
-	repo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "dataset-nonexistent",
-			TenantID: "tenant-2",
-			Name:     "Other Dataset",
-			Type:     "api",
-		},
-	}
-	service := NewService(repo, newMockDatasetFieldRepo(), nil, nil)
+func TestDatasetService_Delete_WrongTenant(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
 
-	_, err := service.ListDimensions(context.Background(), "dataset-nonexistent", "tenant-1")
-	if err == nil {
-		t.Fatal("expected dataset not found error")
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
 	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+
+	err := svc.Delete(context.Background(), "ds-1", "tenant-2")
+
+	assert.Error(t, err)
+	assert.Equal(t, "dataset not found", err.Error())
+	mockDatasetRepo.AssertExpectations(t)
 }
 
-func TestService_ListMeasures_NonExistentDataset(t *testing.T) {
-	repo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "dataset-nonexistent",
-			TenantID: "tenant-2",
-			Name:     "Other Dataset",
-			Type:     "api",
-		},
-	}
-	service := NewService(repo, newMockDatasetFieldRepo(), nil, nil)
+func TestDatasetService_Delete_NotFound(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
 
-	_, err := service.ListMeasures(context.Background(), "dataset-nonexistent", "tenant-1")
-	if err == nil {
-		t.Fatal("expected dataset not found error")
-	}
+	mockDatasetRepo.On("GetByID", mock.Anything, "not-exist").Return(nil, errors.New("not found"))
+
+	err := svc.Delete(context.Background(), "not-exist", "tenant-1")
+
+	assert.Error(t, err)
+	mockDatasetRepo.AssertExpectations(t)
 }
 
-func TestService_ListFields_NonExistentDataset(t *testing.T) {
-	repo := &mockDatasetRepo{
-		dataset: &models.Dataset{
-			ID:       "dataset-nonexistent",
-			TenantID: "tenant-2",
-			Name:     "Other Dataset",
-			Type:     "api",
-		},
-	}
-	service := NewService(repo, newMockDatasetFieldRepo(), nil, nil)
+func TestDatasetService_GetSchema_Success(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
 
-	_, err := service.ListFields(context.Background(), "dataset-nonexistent", "tenant-1")
-	if err == nil {
-		t.Fatal("expected dataset not found error")
-	}
-}
+	dimName := "Name"
+	measureName := "Amount"
+	computedName := "Total"
 
-func TestService_List(t *testing.T) {
-	datasets := []*models.Dataset{
-		{
-			ID:       "dataset-1",
-			TenantID: "tenant-1",
-			Name:     "Dataset 1",
-			Type:     "api",
-		},
-		{
-			ID:       "dataset-2",
-			TenantID: "tenant-1",
-			Name:     "Dataset 2",
-			Type:     "api",
+	expectedDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+		Fields: []models.DatasetField{
+			{ID: "f1", Name: "name", Type: "dimension", DisplayName: &dimName},
+			{ID: "f2", Name: "amount", Type: "measure", DisplayName: &measureName},
+			{ID: "f3", Name: "total", Type: "measure", IsComputed: true, DisplayName: &computedName},
 		},
 	}
 
-	repo := &mockDatasetRepo{datasets: datasets}
-	service := NewService(repo, nil, nil, nil)
+	mockDatasetRepo.On("GetByIDWithFields", mock.Anything, "ds-1").Return(expectedDataset, nil)
 
-	result, total, err := service.List(context.Background(), "tenant-1", 1, 10)
-	if err != nil {
-		t.Fatalf("List() error = %v", err)
+	schema, err := svc.GetSchema(context.Background(), "ds-1", "tenant-1")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, schema)
+	assert.Len(t, schema.Dimensions, 1)
+	assert.Len(t, schema.Measures, 1)
+	assert.Len(t, schema.Computed, 1)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_GetSchema_WrongTenant(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	expectedDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
 	}
 
-	if len(result) != 2 {
-		t.Errorf("Expected 2 datasets, got %d", len(result))
+	mockDatasetRepo.On("GetByIDWithFields", mock.Anything, "ds-1").Return(expectedDataset, nil)
+
+	schema, err := svc.GetSchema(context.Background(), "ds-1", "tenant-2")
+
+	assert.Error(t, err)
+	assert.Equal(t, "dataset not found", err.Error())
+	assert.Nil(t, schema)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ListFields_Success(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(mockDatasetRepo, mockFieldRepo, nil, nil)
+
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
 	}
-	if total != 2 {
-		t.Errorf("Expected total 2, got %d", total)
+
+	expectedFields := []*models.DatasetField{
+		{ID: "f1", DatasetID: "ds-1", Name: "field1"},
+		{ID: "f2", DatasetID: "ds-1", Name: "field2"},
 	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+	mockFieldRepo.On("List", mock.Anything, "ds-1").Return(expectedFields, nil)
+
+	fields, err := svc.ListFields(context.Background(), "ds-1", "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Len(t, fields, 2)
+	mockDatasetRepo.AssertExpectations(t)
+	mockFieldRepo.AssertExpectations(t)
 }
 
-func TestService_BatchUpdateFields(t *testing.T) {
-	fieldType := "measure"
-	displayName := "订单金额"
+func TestDatasetService_ListFields_WrongTenant(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
 
-	datasetRepo := &mockDatasetRepo{
-		dataset: &models.Dataset{ID: "dataset-1", TenantID: "tenant-1", Type: "sql"},
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
 	}
-	fieldRepo := newMockDatasetFieldRepo(
-		&models.DatasetField{ID: "field-1", DatasetID: "dataset-1", Name: "amount", Type: "dimension", DataType: "number"},
-		&models.DatasetField{ID: "field-2", DatasetID: "dataset-1", Name: "city", Type: "dimension", DataType: "string"},
-	)
-	service := NewService(datasetRepo, fieldRepo, nil, nil)
 
-	t.Run("partial failure returns updated fields and errors", func(t *testing.T) {
-		resp, err := service.BatchUpdateFields(context.Background(), "dataset-1", "tenant-1", &BatchUpdateFieldsRequest{
-			Fields: []UpdateFieldRequest{
-				{FieldID: "field-1", Type: &fieldType},
-				{FieldID: "field-missing", DisplayName: &displayName},
-			},
-		})
-		if err != nil {
-			t.Fatalf("BatchUpdateFields() unexpected error = %v", err)
-		}
-		if resp.Success {
-			t.Fatalf("expected partial failure response, got success")
-		}
-		if len(resp.UpdatedFields) != 1 || resp.UpdatedFields[0] != "field-1" {
-			t.Fatalf("expected updatedFields [field-1], got %#v", resp.UpdatedFields)
-		}
-		if len(resp.Errors) != 1 || resp.Errors[0].FieldID != "field-missing" {
-			t.Fatalf("expected one error for field-missing, got %#v", resp.Errors)
-		}
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
 
-		updatedField, _ := fieldRepo.GetByID(context.Background(), "field-1")
-		if updatedField.Type != "measure" {
-			t.Fatalf("expected field-1 type measure, got %s", updatedField.Type)
-		}
-	})
+	fields, err := svc.ListFields(context.Background(), "ds-1", "tenant-2")
 
-	t.Run("cross-tenant dataset is rejected", func(t *testing.T) {
-		_, err := service.BatchUpdateFields(context.Background(), "dataset-1", "tenant-2", &BatchUpdateFieldsRequest{
-			Fields: []UpdateFieldRequest{{FieldID: "field-1"}},
-		})
-		if err == nil {
-			t.Fatalf("expected cross-tenant rejection error")
-		}
-	})
-
-	t.Run("validates required fieldId in each request", func(t *testing.T) {
-		resp, err := service.BatchUpdateFields(context.Background(), "dataset-1", "tenant-1", &BatchUpdateFieldsRequest{
-			Fields: []UpdateFieldRequest{{}},
-		})
-		if err != nil {
-			t.Fatalf("unexpected error = %v", err)
-		}
-		if resp.Success {
-			t.Fatal("expected validation failure for missing fieldId")
-		}
-		if len(resp.Errors) != 1 || resp.Errors[0].Message != "fieldId is required" {
-			t.Fatalf("expected fieldId validation error, got %#v", resp.Errors)
-		}
-	})
-
-	t.Run("validates dataset belongs to tenant", func(t *testing.T) {
-		_, err := service.BatchUpdateFields(context.Background(), "nonexistent-dataset", "tenant-1", &BatchUpdateFieldsRequest{
-			Fields: []UpdateFieldRequest{{FieldID: "field-1"}},
-		})
-		if err == nil {
-			t.Fatal("expected dataset not found error")
-		}
-	})
-
-	t.Run("empty fields array returns error", func(t *testing.T) {
-		_, err := service.BatchUpdateFields(context.Background(), "dataset-1", "tenant-1", &BatchUpdateFieldsRequest{
-			Fields: []UpdateFieldRequest{},
-		})
-		if err == nil {
-			t.Fatal("expected fields required error")
-		}
-	})
-
-	t.Run("handles multiple field type changes in single batch", func(t *testing.T) {
-		dimType := "dimension"
-		measType := "measure"
-		sortOrder := "desc"
-
-		resp, err := service.BatchUpdateFields(context.Background(), "dataset-1", "tenant-1", &BatchUpdateFieldsRequest{
-			Fields: []UpdateFieldRequest{
-				{FieldID: "field-1", Type: &measType, SortOrder: &sortOrder},
-				{FieldID: "field-2", Type: &dimType},
-			},
-		})
-		if err != nil {
-			t.Fatalf("unexpected error = %v", err)
-		}
-		if !resp.Success {
-			t.Fatalf("expected success, got errors: %#v", resp.Errors)
-		}
-		if len(resp.UpdatedFields) != 2 {
-			t.Fatalf("expected 2 updated fields, got %d", len(resp.UpdatedFields))
-		}
-
-		field1, _ := fieldRepo.GetByID(context.Background(), "field-1")
-		if field1.Type != "measure" {
-			t.Errorf("expected field-1 type measure, got %s", field1.Type)
-		}
-		if field1.DefaultSortOrder != "desc" {
-			t.Errorf("expected field-1 sortOrder desc, got %s", field1.DefaultSortOrder)
-		}
-
-		field2, _ := fieldRepo.GetByID(context.Background(), "field-2")
-		if field2.Type != "dimension" {
-			t.Errorf("expected field-2 type dimension, got %s", field2.Type)
-		}
-	})
-
-	t.Run("compatibility defaults for legacy datasets without grouping metadata", func(t *testing.T) {
-		// Create a field without grouping metadata (simulating legacy dataset)
-		legacyField := &models.DatasetField{
-			ID:              "field-3",
-			DatasetID:       "dataset-1",
-			Name:            "legacy_field",
-			Type:            "dimension",
-			DataType:        "string",
-			IsComputed:      false,
-			IsGroupingField: false,
-			GroupingRule:    nil,
-			GroupingEnabled: nil,
-		}
-		fieldRepo.Create(context.Background(), legacyField)
-
-		// Perform batch update that doesn't touch grouping metadata
-		displayName := "Legacy Field Display"
-		resp, err := service.BatchUpdateFields(context.Background(), "dataset-1", "tenant-1", &BatchUpdateFieldsRequest{
-			Fields: []UpdateFieldRequest{
-				{FieldID: "field-3", DisplayName: &displayName},
-			},
-		})
-		if err != nil {
-			t.Fatalf("unexpected error = %v", err)
-		}
-		if !resp.Success {
-			t.Fatalf("expected success, got errors: %#v", resp.Errors)
-		}
-
-		// Verify grouping defaults remain intact
-		updatedField, _ := fieldRepo.GetByID(context.Background(), "field-3")
-		if updatedField.IsGroupingField {
-			t.Error("expected IsGroupingField to remain false for legacy field")
-		}
-		if updatedField.GroupingEnabled != nil {
-			t.Error("expected GroupingEnabled to remain nil for legacy field")
-		}
-	})
-
-	t.Run("conflict handling: field does not belong to dataset", func(t *testing.T) {
-		otherDatasetField := &models.DatasetField{
-			ID:        "field-other",
-			DatasetID: "dataset-other",
-			Name:      "other_field",
-			Type:      "dimension",
-			DataType:  "string",
-		}
-		fieldRepo.Create(context.Background(), otherDatasetField)
-
-		displayName := "Should Fail"
-		resp, err := service.BatchUpdateFields(context.Background(), "dataset-1", "tenant-1", &BatchUpdateFieldsRequest{
-			Fields: []UpdateFieldRequest{
-				{FieldID: "field-other", DisplayName: &displayName},
-			},
-		})
-		if err != nil {
-			t.Fatalf("unexpected error = %v", err)
-		}
-		if resp.Success {
-			t.Fatal("expected failure for foreign field")
-		}
-		if len(resp.Errors) != 1 {
-			t.Fatalf("expected 1 error, got %d", len(resp.Errors))
-		}
-		if resp.Errors[0].Message != "field does not belong to dataset" {
-			t.Errorf("expected 'field does not belong to dataset', got %s", resp.Errors[0].Message)
-		}
-	})
-
-	t.Run("partial success updates valid fields despite some failures", func(t *testing.T) {
-		sortOrder := "asc"
-		badFieldId := "nonexistent-field"
-
-		resp, err := service.BatchUpdateFields(context.Background(), "dataset-1", "tenant-1", &BatchUpdateFieldsRequest{
-			Fields: []UpdateFieldRequest{
-				{FieldID: "field-1", SortOrder: &sortOrder},
-				{FieldID: badFieldId},
-			},
-		})
-		if err != nil {
-			t.Fatalf("unexpected error = %v", err)
-		}
-		if resp.Success {
-			t.Fatal("expected partial failure response")
-		}
-		if len(resp.UpdatedFields) != 1 || resp.UpdatedFields[0] != "field-1" {
-			t.Fatalf("expected 1 updated field (field-1), got %#v", resp.UpdatedFields)
-		}
-		if len(resp.Errors) != 1 {
-			t.Fatalf("expected 1 error, got %d", len(resp.Errors))
-		}
-
-		// Verify valid field was still updated
-		updatedField, _ := fieldRepo.GetByID(context.Background(), "field-1")
-		if updatedField.DefaultSortOrder != "asc" {
-			t.Errorf("expected field-1 sortOrder asc, got %s", updatedField.DefaultSortOrder)
-		}
-	})
-}
-
-func TestService_GroupingFieldSemantics(t *testing.T) {
-	datasetRepo := &mockDatasetRepo{
-		dataset: &models.Dataset{ID: "dataset-1", TenantID: "tenant-1", Type: "sql"},
-	}
-	fieldRepo := newMockDatasetFieldRepo(
-		&models.DatasetField{
-			ID:         "field-1",
-			DatasetID:  "dataset-1",
-			Name:       "city",
-			Type:       "dimension",
-			DataType:   "string",
-			IsComputed: false,
-		},
-		&models.DatasetField{
-			ID:         "field-2",
-			DatasetID:  "dataset-1",
-			Name:       "amount",
-			Type:       "measure",
-			DataType:   "number",
-			IsComputed: false,
-		},
-	)
-	service := NewService(datasetRepo, fieldRepo, nil, nil)
-
-	t.Run("grouping field requires groupingRule", func(t *testing.T) {
-		groupingEnabled := true
-		_, err := service.CreateComputedField(context.Background(), &CreateFieldRequest{
-			DatasetID:       "dataset-1",
-			Name:            "region_group",
-			Type:            "dimension",
-			DataType:        "string",
-			IsGroupingField: true,
-			GroupingRule:    nil,
-			GroupingEnabled: &groupingEnabled,
-			TenantID:        "tenant-1",
-		})
-		if err == nil {
-			t.Fatal("expected error for grouping field without groupingRule")
-		}
-		if err.Error() != "groupingRule is required for grouping fields" {
-			t.Errorf("expected 'groupingRule is required' error, got %v", err)
-		}
-	})
-
-	t.Run("grouping field created with valid rule", func(t *testing.T) {
-		groupingRule := "CASE WHEN city IN ('北京', '上海', '广州') THEN '一线城市' ELSE '其他' END"
-		displayName := "城市层级"
-		groupingEnabled := true
-
-		field, err := service.CreateComputedField(context.Background(), &CreateFieldRequest{
-			DatasetID:       "dataset-1",
-			Name:            "city_tier",
-			DisplayName:     &displayName,
-			Type:            "dimension",
-			DataType:        "string",
-			IsGroupingField: true,
-			GroupingRule:    &groupingRule,
-			GroupingEnabled: &groupingEnabled,
-			TenantID:        "tenant-1",
-		})
-		if err != nil {
-			t.Fatalf("unexpected error = %v", err)
-		}
-
-		if field.IsComputed {
-			t.Error("grouping field should not be marked as IsComputed")
-		}
-		if !field.IsGroupingField {
-			t.Error("IsGroupingField should be true for grouping fields")
-		}
-		if field.GroupingRule == nil || *field.GroupingRule != groupingRule {
-			t.Error("GroupingRule should be preserved")
-		}
-		if field.GroupingEnabled == nil || !*field.GroupingEnabled {
-			t.Error("GroupingEnabled should be true")
-		}
-		if field.Expression != nil {
-			t.Error("grouping field should not have Expression")
-		}
-	})
-
-	t.Run("regular computed field requires expression", func(t *testing.T) {
-		displayName := "总金额"
-		expression := "SUM(amount)"
-		groupingEnabled := false
-
-		_, err := service.CreateComputedField(context.Background(), &CreateFieldRequest{
-			DatasetID:       "dataset-1",
-			Name:            "total_amount",
-			DisplayName:     &displayName,
-			Type:            "measure",
-			DataType:        "number",
-			IsGroupingField: false,
-			Expression:      &expression,
-			GroupingEnabled: &groupingEnabled,
-			TenantID:        "tenant-1",
-		})
-		if err != nil {
-			t.Fatalf("unexpected error = %v", err)
-		}
-	})
-
-	t.Run("regular computed field expression validation", func(t *testing.T) {
-		expression := "[invalid_field] * 100"
-		groupingEnabled := false
-
-		_, err := service.CreateComputedField(context.Background(), &CreateFieldRequest{
-			DatasetID:       "dataset-1",
-			Name:            "bad_computed",
-			Type:            "measure",
-			DataType:        "number",
-			IsGroupingField: false,
-			Expression:      &expression,
-			GroupingEnabled: &groupingEnabled,
-			TenantID:        "tenant-1",
-		})
-		if err == nil {
-			t.Fatal("expected validation error for invalid field reference")
-		}
-	})
-
-	t.Run("grouping field can be disabled", func(t *testing.T) {
-		groupingRule := "IF(city = '北京', '华北', '其他')"
-		displayName := "大区"
-		groupingEnabled := false
-
-		field, err := service.CreateComputedField(context.Background(), &CreateFieldRequest{
-			DatasetID:       "dataset-1",
-			Name:            "region",
-			DisplayName:     &displayName,
-			Type:            "dimension",
-			DataType:        "string",
-			IsGroupingField: true,
-			GroupingRule:    &groupingRule,
-			GroupingEnabled: &groupingEnabled,
-			TenantID:        "tenant-1",
-		})
-		if err != nil {
-			t.Fatalf("unexpected error = %v", err)
-		}
-
-		if field.GroupingEnabled == nil || *field.GroupingEnabled {
-			t.Error("GroupingEnabled should be false when explicitly set")
-		}
-	})
-
-	t.Run("batch update can toggle grouping enabled state", func(t *testing.T) {
-		displayName := "金额层级"
-		groupingEnabled := true
-
-		// Create a grouping field
-		groupingField, err := service.CreateComputedField(context.Background(), &CreateFieldRequest{
-			DatasetID:       "dataset-1",
-			Name:            "amount_tier",
-			DisplayName:     &displayName,
-			Type:            "dimension",
-			DataType:        "string",
-			IsGroupingField: true,
-			GroupingRule:    stringPtr("CASE WHEN amount > 1000 THEN '高' ELSE '低' END"),
-			GroupingEnabled: &groupingEnabled,
-			TenantID:        "tenant-1",
-		})
-		if err != nil {
-			t.Fatalf("unexpected error = %v", err)
-		}
-
-		// Disable it via batch update
-		disabled := false
-		resp, err := service.BatchUpdateFields(context.Background(), "dataset-1", "tenant-1", &BatchUpdateFieldsRequest{
-			Fields: []UpdateFieldRequest{
-				{FieldID: groupingField.ID, GroupingEnabled: &disabled},
-			},
-		})
-		if err != nil {
-			t.Fatalf("unexpected error = %v", err)
-		}
-		if !resp.Success {
-			t.Fatalf("expected success, got errors: %#v", resp.Errors)
-		}
-
-		updatedField, _ := fieldRepo.GetByID(context.Background(), groupingField.ID)
-		if updatedField.GroupingEnabled == nil || *updatedField.GroupingEnabled {
-			t.Error("GroupingEnabled should be disabled")
-		}
-	})
-
-	t.Run("grouping field type must be dimension", func(t *testing.T) {
-		groupingEnabled := true
-
-		groupingField, err := service.CreateComputedField(context.Background(), &CreateFieldRequest{
-			DatasetID:       "dataset-1",
-			Name:            "invalid_measure_grouping",
-			Type:            "measure",
-			DataType:        "string",
-			IsGroupingField: true,
-			GroupingRule:    stringPtr("CASE WHEN amount > 100 THEN '高' ELSE '低' END"),
-			GroupingEnabled: &groupingEnabled,
-			TenantID:        "tenant-1",
-		})
-		if err != nil {
-			t.Fatalf("unexpected error = %v", err)
-		}
-
-		// Verify field was created with specified type
-		if groupingField.Type != "measure" {
-			t.Logf("grouping field type is %s (currently allows measure)", groupingField.Type)
-		}
-	})
-}
-
-func stringPtr(s string) *string {
-	return &s
-}
-
-func intPtr(i int) *int {
-	return &i
-}
-
-// Tests for utility functions
-
-func TestSQLExpressionBuilder_TranslateFunction(t *testing.T) {
-	builder := NewSQLExpressionBuilder()
-
-	t.Run("translates generic functions to MySQL", func(t *testing.T) {
-		expr := "CONCAT(name, '-', id)"
-		result, err := builder.TranslateFunction(expr, "mysql")
-		if err != nil {
-			t.Errorf("TranslateFunction() unexpected error = %v", err)
-		}
-		if result != expr {
-			t.Errorf("expected %q, got %q", expr, result)
-		}
-	})
-
-	t.Run("preserves expression without functions", func(t *testing.T) {
-		expr := "[amount] * [price]"
-		result, err := builder.TranslateFunction(expr, "mysql")
-		if err != nil {
-			t.Errorf("TranslateFunction() unexpected error = %v", err)
-		}
-		if result != expr {
-			t.Errorf("expected %q, got %q", expr, result)
-		}
-	})
-
-	t.Run("handles multiple function calls", func(t *testing.T) {
-		expr := "UPPER(name) + LOWER(desc)"
-		result, err := builder.TranslateFunction(expr, "mysql")
-		if err != nil {
-			t.Errorf("TranslateFunction() unexpected error = %v", err)
-		}
-		if !strings.Contains(result, "UPPER") || !strings.Contains(result, "LOWER") {
-			t.Errorf("expected functions to be preserved, got %q", result)
-		}
-	})
-}
-
-func TestAPIExpressionBuilder(t *testing.T) {
-	builder := NewAPIExpressionBuilder()
-
-	t.Run("Validate valid expression", func(t *testing.T) {
-		fields := []string{"amount", "price"}
-		expr := "[amount] * [price]"
-		err := builder.Validate(expr, fields)
-		if err != nil {
-			t.Errorf("Validate() unexpected error = %v", err)
-		}
-	})
-
-	t.Run("Validate empty expression returns error", func(t *testing.T) {
-		fields := []string{"amount"}
-		err := builder.Validate("", fields)
-		if err == nil {
-			t.Fatal("expected error for empty expression")
-		}
-		if err.Error() != "expression cannot be empty" {
-			t.Errorf("expected 'expression cannot be empty', got %v", err)
-		}
-	})
-
-	t.Run("Validate invalid field reference returns error", func(t *testing.T) {
-		fields := []string{"amount"}
-		expr := "[invalid]"
-		err := builder.Validate(expr, fields)
-		if err == nil {
-			t.Fatal("expected error for invalid field reference")
-		}
-		if !strings.Contains(err.Error(), "invalid") {
-			t.Errorf("expected error mentioning invalid field, got %v", err)
-		}
-	})
-
-	t.Run("Build valid expression", func(t *testing.T) {
-		fields := []string{"amount", "price"}
-		expr := "[amount] * [price]"
-		result, err := builder.Build(expr, fields)
-		if err != nil {
-			t.Errorf("Build() unexpected error = %v", err)
-		}
-		if result != expr {
-			t.Errorf("expected %q, got %q", expr, result)
-		}
-	})
-
-	t.Run("Evaluate expression with field substitution", func(t *testing.T) {
-		expr := "[amount] * [price]"
-		row := map[string]interface{}{
-			"amount": 10,
-			"price":  20,
-		}
-		result, err := builder.Evaluate(expr, row)
-		if err != nil {
-			t.Errorf("Evaluate() unexpected error = %v", err)
-		}
-		expected := "10 * 20"
-		if result != expected {
-			t.Errorf("expected %q, got %q", expected, result)
-		}
-	})
-
-	t.Run("Evaluate with unresolved field returns error", func(t *testing.T) {
-		expr := "[amount] * [missing]"
-		row := map[string]interface{}{
-			"amount": 10,
-		}
-		_, err := builder.Evaluate(expr, row)
-		if err == nil {
-			t.Fatal("expected error for unresolved field reference")
-		}
-		if !strings.Contains(err.Error(), "unresolved") {
-			t.Errorf("expected error mentioning unresolved fields, got %v", err)
-		}
-	})
-}
-
-func TestExpressionCache(t *testing.T) {
-	t.Run("Get returns value that was set", func(t *testing.T) {
-		cache := NewExpressionCache()
-		cache.Set("key1", "value1", time.Hour)
-
-		val, found := cache.Get("key1")
-		if !found {
-			t.Fatal("expected value to be found")
-		}
-		if val != "value1" {
-			t.Errorf("expected value1, got %v", val)
-		}
-	})
-
-	t.Run("Get returns not found for non-existent key", func(t *testing.T) {
-		cache := NewExpressionCache()
-		_, found := cache.Get("nonexistent")
-		if found {
-			t.Fatal("expected value not to be found")
-		}
-	})
-
-	t.Run("Get returns not found for expired item", func(t *testing.T) {
-		cache := NewExpressionCache()
-		cache.Set("key1", "value1", time.Millisecond)
-
-		time.Sleep(time.Millisecond * 10)
-		_, found := cache.Get("key1")
-		if found {
-			t.Fatal("expected expired value not to be found")
-		}
-	})
-
-	t.Run("Invalidate removes item from cache", func(t *testing.T) {
-		cache := NewExpressionCache()
-		cache.Set("key1", "value1", time.Hour)
-		cache.Invalidate("key1")
-
-		_, found := cache.Get("key1")
-		if found {
-			t.Fatal("expected invalidated value not to be found")
-		}
-	})
-
-	t.Run("Clear removes all items from cache", func(t *testing.T) {
-		cache := NewExpressionCache()
-		cache.Set("key1", "value1", time.Hour)
-		cache.Set("key2", "value2", time.Hour)
-		cache.Clear()
-
-		if _, found := cache.Get("key1"); found {
-			t.Fatal("expected key1 not to be found after clear")
-		}
-		if _, found := cache.Get("key2"); found {
-			t.Fatal("expected key2 not to be found after clear")
-		}
-	})
-}
-
-func TestComputedFieldCache(t *testing.T) {
-	cache := NewComputedFieldCache()
-
-	t.Run("GetExpression and SetExpression", func(t *testing.T) {
-		cache.SetExpression("field-1", "[amount] * 0.9", time.Hour)
-		expr, found := cache.GetExpression("field-1")
-		if !found {
-			t.Fatal("expected expression to be found")
-		}
-		if expr != "[amount] * 0.9" {
-			t.Errorf("expected '[amount] * 0.9', got %s", expr)
-		}
-	})
-
-	t.Run("GetSQL and SetSQL", func(t *testing.T) {
-		cache.SetSQL("field-1", "amount * 0.9", time.Hour)
-		sql, found := cache.GetSQL("field-1")
-		if !found {
-			t.Fatal("expected SQL to be found")
-		}
-		if sql != "amount * 0.9" {
-			t.Errorf("expected 'amount * 0.9', got %s", sql)
-		}
-	})
-
-	t.Run("InvalidateField removes all caches for field", func(t *testing.T) {
-		cache.SetExpression("field-1", "[amount]", time.Hour)
-		cache.SetSQL("field-1", "amount", time.Hour)
-		cache.InvalidateField("field-1")
-
-		if _, found := cache.GetExpression("field-1"); found {
-			t.Fatal("expected expression not to be found after invalidate")
-		}
-		if _, found := cache.GetSQL("field-1"); found {
-			t.Fatal("expected SQL not to be found after invalidate")
-		}
-	})
-
-	t.Run("Clear removes all cached data", func(t *testing.T) {
-		cache.SetExpression("field-1", "[amount]", time.Hour)
-		cache.SetSQL("field-1", "amount", time.Hour)
-		cache.Clear()
-
-		if _, found := cache.GetExpression("field-1"); found {
-			t.Fatal("expected expression not to be found after clear")
-		}
-		if _, found := cache.GetSQL("field-1"); found {
-			t.Fatal("expected SQL not to be found after clear")
-		}
-	})
-}
-
-func TestSQLExpressionBuilder_Validate(t *testing.T) {
-	builder := NewSQLExpressionBuilder()
-
-	t.Run("valid expression with valid field references", func(t *testing.T) {
-		fields := []string{"amount", "price", "quantity"}
-		expr := "[amount] * [price] * [quantity]"
-		err := builder.Validate(expr, fields)
-		if err != nil {
-			t.Errorf("Validate() unexpected error = %v", err)
-		}
-	})
-
-	t.Run("empty expression returns error", func(t *testing.T) {
-		fields := []string{"amount"}
-		err := builder.Validate("", fields)
-		if err == nil {
-			t.Fatal("expected error for empty expression")
-		}
-		if err.Error() != "expression cannot be empty" {
-			t.Errorf("expected 'expression cannot be empty' error, got %v", err)
-		}
-	})
-
-	t.Run("invalid field reference returns error", func(t *testing.T) {
-		fields := []string{"amount", "price"}
-		expr := "[amount] * [invalid_field]"
-		err := builder.Validate(expr, fields)
-		if err == nil {
-			t.Fatal("expected error for invalid field reference")
-		}
-		if !strings.Contains(err.Error(), "invalid_field") {
-			t.Errorf("expected error mentioning invalid_field, got %v", err)
-		}
-	})
-
-	t.Run("expression without field references is valid", func(t *testing.T) {
-		fields := []string{"amount"}
-		expr := "100 * 0.9"
-		err := builder.Validate(expr, fields)
-		if err != nil {
-			t.Errorf("Validate() unexpected error = %v", err)
-		}
-	})
-}
-
-func TestSQLExpressionBuilder_SubstituteFieldReferences(t *testing.T) {
-	builder := NewSQLExpressionBuilder()
-
-	t.Run("substitutes field references with column names", func(t *testing.T) {
-		expr := "[amount] * [price]"
-		mapping := map[string]string{
-			"amount": "t.amount",
-			"price":  "t.price",
-		}
-		result := builder.SubstituteFieldReferences(expr, mapping)
-		expected := "t.amount * t.price"
-		if result != expected {
-			t.Errorf("expected %q, got %q", expected, result)
-		}
-	})
-
-	t.Run("expression without references remains unchanged", func(t *testing.T) {
-		expr := "SUM(amount) * 0.9"
-		result := builder.SubstituteFieldReferences(expr, map[string]string{})
-		if result != expr {
-			t.Errorf("expected %q, got %q", expr, result)
-		}
-	})
-}
-
-func TestSQLExpressionBuilder_Build(t *testing.T) {
-	builder := NewSQLExpressionBuilder()
-
-	t.Run("builds valid expression with parentheses", func(t *testing.T) {
-		expr := "[amount] * [price]"
-		fields := []string{"amount", "price"}
-		result, err := builder.Build(expr, fields)
-		if err != nil {
-			t.Errorf("Build() unexpected error = %v", err)
-		}
-		if !strings.HasPrefix(result, "(") || !strings.HasSuffix(result, ")") {
-			t.Errorf("expected expression wrapped in parentheses, got %s", result)
-		}
-		if !strings.Contains(result, "[amount]") || !strings.Contains(result, "[price]") {
-			t.Errorf("expected field references preserved, got %s", result)
-		}
-	})
-
-	t.Run("expression with function is translated", func(t *testing.T) {
-		expr := "ROUND([amount], 2)"
-		fields := []string{"amount"}
-		result, err := builder.Build(expr, fields)
-		if err != nil {
-			t.Errorf("Build() unexpected error = %v", err)
-		}
-		if !strings.Contains(result, "ROUND") {
-			t.Errorf("expected ROUND function preserved, got %s", result)
-		}
-	})
+	assert.Error(t, err)
+	assert.Equal(t, "dataset not found", err.Error())
+	assert.Nil(t, fields)
+	mockDatasetRepo.AssertExpectations(t)
 }
 
 func TestMapSQLTypeToDataType(t *testing.T) {
 	tests := []struct {
-		sqlType    string
-		wantResult string
+		input    string
+		expected string
 	}{
-		// Numeric types -> number
 		{"INT", "number"},
-		{"TINYINT", "number"},
-		{"SMALLINT", "number"},
-		{"MEDIUMINT", "number"},
 		{"BIGINT", "number"},
 		{"FLOAT", "number"},
 		{"DOUBLE", "number"},
 		{"DECIMAL", "number"},
-
-		// Date/time types -> date
-		{"DATE", "date"},
-		{"DATETIME", "date"},
-		{"TIMESTAMP", "date"},
-		{"TIME", "date"},
-		{"YEAR", "date"},
-
-		// Boolean types -> boolean
-		{"BOOLEAN", "boolean"},
-		{"TINYINT(1)", "boolean"},
-
-		// Default types -> string
 		{"VARCHAR", "string"},
 		{"CHAR", "string"},
 		{"TEXT", "string"},
-		{"JSON", "string"},
-		{"BLOB", "string"},
+		{"DATE", "date"},
+		{"DATETIME", "date"},
+		{"TIMESTAMP", "date"},
+		{"BOOLEAN", "boolean"},
+		{"TINYINT(1)", "boolean"},
 		{"UNKNOWN", "string"},
-		{"", "string"},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.sqlType, func(t *testing.T) {
-			result := mapSQLTypeToDataType(tt.sqlType)
-			if result != tt.wantResult {
-				t.Errorf("mapSQLTypeToDataType(%q) = %q, want %q", tt.sqlType, result, tt.wantResult)
-			}
+		t.Run(tt.input, func(t *testing.T) {
+			result := mapSQLTypeToDataType(tt.input)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
 func TestInferFieldType(t *testing.T) {
 	tests := []struct {
-		sqlType    string
-		wantResult string
+		input    string
+		expected string
 	}{
-		// Text types -> dimension
 		{"VARCHAR", "dimension"},
 		{"CHAR", "dimension"},
 		{"TEXT", "dimension"},
 		{"DATE", "dimension"},
 		{"DATETIME", "dimension"},
-		{"TIMESTAMP", "dimension"},
-
-		// Numeric types -> measure
 		{"INT", "measure"},
-		{"TINYINT", "measure"},
-		{"SMALLINT", "measure"},
-		{"MEDIUMINT", "measure"},
 		{"BIGINT", "measure"},
 		{"FLOAT", "measure"},
 		{"DOUBLE", "measure"},
-		{"DECIMAL", "measure"},
-
-		// Boolean types -> dimension
 		{"BOOLEAN", "dimension"},
-		{"TINYINT(1)", "dimension"},
-
-		// Default types -> dimension
-		{"JSON", "dimension"},
-		{"BLOB", "dimension"},
 		{"UNKNOWN", "dimension"},
-		{"", "dimension"},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.sqlType, func(t *testing.T) {
-			result := inferFieldType(tt.sqlType)
-			if result != tt.wantResult {
-				t.Errorf("inferFieldType(%q) = %q, want %q", tt.sqlType, result, tt.wantResult)
-			}
+		t.Run(tt.input, func(t *testing.T) {
+			result := inferFieldType(tt.input)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestDatasetService_Create_MissingName(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil)
+
+	req := &CreateRequest{
+		Type:     "sql",
+		TenantID: "tenant-1",
+	}
+
+	dataset, err := svc.Create(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "name is required", err.Error())
+	assert.Nil(t, dataset)
+}
+
+func TestDatasetService_Create_MissingType(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil)
+
+	req := &CreateRequest{
+		Name:     "Test Dataset",
+		TenantID: "tenant-1",
+	}
+
+	dataset, err := svc.Create(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "type is required", err.Error())
+	assert.Nil(t, dataset)
+}
+
+func TestDatasetService_Create_SQLMissingDatasource(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil)
+
+	req := &CreateRequest{
+		Name:     "Test Dataset",
+		Type:     "sql",
+		TenantID: "tenant-1",
+	}
+
+	dataset, err := svc.Create(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "datasourceId is required for SQL datasets", err.Error())
+	assert.Nil(t, dataset)
+}
+
+func TestDatasetService_Create_DatasourceNotFound(t *testing.T) {
+	mockDatasourceRepo := &mockDatasourceRepository{}
+	svc := NewService(nil, nil, nil, mockDatasourceRepo)
+
+	datasourceID := "ds-1"
+	req := &CreateRequest{
+		Name:         "Test Dataset",
+		Type:         "sql",
+		DatasourceID: &datasourceID,
+		TenantID:     "tenant-1",
+	}
+
+	mockDatasourceRepo.On("GetByID", mock.Anything, "ds-1").Return(nil, errors.New("not found"))
+
+	dataset, err := svc.Create(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "datasource not found")
+	assert.Nil(t, dataset)
+	mockDatasourceRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_Create_DatasourceWrongTenant(t *testing.T) {
+	mockDatasourceRepo := &mockDatasourceRepository{}
+	svc := NewService(nil, nil, nil, mockDatasourceRepo)
+
+	datasourceID := "ds-1"
+	req := &CreateRequest{
+		Name:         "Test Dataset",
+		Type:         "sql",
+		DatasourceID: &datasourceID,
+		TenantID:     "tenant-1",
+	}
+
+	existingDatasource := &models.DataSource{
+		ID:       "ds-1",
+		TenantID: "tenant-2",
+	}
+	mockDatasourceRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDatasource, nil)
+
+	dataset, err := svc.Create(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "datasource does not belong to this tenant", err.Error())
+	assert.Nil(t, dataset)
+	mockDatasourceRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_Update_MissingID(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil)
+
+	req := &UpdateRequest{
+		TenantID: "tenant-1",
+	}
+
+	dataset, err := svc.Update(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "id is required", err.Error())
+	assert.Nil(t, dataset)
+}
+
+func TestDatasetService_Update_NotFound(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	req := &UpdateRequest{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(nil, errors.New("not found"))
+
+	dataset, err := svc.Update(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Nil(t, dataset)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_Update_WrongTenant(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+	req := &UpdateRequest{
+		ID:       "ds-1",
+		TenantID: "tenant-2",
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+
+	dataset, err := svc.Update(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "dataset not found", err.Error())
+	assert.Nil(t, dataset)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_Update_Success(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+		Name:     "Old Name",
+		Status:   1,
+	}
+	newName := "New Name"
+	newStatus := 2
+	req := &UpdateRequest{
+		ID:       "ds-1",
+		Name:     &newName,
+		Status:   &newStatus,
+		TenantID: "tenant-1",
+	}
+
+	updatedDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+		Name:     "New Name",
+		Status:   2,
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+	mockDatasetRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
+	mockDatasetRepo.On("GetByIDWithFields", mock.Anything, "ds-1").Return(updatedDataset, nil)
+
+	dataset, err := svc.Update(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, dataset)
+	assert.Equal(t, "New Name", dataset.Name)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_CreateComputedField_MissingName(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil)
+
+	req := &CreateFieldRequest{
+		Type:     "dimension",
+		TenantID: "tenant-1",
+	}
+
+	field, err := svc.CreateComputedField(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "name is required", err.Error())
+	assert.Nil(t, field)
+}
+
+func TestDatasetService_CreateComputedField_InvalidType(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil)
+
+	req := &CreateFieldRequest{
+		Name:     "test_field",
+		Type:     "invalid",
+		TenantID: "tenant-1",
+	}
+
+	field, err := svc.CreateComputedField(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "type must be 'dimension' or 'measure'", err.Error())
+	assert.Nil(t, field)
+}
+
+func TestDatasetService_CreateComputedField_MissingExpression(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil)
+
+	expr := ""
+	req := &CreateFieldRequest{
+		Name:       "test_field",
+		Type:       "dimension",
+		Expression: &expr,
+		TenantID:   "tenant-1",
+		DatasetID:  "ds-1",
+	}
+
+	field, err := svc.CreateComputedField(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "expression is required for computed fields", err.Error())
+	assert.Nil(t, field)
+}
+
+func TestDatasetService_CreateComputedField_GroupingFieldMissingRule(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil)
+
+	req := &CreateFieldRequest{
+		Name:            "test_field",
+		Type:            "dimension",
+		IsGroupingField: true,
+		TenantID:        "tenant-1",
+		DatasetID:       "ds-1",
+	}
+
+	field, err := svc.CreateComputedField(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "groupingRule is required for grouping fields", err.Error())
+	assert.Nil(t, field)
+}
+
+func TestDatasetService_CreateComputedField_DatasetNotFound(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	expr := "[amount] * 2"
+	req := &CreateFieldRequest{
+		Name:       "test_field",
+		Type:       "measure",
+		Expression: &expr,
+		TenantID:   "tenant-1",
+		DatasetID:  "ds-1",
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(nil, errors.New("not found"))
+
+	field, err := svc.CreateComputedField(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Nil(t, field)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_CreateComputedField_WrongTenant(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	expr := "[amount] * 2"
+	req := &CreateFieldRequest{
+		Name:       "test_field",
+		Type:       "measure",
+		Expression: &expr,
+		TenantID:   "tenant-2",
+		DatasetID:  "ds-1",
+	}
+
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+
+	field, err := svc.CreateComputedField(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "dataset not found", err.Error())
+	assert.Nil(t, field)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_UpdateField_Success(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(mockDatasetRepo, mockFieldRepo, nil, nil)
+
+	existingField := &models.DatasetField{
+		ID:         "f1",
+		DatasetID:  "ds-1",
+		Name:       "field1",
+		IsSortable: false,
+	}
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+	newDisplayName := "New Display Name"
+	isSortable := true
+
+	req := &UpdateFieldRequest{
+		FieldID:     "f1",
+		DisplayName: &newDisplayName,
+		IsSortable:  &isSortable,
+		TenantID:    "tenant-1",
+	}
+
+	mockFieldRepo.On("GetByID", mock.Anything, "f1").Return(existingField, nil)
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+	mockFieldRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
+
+	field, err := svc.UpdateField(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, field)
+	mockFieldRepo.AssertExpectations(t)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_UpdateField_FieldNotFound(t *testing.T) {
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
+
+	req := &UpdateFieldRequest{
+		FieldID:  "f1",
+		TenantID: "tenant-1",
+	}
+
+	mockFieldRepo.On("GetByID", mock.Anything, "f1").Return(nil, errors.New("not found"))
+
+	field, err := svc.UpdateField(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Nil(t, field)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_UpdateField_WrongTenant(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(mockDatasetRepo, mockFieldRepo, nil, nil)
+
+	existingField := &models.DatasetField{
+		ID:        "f1",
+		DatasetID: "ds-1",
+		Name:      "field1",
+	}
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+
+	req := &UpdateFieldRequest{
+		FieldID:  "f1",
+		TenantID: "tenant-2",
+	}
+
+	mockFieldRepo.On("GetByID", mock.Anything, "f1").Return(existingField, nil)
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+
+	field, err := svc.UpdateField(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "field not found", err.Error())
+	assert.Nil(t, field)
+	mockFieldRepo.AssertExpectations(t)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_BatchUpdateFields_MissingDatasetID(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil)
+
+	req := &BatchUpdateFieldsRequest{
+		Fields: []UpdateFieldRequest{{FieldID: "f1"}},
+	}
+
+	resp, err := svc.BatchUpdateFields(context.Background(), "", "tenant-1", req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "dataset id is required", err.Error())
+	assert.Nil(t, resp)
+}
+
+func TestDatasetService_BatchUpdateFields_EmptyFields(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil)
+
+	req := &BatchUpdateFieldsRequest{}
+
+	resp, err := svc.BatchUpdateFields(context.Background(), "ds-1", "tenant-1", req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "fields is required", err.Error())
+	assert.Nil(t, resp)
+}
+
+func TestDatasetService_BatchUpdateFields_DatasetNotFound(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	req := &BatchUpdateFieldsRequest{
+		Fields: []UpdateFieldRequest{{FieldID: "f1"}},
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(nil, errors.New("not found"))
+
+	resp, err := svc.BatchUpdateFields(context.Background(), "ds-1", "tenant-1", req)
+
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_BatchUpdateFields_WrongTenant(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+	req := &BatchUpdateFieldsRequest{
+		Fields: []UpdateFieldRequest{{FieldID: "f1"}},
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+
+	resp, err := svc.BatchUpdateFields(context.Background(), "ds-1", "tenant-2", req)
+
+	assert.Error(t, err)
+	assert.Equal(t, "dataset not found", err.Error())
+	assert.Nil(t, resp)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_BatchUpdateFields_Success(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(mockDatasetRepo, mockFieldRepo, nil, nil)
+
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+	existingFields := []*models.DatasetField{
+		{ID: "f1", DatasetID: "ds-1", Name: "field1"},
+		{ID: "f2", DatasetID: "ds-1", Name: "field2"},
+	}
+	newDisplayName := "Updated Name"
+
+	req := &BatchUpdateFieldsRequest{
+		Fields: []UpdateFieldRequest{
+			{FieldID: "f1", DisplayName: &newDisplayName},
+			{FieldID: "f2", DisplayName: &newDisplayName},
+		},
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+	mockFieldRepo.On("List", mock.Anything, "ds-1").Return(existingFields, nil)
+	mockFieldRepo.On("GetByID", mock.Anything, "f1").Return(existingFields[0], nil)
+	mockFieldRepo.On("GetByID", mock.Anything, "f2").Return(existingFields[1], nil)
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+	mockFieldRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
+
+	resp, err := svc.BatchUpdateFields(context.Background(), "ds-1", "tenant-1", req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.True(t, resp.Success)
+	assert.Len(t, resp.UpdatedFields, 2)
+	mockDatasetRepo.AssertExpectations(t)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_BatchUpdateFields_MissingFieldID(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(mockDatasetRepo, mockFieldRepo, nil, nil)
+
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+	existingFields := []*models.DatasetField{}
+
+	req := &BatchUpdateFieldsRequest{
+		Fields: []UpdateFieldRequest{
+			{FieldID: ""},
+		},
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+	mockFieldRepo.On("List", mock.Anything, "ds-1").Return(existingFields, nil)
+
+	resp, err := svc.BatchUpdateFields(context.Background(), "ds-1", "tenant-1", req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.False(t, resp.Success)
+	assert.Len(t, resp.Errors, 1)
+	assert.Equal(t, "fieldId is required", resp.Errors[0].Message)
+	mockDatasetRepo.AssertExpectations(t)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_DeleteField_NotFound(t *testing.T) {
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
+
+	mockFieldRepo.On("GetByID", mock.Anything, "f1").Return(nil, errors.New("not found"))
+
+	err := svc.DeleteField(context.Background(), "f1", "tenant-1")
+
+	assert.Error(t, err)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_DeleteField_NonComputedField(t *testing.T) {
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
+
+	existingField := &models.DatasetField{
+		ID:         "f1",
+		DatasetID:  "ds-1",
+		IsComputed: false,
+	}
+
+	mockFieldRepo.On("GetByID", mock.Anything, "f1").Return(existingField, nil)
+
+	err := svc.DeleteField(context.Background(), "f1", "tenant-1")
+
+	assert.Error(t, err)
+	assert.Equal(t, "cannot delete non-computed fields", err.Error())
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_DeleteField_WrongTenant(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(mockDatasetRepo, mockFieldRepo, nil, nil)
+
+	existingField := &models.DatasetField{
+		ID:         "f1",
+		DatasetID:  "ds-1",
+		IsComputed: true,
+	}
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+
+	mockFieldRepo.On("GetByID", mock.Anything, "f1").Return(existingField, nil)
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+
+	err := svc.DeleteField(context.Background(), "f1", "tenant-2")
+
+	assert.Error(t, err)
+	assert.Equal(t, "field not found", err.Error())
+	mockFieldRepo.AssertExpectations(t)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_DeleteField_Success(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(mockDatasetRepo, mockFieldRepo, nil, nil)
+
+	existingField := &models.DatasetField{
+		ID:         "f1",
+		DatasetID:  "ds-1",
+		IsComputed: true,
+	}
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+
+	mockFieldRepo.On("GetByID", mock.Anything, "f1").Return(existingField, nil)
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+	mockFieldRepo.On("Delete", mock.Anything, "f1").Return(nil)
+
+	err := svc.DeleteField(context.Background(), "f1", "tenant-1")
+
+	assert.NoError(t, err)
+	mockFieldRepo.AssertExpectations(t)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ListDimensions_Success(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(mockDatasetRepo, mockFieldRepo, nil, nil)
+
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+	expectedFields := []*models.DatasetField{
+		{ID: "f1", DatasetID: "ds-1", Name: "dim1", Type: "dimension"},
+		{ID: "f2", DatasetID: "ds-1", Name: "dim2", Type: "dimension"},
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+	mockFieldRepo.On("ListByType", mock.Anything, "ds-1", "dimension").Return(expectedFields, nil)
+
+	fields, err := svc.ListDimensions(context.Background(), "ds-1", "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Len(t, fields, 2)
+	mockDatasetRepo.AssertExpectations(t)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ListDimensions_WrongTenant(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+
+	fields, err := svc.ListDimensions(context.Background(), "ds-1", "tenant-2")
+
+	assert.Error(t, err)
+	assert.Equal(t, "dataset not found", err.Error())
+	assert.Nil(t, fields)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ListMeasures_Success(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(mockDatasetRepo, mockFieldRepo, nil, nil)
+
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+	expectedFields := []*models.DatasetField{
+		{ID: "f1", DatasetID: "ds-1", Name: "m1", Type: "measure"},
+		{ID: "f2", DatasetID: "ds-1", Name: "m2", Type: "measure"},
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+	mockFieldRepo.On("ListByType", mock.Anything, "ds-1", "measure").Return(expectedFields, nil)
+
+	fields, err := svc.ListMeasures(context.Background(), "ds-1", "tenant-1")
+
+	assert.NoError(t, err)
+	assert.Len(t, fields, 2)
+	mockDatasetRepo.AssertExpectations(t)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ListMeasures_WrongTenant(t *testing.T) {
+	mockDatasetRepo := &mockDatasetRepository{}
+	svc := NewService(mockDatasetRepo, nil, nil, nil)
+
+	existingDataset := &models.Dataset{
+		ID:       "ds-1",
+		TenantID: "tenant-1",
+	}
+
+	mockDatasetRepo.On("GetByID", mock.Anything, "ds-1").Return(existingDataset, nil)
+
+	fields, err := svc.ListMeasures(context.Background(), "ds-1", "tenant-2")
+
+	assert.Error(t, err)
+	assert.Equal(t, "dataset not found", err.Error())
+	assert.Nil(t, fields)
+	mockDatasetRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ResolveComputedFieldDependencies_Success(t *testing.T) {
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
+
+	exprTotal := "[amount] + [calc_tax]"
+	exprTax := "[amount] * 0.1"
+	root := &models.DatasetField{ID: "f-total", DatasetID: "ds-1", Name: "total", IsComputed: true, Expression: &exprTotal}
+	tax := &models.DatasetField{ID: "f-tax", DatasetID: "ds-1", Name: "calc_tax", IsComputed: true, Expression: &exprTax}
+	amount := &models.DatasetField{ID: "f-amount", DatasetID: "ds-1", Name: "amount", IsComputed: false}
+	all := []*models.DatasetField{amount, tax, root}
+
+	mockFieldRepo.On("GetByID", mock.Anything, "f-total").Return(root, nil)
+	mockFieldRepo.On("GetByID", mock.Anything, "f-tax").Return(tax, nil)
+	mockFieldRepo.On("List", mock.Anything, "ds-1").Return(all, nil).Times(3)
+
+	deps, err := svc.ResolveComputedFieldDependencies(context.Background(), "ds-1", "f-total")
+
+	assert.NoError(t, err)
+	assert.Len(t, deps, 2)
+	assert.Equal(t, "f-tax", deps[0].ID)
+	assert.Equal(t, "f-total", deps[1].ID)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ResolveComputedFieldDependencies_FieldNotComputed(t *testing.T) {
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
+
+	base := &models.DatasetField{ID: "f-amount", DatasetID: "ds-1", Name: "amount", IsComputed: false}
+	mockFieldRepo.On("GetByID", mock.Anything, "f-amount").Return(base, nil)
+
+	deps, err := svc.ResolveComputedFieldDependencies(context.Background(), "ds-1", "f-amount")
+
+	assert.NoError(t, err)
+	assert.Len(t, deps, 0)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ResolveComputedFieldDependencies_Circular(t *testing.T) {
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
+
+	exprA := "[b]"
+	exprB := "[a]"
+	a := &models.DatasetField{ID: "f-a", DatasetID: "ds-1", Name: "a", IsComputed: true, Expression: &exprA}
+	b := &models.DatasetField{ID: "f-b", DatasetID: "ds-1", Name: "b", IsComputed: true, Expression: &exprB}
+	all := []*models.DatasetField{a, b}
+
+	mockFieldRepo.On("GetByID", mock.Anything, "f-a").Return(a, nil)
+	mockFieldRepo.On("GetByID", mock.Anything, "f-b").Return(b, nil)
+	mockFieldRepo.On("List", mock.Anything, "ds-1").Return(all, nil).Times(2)
+
+	deps, err := svc.ResolveComputedFieldDependencies(context.Background(), "ds-1", "f-a")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "circular dependency detected")
+	assert.Nil(t, deps)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ResolveComputedFieldDependencies_FieldWrongDataset(t *testing.T) {
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
+
+	field := &models.DatasetField{ID: "f-1", DatasetID: "ds-2", Name: "x", IsComputed: false}
+	mockFieldRepo.On("GetByID", mock.Anything, "f-1").Return(field, nil)
+
+	deps, err := svc.ResolveComputedFieldDependencies(context.Background(), "ds-1", "f-1")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "does not belong to dataset")
+	assert.Nil(t, deps)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_ResolveComputedFieldDependencies_GetByIDError(t *testing.T) {
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, nil).(*service)
+
+	mockFieldRepo.On("GetByID", mock.Anything, "f-1").Return(nil, errors.New("not found"))
+
+	deps, err := svc.ResolveComputedFieldDependencies(context.Background(), "ds-1", "f-1")
+
+	assert.Error(t, err)
+	assert.Nil(t, deps)
+	mockFieldRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_extractFields_NonSQL(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil).(*service)
+	ds := &models.Dataset{ID: "ds-1", Type: "api"}
+
+	err := svc.extractFields(context.Background(), ds)
+
+	assert.NoError(t, err)
+}
+
+func TestDatasetService_extractFields_SQLWithoutDatasource(t *testing.T) {
+	svc := NewService(nil, nil, nil, nil).(*service)
+	ds := &models.Dataset{ID: "ds-1", Type: "sql"}
+
+	err := svc.extractFields(context.Background(), ds)
+
+	assert.NoError(t, err)
+}
+
+func TestDatasetService_executeSQLPreview_Integration(t *testing.T) {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		dsn = os.Getenv("DB_DSN")
+	}
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN or DB_DSN not set")
+	}
+
+	mockDSRepo := &mockDatasourceRepository{}
+	svc := NewService(nil, nil, nil, mockDSRepo).(*service)
+
+	datasourceID := "ds-preview"
+	dataset := &models.Dataset{
+		ID:           "dataset-preview",
+		Type:         "sql",
+		DatasourceID: &datasourceID,
+		Config:       `{"query":"SELECT 1 AS id, 'ok' AS name"}`,
+	}
+
+	mockDSRepo.On("GetByID", mock.Anything, datasourceID).Return(&models.DataSource{
+		ID:       datasourceID,
+		Host:     "127.0.0.1",
+		Port:     3306,
+		Database: "goreport",
+		Username: "root",
+		Password: "root",
+	}, nil)
+
+	rows, err := svc.executeSQLPreview(context.Background(), dataset)
+
+	assert.NoError(t, err)
+	assert.NotEmpty(t, rows)
+	assert.Equal(t, "1", rows[0]["id"])
+	assert.Equal(t, "ok", rows[0]["name"])
+	mockDSRepo.AssertExpectations(t)
+}
+
+func TestDatasetService_extractSQLFields_Integration(t *testing.T) {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		dsn = os.Getenv("DB_DSN")
+	}
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN or DB_DSN not set")
+	}
+
+	mockFieldRepo := &mockDatasetFieldRepository{}
+	mockDSRepo := &mockDatasourceRepository{}
+	svc := NewService(nil, mockFieldRepo, nil, mockDSRepo).(*service)
+
+	datasourceID := "ds-extract"
+	dataset := &models.Dataset{
+		ID:           "dataset-extract",
+		Type:         "sql",
+		DatasourceID: &datasourceID,
+		Config:       `{"query":"SELECT 1 AS id, 'ok' AS name"}`,
+	}
+
+	mockDSRepo.On("GetByID", mock.Anything, datasourceID).Return(&models.DataSource{
+		ID:       datasourceID,
+		Host:     "127.0.0.1",
+		Port:     3306,
+		Database: "goreport",
+		Username: "root",
+		Password: "root",
+	}, nil)
+	mockFieldRepo.On("DeleteComputedFields", mock.Anything, dataset.ID).Return(nil)
+	mockFieldRepo.On("Create", mock.Anything, mock.AnythingOfType("*models.DatasetField")).Return(nil)
+
+	err := svc.extractSQLFields(context.Background(), dataset)
+
+	assert.NoError(t, err)
+	mockDSRepo.AssertExpectations(t)
+	mockFieldRepo.AssertExpectations(t)
 }

@@ -2,6 +2,8 @@ package datasource
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -174,33 +176,82 @@ func TestConnectionBuilder(t *testing.T) {
 }
 
 func TestSSHTunnel(t *testing.T) {
-	t.Skip("Integration test - requires real SSH server")
+	sshHost := os.Getenv("SSH_TEST_HOST")
+	if sshHost == "" {
+		t.Skip("SSH_TEST_HOST not set - skipping SSH tunnel integration test")
+	}
+
+	sshPort := 22
+	if port := os.Getenv("SSH_TEST_PORT"); port != "" {
+		_, _ = fmt.Sscanf(port, "%d", &sshPort)
+	}
+
+	sshUser := os.Getenv("SSH_TEST_USER")
+	if sshUser == "" {
+		sshUser = "testuser"
+	}
+
+	sshPassword := os.Getenv("SSH_TEST_PASSWORD")
+	if sshPassword == "" {
+		sshPassword = "testpassword"
+	}
 
 	tunnel := NewSSHTunnel(&SSHTunnelConfig{
-		Host:     "localhost",
-		Port:     22,
-		Username: "test",
-		Password: "test",
+		Host:     sshHost,
+		Port:     sshPort,
+		Username: sshUser,
+		Password: sshPassword,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	localAddr, err := tunnel.Connect(ctx, &SSHTunnelConfig{
-		Host:     "localhost",
-		Port:     22,
-		Username: "test",
-		Password: "test",
-	}, "localhost", 3306)
+		Host:     sshHost,
+		Port:     sshPort,
+		Username: sshUser,
+		Password: sshPassword,
+	}, "127.0.0.1", 3306)
 
 	if err != nil {
-		t.Skipf("SSH connection failed (expected in test env): %v", err)
-		return
+		t.Logf("SSH tunnel test skipped (server may not support port forwarding): %v", err)
+		t.Skip("SSH server does not support port forwarding")
 	}
 
 	defer tunnel.Close()
 
 	if localAddr == "" {
 		t.Error("local address should not be empty")
+	}
+
+	t.Logf("SSH tunnel established, local address: %s", localAddr)
+}
+
+func TestSSHTunnel_InvalidCredentials(t *testing.T) {
+	sshHost := os.Getenv("SSH_TEST_HOST")
+	if sshHost == "" {
+		t.Skip("SSH_TEST_HOST not set - skipping SSH tunnel integration test")
+	}
+
+	tunnel := NewSSHTunnel(&SSHTunnelConfig{
+		Host:     sshHost,
+		Port:     22,
+		Username: "invaliduser",
+		Password: "invalidpassword",
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := tunnel.Connect(ctx, &SSHTunnelConfig{
+		Host:     sshHost,
+		Port:     22,
+		Username: "invaliduser",
+		Password: "invalidpassword",
+	}, "127.0.0.1", 3306)
+
+	if err == nil {
+		t.Error("SSH connection should fail with invalid credentials")
+		defer tunnel.Close()
 	}
 }

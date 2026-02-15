@@ -1,0 +1,130 @@
+# goReport 测试环境 Docker Compose 配置
+# 独立的测试环境，避免污染开发数据
+#
+# 使用方式:
+#   docker compose -f docker-compose.test.yml up -d
+#   docker compose exec backend go test ./... -v
+
+networks:
+  goreport-test-network:
+    driver: bridge
+
+services:
+  # 测试专用 MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: goreport-test-mysql
+    restart: unless-stopped
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: goreport
+      MYSQL_USER: goreport
+      MYSQL_PASSWORD: goreport
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-test-data:/var/lib/mysql
+      - ../backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - goreport-test-network
+
+  # Redis 缓存（可选，某些测试可能需要）
+  redis:
+    image: redis:7-alpine
+    container_name: goreport-test-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-test-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - goreport-test-network
+
+  # 测试专用的后端服务
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.dev
+    container_name: goreport-test-backend
+    restart: unless-stopped
+    ports:
+      - "8086:8085"
+    volumes:
+      - ../backend:/app
+      - go-mod-cache:/go/pkg/mod
+    environment:
+      - SERVER_ADDR=:8085
+      # 使用测试数据库 DSN
+      - DB_DSN=root:root@tcp(goreport-test-mysql:3306)/goreport?charset=utf8mb4&parseTime=True&loc=Local
+      - TEST_DB_DSN=root:root@tcp(goreport-test-mysql:3306)/goreport?charset=utf8mb4&parseTime=True&loc=Local
+      - REDIS_ADDR=goreport-test-redis:6379
+      - REDIS_PASSWORD=
+      - JWT_SECRET=${JWT_SECRET:-test-secret-key-for-testing}
+      - JWT_ISSUER=goreport
+      - JWT_AUDIENCE=goreport
+      - GIN_MODE=test
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - goreport-test-network
+
+  # 测试专用前端服务（提供 vitest 运行环境）
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile.dev
+    container_name: goreport-test-frontend
+    restart: unless-stopped
+    environment:
+      - VITE_API_BASE_URL=http://backend:8085
+      - VITE_WS_URL=ws://backend:8085
+      - VITE_PROXY_TARGET=http://backend:8085
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - goreport-test-network
+
+  # SSH 服务器 (用于 SSH 隧道集成测试)
+  ssh:
+    image: lscr.io/linuxserver/openssh-server:latest
+    container_name: goreport-test-ssh
+    restart: unless-stopped
+    ports:
+      - "2222:2222"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+      - PASSWORD_ACCESS=true
+      - USER_PASSWORD=testpassword
+      - USER_NAME=testuser
+      - SUDO_ACCESS=true
+    networks:
+      - goreport-test-network
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 2222 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql-test-data:
+  redis-test-data:
+  go-mod-cache:

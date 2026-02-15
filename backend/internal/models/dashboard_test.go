@@ -154,3 +154,60 @@ func TestDashboardComponent_BasicProperties(t *testing.T) {
 	assert.NotNil(t, comp.Style)
 	assert.NotNil(t, comp.Data)
 }
+
+func TestDashboard_BeforeCreate(t *testing.T) {
+	d := &Dashboard{
+		Config: DashboardConfig{
+			Width:           1920,
+			Height:          1080,
+			BackgroundColor: "#ffffff",
+		},
+		Components: []DashboardComponent{
+			{ID: "comp-1", Type: "chart"},
+		},
+	}
+
+	err := d.BeforeCreate(nil)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, d.ConfigJSON)
+	assert.NotEmpty(t, d.ComponentsJSON)
+}
+
+func TestDashboard_BeforeUpdate(t *testing.T) {
+	d := &Dashboard{
+		Config: DashboardConfig{
+			Width:  800,
+			Height: 600,
+		},
+		Components: []DashboardComponent{
+			{ID: "comp-2", Type: "table"},
+		},
+	}
+
+	err := d.BeforeUpdate(nil)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, d.ConfigJSON)
+	assert.NotEmpty(t, d.ComponentsJSON)
+}
+
+func TestDashboard_AfterFind(t *testing.T) {
+	configJSON, _ := json.Marshal(DashboardConfig{
+		Width:           1024,
+		Height:          768,
+		BackgroundColor: "#123456",
+	})
+	componentsJSON, _ := json.Marshal([]DashboardComponent{
+		{ID: "comp-3", Type: "text"},
+	})
+
+	d := &Dashboard{
+		ConfigJSON:     string(configJSON),
+		ComponentsJSON: string(componentsJSON),
+	}
+
+	err := d.AfterFind(nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 1024, d.Config.Width)
+	assert.Equal(t, 768, d.Config.Height)
+	assert.Len(t, d.Components, 1)
+}

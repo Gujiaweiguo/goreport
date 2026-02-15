@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -12,8 +13,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestInitBlacklist(t *testing.T) {
+	cfg := config.CacheConfig{Enabled: false}
+	c, err := cache.New(cfg)
+	require.NoError(t, err)
+
+	InitBlacklist(c)
+	assert.NotNil(t, blacklistStore)
+}
+
 func TestBlacklist_WithNilStore(t *testing.T) {
 	blacklistStore = nil
+
+	err := RevokeToken(context.Background(), "token-1", time.Now().Add(time.Minute))
+	require.NoError(t, err)
+	assert.False(t, IsTokenRevoked(context.Background(), "token-1"))
+}
+
+func TestBlacklist_WithNilCache(t *testing.T) {
+	blacklistStore = &BlacklistStore{cache: nil}
 
 	err := RevokeToken(context.Background(), "token-1", time.Now().Add(time.Minute))
 	require.NoError(t, err)
@@ -44,15 +62,36 @@ func TestBlacklist_RevokeAndCheck_WithRedis(t *testing.T) {
 
 	InitBlacklist(c)
 
-	token := "token-test-revoke"
+	token := fmt.Sprintf("token-test-revoke-%d", time.Now().UnixNano())
 	assert.False(t, IsTokenRevoked(context.Background(), token))
 
 	err = RevokeToken(context.Background(), token, time.Now().Add(2*time.Minute))
 	require.NoError(t, err)
 	assert.True(t, IsTokenRevoked(context.Background(), token))
 
-	// 过期时间已过时应忽略写入。
-	err = RevokeToken(context.Background(), "expired-token", time.Now().Add(-time.Minute))
+	expiredToken := fmt.Sprintf("expired-token-%d", time.Now().UnixNano())
+	err = RevokeToken(context.Background(), expiredToken, time.Now().Add(-time.Minute))
 	require.NoError(t, err)
-	assert.False(t, IsTokenRevoked(context.Background(), "expired-token"))
+	assert.False(t, IsTokenRevoked(context.Background(), expiredToken))
+}
+
+func TestBlacklist_EmptyToken(t *testing.T) {
+	blacklistStore = nil
+	err := RevokeToken(context.Background(), "", time.Now().Add(time.Minute))
+	require.NoError(t, err)
+	assert.False(t, IsTokenRevoked(context.Background(), ""))
+}
+
+func TestBlacklist_RevokeToken_WithNoopCache(t *testing.T) {
+	cfg := config.CacheConfig{Enabled: false}
+	c, err := cache.New(cfg)
+	require.NoError(t, err)
+
+	InitBlacklist(c)
+
+	token := fmt.Sprintf("token-noop-%d", time.Now().UnixNano())
+	err = RevokeToken(context.Background(), token, time.Now().Add(time.Minute))
+	require.NoError(t, err)
+	// With noop cache, token should not be marked as revoked
+	assert.False(t, IsTokenRevoked(context.Background(), token))
 }

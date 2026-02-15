@@ -7,379 +7,307 @@ import (
 
 	"github.com/gujiaweiguo/goreport/internal/render"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
-func TestNewService(t *testing.T) {
-	svc := NewService(nil, nil, nil)
-	assert.NotNil(t, svc)
+type mockReportRepository struct {
+	mock.Mock
 }
 
-type mockReportRepo struct {
-	report    *Report
-	reports   []*Report
-	createErr error
-	updateErr error
-	deleteErr error
-	getErr    error
-	listErr   error
+func (m *mockReportRepository) Create(ctx context.Context, report *Report) error {
+	args := m.Called(ctx, report)
+	return args.Error(0)
 }
 
-func (m *mockReportRepo) Create(ctx context.Context, report *Report) error {
-	if m.createErr != nil {
-		return m.createErr
+func (m *mockReportRepository) Update(ctx context.Context, report *Report) error {
+	args := m.Called(ctx, report)
+	return args.Error(0)
+}
+
+func (m *mockReportRepository) Delete(ctx context.Context, id, tenantID string) error {
+	args := m.Called(ctx, id, tenantID)
+	return args.Error(0)
+}
+
+func (m *mockReportRepository) Get(ctx context.Context, id, tenantID string) (*Report, error) {
+	args := m.Called(ctx, id, tenantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
-	m.report = report
-	return nil
+	return args.Get(0).(*Report), args.Error(1)
 }
 
-func (m *mockReportRepo) Get(ctx context.Context, id, tenantID string) (*Report, error) {
-	if m.getErr != nil {
-		return nil, m.getErr
+func (m *mockReportRepository) List(ctx context.Context, tenantID string) ([]*Report, error) {
+	args := m.Called(ctx, tenantID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
-	if m.report != nil && m.report.ID == id {
-		return m.report, nil
+	return args.Get(0).([]*Report), args.Error(1)
+}
+
+func TestReportService_Create_Success(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	svc := NewService(mockRepo, nil, nil)
+
+	req := &CreateRequest{
+		TenantID: "tenant-1",
+		Name:     "Test Report",
+		Code:     "RPT001",
+		Type:     "report",
+		Config:   []byte(`{"cells":[]}`),
 	}
-	return nil, ErrNotFound
+
+	mockRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
+
+	report, err := svc.Create(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, report)
+	assert.Equal(t, "Test Report", report.Name)
+	assert.Equal(t, "tenant-1", report.TenantID)
+	assert.Equal(t, 1, report.Status)
+	mockRepo.AssertExpectations(t)
 }
 
-func (m *mockReportRepo) List(ctx context.Context, tenantID string) ([]*Report, error) {
-	if m.listErr != nil {
-		return nil, m.listErr
+func TestReportService_Create_RepoError(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	svc := NewService(mockRepo, nil, nil)
+
+	req := &CreateRequest{
+		TenantID: "tenant-1",
+		Name:     "Test Report",
+		Config:   []byte(`{}`),
 	}
-	return m.reports, nil
+
+	mockRepo.On("Create", mock.Anything, mock.Anything).Return(errors.New("db error"))
+
+	report, err := svc.Create(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Nil(t, report)
+	mockRepo.AssertExpectations(t)
 }
 
-func (m *mockReportRepo) Update(ctx context.Context, report *Report) error {
-	if m.updateErr != nil {
-		return m.updateErr
+func TestReportService_Update_Success(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	svc := NewService(mockRepo, nil, nil)
+
+	req := &UpdateRequest{
+		TenantID: "tenant-1",
+		ID:       "r-1",
+		Name:     "Updated Report",
+		Code:     "RPT002",
+		Type:     "dashboard",
+		Config:   []byte(`{"cells":[]}`),
 	}
-	m.report = report
-	return nil
-}
 
-func (m *mockReportRepo) Delete(ctx context.Context, id, tenantID string) error {
-	if m.deleteErr != nil {
-		return m.deleteErr
+	existingReport := &Report{
+		ID:       "r-1",
+		TenantID: "tenant-1",
+		Name:     "Old Report",
+		Code:     "RPT001",
+		Type:     "report",
 	}
-	m.report = nil
-	return nil
+
+	mockRepo.On("Get", mock.Anything, "r-1", "tenant-1").Return(existingReport, nil)
+	mockRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
+
+	report, err := svc.Update(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, report)
+	assert.Equal(t, "Updated Report", report.Name)
+	assert.Equal(t, "RPT002", report.Code)
+	assert.Equal(t, "dashboard", report.Type)
+	mockRepo.AssertExpectations(t)
 }
 
-type mockRenderer struct {
-	html       string
-	previewErr error
-}
+func TestReportService_Update_NotFound(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	svc := NewService(mockRepo, nil, nil)
 
-func (m *mockRenderer) Render(ctx context.Context, configJSON string, params map[string]interface{}, tenantID string) (string, error) {
-	if m.previewErr != nil {
-		return "", m.previewErr
+	req := &UpdateRequest{
+		TenantID: "tenant-1",
+		ID:       "not-exist",
+		Name:     "Updated Report",
 	}
-	return m.html, nil
+
+	mockRepo.On("Get", mock.Anything, "not-exist", "tenant-1").Return(nil, errors.New("not found"))
+
+	report, err := svc.Update(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, ErrNotFound, err)
+	assert.Nil(t, report)
+	mockRepo.AssertExpectations(t)
 }
 
-func TestService_Create(t *testing.T) {
-	t.Run("成功创建报表", func(t *testing.T) {
-		config := `{"layout":"a4"}`
+func TestReportService_Delete_Success(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	svc := NewService(mockRepo, nil, nil)
 
-		req := &CreateRequest{
-			TenantID: "tenant-1",
-			Name:     "Test Report",
-			Code:     "TEST-001",
-			Type:     "report",
-			Config:   []byte(config),
-		}
+	mockRepo.On("Delete", mock.Anything, "r-1", "tenant-1").Return(nil)
 
-		repo := &mockReportRepo{}
-		svc := NewService(repo, nil, nil)
+	err := svc.Delete(context.Background(), "r-1", "tenant-1")
 
-		report, err := svc.Create(context.Background(), req)
-
-		assert.NoError(t, err)
-		assert.NotNil(t, report)
-		assert.Equal(t, "Test Report", report.Name)
-		assert.Equal(t, "TEST-001", report.Code)
-		assert.Equal(t, "tenant-1", report.TenantID)
-	})
-
-	t.Run("创建失败-Repository错误", func(t *testing.T) {
-		config := `{"layout":"a4"}`
-
-		req := &CreateRequest{
-			TenantID: "tenant-1",
-			Name:     "Test Report",
-			Config:   []byte(config),
-		}
-
-		repo := &mockReportRepo{createErr: errors.New("db error")}
-		svc := NewService(repo, nil, nil)
-
-		_, err := svc.Create(context.Background(), req)
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "db error")
-	})
-
-	t.Run("创建成功-空配置", func(t *testing.T) {
-		req := &CreateRequest{
-			TenantID: "tenant-1",
-			Name:     "Test",
-			Config:   []byte(`{}`),
-		}
-
-		repo := &mockReportRepo{}
-		svc := NewService(repo, nil, nil)
-
-		report, err := svc.Create(context.Background(), req)
-
-		assert.NoError(t, err)
-		assert.NotNil(t, report)
-	})
+	assert.NoError(t, err)
+	mockRepo.AssertExpectations(t)
 }
 
-func TestService_Get(t *testing.T) {
-	t.Run("成功获取报表", func(t *testing.T) {
-		existingReport := &Report{
-			ID:       "report-1",
-			Name:     "Test Report",
-			Code:     "TEST-001",
-			Type:     "report",
-			Status:   1,
-			TenantID: "tenant-1",
-		}
+func TestReportService_Delete_Error(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	svc := NewService(mockRepo, nil, nil)
 
-		repo := &mockReportRepo{report: existingReport}
-		svc := NewService(repo, nil, nil)
+	mockRepo.On("Delete", mock.Anything, "r-1", "tenant-1").Return(errors.New("db error"))
 
-		report, err := svc.Get(context.Background(), "report-1", "tenant-1")
+	err := svc.Delete(context.Background(), "r-1", "tenant-1")
 
-		assert.NoError(t, err)
-		assert.NotNil(t, report)
-		assert.Equal(t, "report-1", report.ID)
-		assert.Equal(t, "Test Report", report.Name)
-	})
-
-	t.Run("报表不存在", func(t *testing.T) {
-		repo := &mockReportRepo{getErr: ErrNotFound}
-		svc := NewService(repo, nil, nil)
-
-		_, err := svc.Get(context.Background(), "not-exist", "tenant-1")
-
-		assert.Error(t, err)
-		assert.Equal(t, ErrNotFound, err)
-	})
+	assert.Error(t, err)
+	mockRepo.AssertExpectations(t)
 }
 
-func TestService_List(t *testing.T) {
-	t.Run("成功获取报表列表", func(t *testing.T) {
-		reports := []*Report{
-			{
-				ID:       "report-1",
-				Name:     "Report 1",
-				Type:     "report",
-				Status:   1,
-				TenantID: "tenant-1",
-			},
-			{
-				ID:       "report-2",
-				Name:     "Report 2",
-				Type:     "chart",
-				Status:   1,
-				TenantID: "tenant-1",
-			},
-		}
+func TestReportService_Get_Success(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	svc := NewService(mockRepo, nil, nil)
 
-		repo := &mockReportRepo{reports: reports}
-		svc := NewService(repo, nil, nil)
+	expectedReport := &Report{
+		ID:       "r-1",
+		TenantID: "tenant-1",
+		Name:     "Test Report",
+	}
 
-		list, err := svc.List(context.Background(), "tenant-1")
+	mockRepo.On("Get", mock.Anything, "r-1", "tenant-1").Return(expectedReport, nil)
 
-		assert.NoError(t, err)
-		assert.Len(t, list, 2)
-		assert.Equal(t, "Report 1", list[0].Name)
-		assert.Equal(t, "Report 2", list[1].Name)
-	})
+	report, err := svc.Get(context.Background(), "r-1", "tenant-1")
 
-	t.Run("空列表", func(t *testing.T) {
-		repo := &mockReportRepo{reports: []*Report{}}
-		svc := NewService(repo, nil, nil)
-
-		list, err := svc.List(context.Background(), "tenant-1")
-
-		assert.NoError(t, err)
-		assert.Len(t, list, 0)
-	})
-
-	t.Run("列表获取失败", func(t *testing.T) {
-		repo := &mockReportRepo{listErr: errors.New("database error")}
-		svc := NewService(repo, nil, nil)
-
-		_, err := svc.List(context.Background(), "tenant-1")
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "database error")
-	})
+	assert.NoError(t, err)
+	assert.NotNil(t, report)
+	assert.Equal(t, "r-1", report.ID)
+	mockRepo.AssertExpectations(t)
 }
 
-func TestService_Update(t *testing.T) {
-	t.Run("成功更新报表", func(t *testing.T) {
-		existingReport := &Report{
-			ID:       "report-1",
-			Name:     "Old Name",
-			Code:     "OLD-001",
-			Type:     "report",
-			Status:   0,
-			TenantID: "tenant-1",
-		}
+func TestReportService_Get_NotFound(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	svc := NewService(mockRepo, nil, nil)
 
-		newConfig := `{"layout":"b3"}`
+	mockRepo.On("Get", mock.Anything, "not-exist", "tenant-1").Return(nil, errors.New("not found"))
 
-		req := &UpdateRequest{
-			ID:       "report-1",
-			TenantID: "tenant-1",
-			Name:     "Updated Name",
-			Code:     "NEW-001",
-			Type:     "report",
-			Config:   []byte(newConfig),
-		}
+	report, err := svc.Get(context.Background(), "not-exist", "tenant-1")
 
-		repo := &mockReportRepo{report: existingReport}
-		svc := NewService(repo, nil, nil)
-
-		report, err := svc.Update(context.Background(), req)
-
-		assert.NoError(t, err)
-		assert.NotNil(t, report)
-		assert.Equal(t, "Updated Name", report.Name)
-		assert.Equal(t, "NEW-001", report.Code)
-	})
-
-	t.Run("更新失败-报表不存在", func(t *testing.T) {
-		repo := &mockReportRepo{getErr: ErrNotFound}
-		svc := NewService(repo, nil, nil)
-
-		req := &UpdateRequest{
-			ID:       "report-1",
-			TenantID: "tenant-1",
-			Name:     "Test",
-		}
-
-		_, err := svc.Update(context.Background(), req)
-
-		assert.Error(t, err)
-		assert.Equal(t, ErrNotFound, err)
-	})
-
-	t.Run("更新失败-Repository错误", func(t *testing.T) {
-		existingReport := &Report{
-			ID:       "report-1",
-			Name:     "Test",
-			Type:     "report",
-			Status:   0,
-			TenantID: "tenant-1",
-		}
-
-		repo := &mockReportRepo{
-			report:    existingReport,
-			updateErr: errors.New("update failed"),
-		}
-		svc := NewService(repo, nil, nil)
-
-		req := &UpdateRequest{
-			ID:       "report-1",
-			TenantID: "tenant-1",
-			Name:     "Test",
-		}
-
-		_, err := svc.Update(context.Background(), req)
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "update failed")
-	})
+	assert.Error(t, err)
+	assert.Equal(t, ErrNotFound, err)
+	assert.Nil(t, report)
+	mockRepo.AssertExpectations(t)
 }
 
-func TestService_Delete(t *testing.T) {
-	t.Run("成功删除报表", func(t *testing.T) {
-		existingReport := &Report{
-			ID:       "report-1",
-			Name:     "Test Report",
-			Type:     "report",
-			TenantID: "tenant-1",
-		}
+func TestReportService_List_Success(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	svc := NewService(mockRepo, nil, nil)
 
-		repo := &mockReportRepo{report: existingReport}
-		svc := NewService(repo, nil, nil)
+	expectedReports := []*Report{
+		{ID: "r-1", TenantID: "tenant-1", Name: "Report 1"},
+		{ID: "r-2", TenantID: "tenant-1", Name: "Report 2"},
+	}
 
-		err := svc.Delete(context.Background(), "report-1", "tenant-1")
+	mockRepo.On("List", mock.Anything, "tenant-1").Return(expectedReports, nil)
 
-		assert.NoError(t, err)
-	})
+	reports, err := svc.List(context.Background(), "tenant-1")
 
-	t.Run("删除失败", func(t *testing.T) {
-		repo := &mockReportRepo{deleteErr: errors.New("delete failed")}
-		svc := NewService(repo, nil, nil)
-
-		err := svc.Delete(context.Background(), "not-exist", "tenant-1")
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "delete failed")
-	})
+	assert.NoError(t, err)
+	assert.Len(t, reports, 2)
+	mockRepo.AssertExpectations(t)
 }
 
-func TestService_Preview(t *testing.T) {
-	t.Skip("Preview requires proper render.Engine setup with database")
+func TestReportService_List_Error(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	svc := NewService(mockRepo, nil, nil)
 
-	t.Run("成功预览报表", func(t *testing.T) {
-		existingReport := &Report{
-			ID:       "report-1",
-			Name:     "Test Report",
-			Code:     "TEST-001",
-			Type:     "report",
-			Status:   1,
-			TenantID: "tenant-1",
-			Config:   `{"layout":"a4"}`,
-		}
+	mockRepo.On("List", mock.Anything, "tenant-1").Return(nil, errors.New("db error"))
 
-		params := map[string]interface{}{
-			"param1": "value1",
-		}
+	reports, err := svc.List(context.Background(), "tenant-1")
 
-		engine := &render.Engine{}
-
-		repo := &mockReportRepo{report: existingReport}
-
-		req := &PreviewRequest{
-			TenantID: "tenant-1",
-			ID:       "report-1",
-			Params:   params,
-		}
-
-		svc := NewService(repo, engine, nil)
-
-		result, err := svc.Preview(context.Background(), req)
-
-		assert.NoError(t, err)
-		assert.NotNil(t, result)
-		assert.NotEmpty(t, result.HTML)
-	})
-
-	t.Run("报表不存在", func(t *testing.T) {
-		repo := &mockReportRepo{getErr: ErrNotFound}
-		svc := NewService(repo, nil, nil)
-
-		req := &PreviewRequest{
-			TenantID: "tenant-1",
-			ID:       "not-exist",
-			Params:   map[string]interface{}{},
-		}
-
-		_, err := svc.Preview(context.Background(), req)
-
-		assert.Error(t, err)
-		assert.Equal(t, ErrNotFound, err)
-	})
+	assert.Error(t, err)
+	assert.Nil(t, reports)
+	mockRepo.AssertExpectations(t)
 }
 
 func TestDefaultReportType(t *testing.T) {
 	assert.Equal(t, "report", defaultReportType(""))
+	assert.Equal(t, "dashboard", defaultReportType("dashboard"))
 	assert.Equal(t, "custom", defaultReportType("custom"))
+}
+
+func TestReportService_Preview_Success(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	renderEngine := render.NewEngine(nil, nil)
+	svc := NewService(mockRepo, renderEngine, nil)
+
+	existingReport := &Report{
+		ID:       "r-1",
+		TenantID: "tenant-1",
+		Name:     "Test Report",
+		Config:   `{"cells":[{"row":0,"col":0,"text":"Hello"}]}`,
+	}
+
+	req := &PreviewRequest{
+		ID:       "r-1",
+		TenantID: "tenant-1",
+		Params:   nil,
+	}
+
+	mockRepo.On("Get", mock.Anything, "r-1", "tenant-1").Return(existingReport, nil)
+
+	resp, err := svc.Preview(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Contains(t, resp.HTML, "Hello")
+	mockRepo.AssertExpectations(t)
+}
+
+func TestReportService_Preview_ReportNotFound(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	svc := NewService(mockRepo, nil, nil)
+
+	req := &PreviewRequest{
+		ID:       "not-exist",
+		TenantID: "tenant-1",
+		Params:   nil,
+	}
+
+	mockRepo.On("Get", mock.Anything, "not-exist", "tenant-1").Return(nil, errors.New("not found"))
+
+	resp, err := svc.Preview(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Equal(t, ErrNotFound, err)
+	assert.Nil(t, resp)
+	mockRepo.AssertExpectations(t)
+}
+
+func TestReportService_Preview_InvalidConfig(t *testing.T) {
+	mockRepo := &mockReportRepository{}
+	renderEngine := render.NewEngine(nil, nil)
+	svc := NewService(mockRepo, renderEngine, nil)
+
+	existingReport := &Report{
+		ID:       "r-1",
+		TenantID: "tenant-1",
+		Name:     "Test Report",
+		Config:   `{invalid json}`,
+	}
+
+	req := &PreviewRequest{
+		ID:       "r-1",
+		TenantID: "tenant-1",
+		Params:   nil,
+	}
+
+	mockRepo.On("Get", mock.Anything, "r-1", "tenant-1").Return(existingReport, nil)
+
+	resp, err := svc.Preview(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	mockRepo.AssertExpectations(t)
 }

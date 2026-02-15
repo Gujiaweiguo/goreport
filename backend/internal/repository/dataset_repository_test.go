@@ -12,6 +12,7 @@ import (
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
 	db := testutil.SetupMySQLTestDB(t)
 	testutil.EnsureTenants(db, t)
 
@@ -255,6 +256,7 @@ func TestDatasetRepository_GetByIDWithFields(t *testing.T) {
 		DisplayName: &displayName,
 		DataType:    "string",
 		Type:        "dimension",
+		Config:      "{}",
 		CreatedAt:   time.Now(),
 	}
 	err = fieldRepo.Create(context.Background(), field)
