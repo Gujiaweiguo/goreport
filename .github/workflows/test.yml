@@ -20,6 +20,10 @@ jobs:
           go-version: '1.22'
           cache-dependency-path: backend/go.sum
 
+      - name: Verify go.mod
+        working-directory: backend
+        run: go mod verify
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
@@ -43,10 +47,10 @@ jobs:
         run: |
           cd backend
           go test -coverprofile=coverage.out ./... -v
+          go tool cover -html=coverage.out -o coverage.html
 
-      - name: Check coverage threshold (non-blocking, observation phase)
-        continue-on-error: true
-        run: ./scripts/ci/check-go-coverage.sh 30
+      - name: Check coverage threshold (55%)
+        run: ./scripts/ci/check-coverage.sh backend/coverage.out 55
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -108,7 +112,8 @@ jobs:
 
       - name: Initialize test database schema
         run: |
-          mysql -h 127.0.0.1 -u root -proot goreport_test < backend/db/init.sql || true
+          # Replace goreport with goreport_test in init.sql for CI
+          sed 's/goreport/goreport_test/g' backend/db/init.sql | mysql -h 127.0.0.1 -u root -proot goreport_test
 
       - name: Run tests with database
         env:
@@ -157,17 +162,33 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-      - name: Run tests
+      - name: Run tests with coverage
         working-directory: frontend
-        run: npm run ci:test
+        run: npm run test:run -- --coverage --passWithNoTests
 
-  smoke-security:
+      - name: Check coverage threshold (60%)
+        run: ./scripts/ci/check-frontend-coverage.sh 60
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 7
+
+  security-check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    continue-on-error: true
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: backend/go.sum
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -175,6 +196,29 @@ jobs:
           node-version: '20'
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Check backend dependencies (govulncheck)
+        working-directory: backend
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
       - name: Check frontend dependencies
         working-directory: frontend
         run: npm audit --audit-level=high
+
+  dependency-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0, LGPL-3.0
