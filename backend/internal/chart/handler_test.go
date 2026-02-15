@@ -438,3 +438,89 @@ func TestDatasetQueryRequest(t *testing.T) {
 	assert.Equal(t, 1, req.Page)
 	assert.Equal(t, 100, req.PageSize)
 }
+
+func TestHandler_Delete_NoTenant(t *testing.T) {
+	service := &mockChartService{}
+	handler := NewHandler(service)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodDelete, "/charts?id=chart-1", nil)
+
+	handler.Delete(c)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestHandler_Delete_NotFound(t *testing.T) {
+	service := &mockChartService{deleteErr: ErrNotFound}
+	handler := NewHandler(service)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodDelete, "/charts?id=not-exist", nil)
+	setChartTenantID(c, "tenant-1")
+
+	handler.Delete(c)
+
+	assert.NotEqual(t, http.StatusOK, w.Code)
+}
+
+func TestHandler_Update_NoTenant(t *testing.T) {
+	service := &mockChartService{}
+	handler := NewHandler(service)
+
+	body := map[string]interface{}{"id": "chart-1", "name": "Updated"}
+	jsonBody, _ := json.Marshal(body)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodPut, "/charts", bytes.NewReader(jsonBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.Update(c)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestHandler_Update_InvalidJSON(t *testing.T) {
+	service := &mockChartService{}
+	handler := NewHandler(service)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodPut, "/charts", bytes.NewReader([]byte("invalid")))
+	c.Request.Header.Set("Content-Type", "application/json")
+	setChartTenantID(c, "tenant-1")
+
+	handler.Update(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestHandler_Render_NoTenant(t *testing.T) {
+	service := &mockChartService{}
+	handler := NewHandler(service)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/charts/render?id=chart-1", nil)
+
+	handler.Render(c)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestHandler_Render_NotFound(t *testing.T) {
+	service := &mockChartService{renderErr: ErrNotFound}
+	handler := NewHandler(service)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/charts/render?id=not-exist", nil)
+	setChartTenantID(c, "tenant-1")
+
+	handler.Render(c)
+
+	assert.NotEqual(t, http.StatusOK, w.Code)
+}

@@ -279,3 +279,85 @@ func TestHandler_Delete_NoID(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
+
+func TestHandler_Update_NoTenant(t *testing.T) {
+	service := &mockService{}
+	handler := NewHandler(service)
+
+	body := map[string]interface{}{"name": "Updated"}
+	jsonBody, _ := json.Marshal(body)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "dashboard-1"}}
+	c.Request = httptest.NewRequest(http.MethodPut, "/dashboards/dashboard-1", bytes.NewReader(jsonBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	handler.Update(c)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestHandler_Update_InvalidJSON(t *testing.T) {
+	service := &mockService{}
+	handler := NewHandler(service)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "dashboard-1"}}
+	c.Request = httptest.NewRequest(http.MethodPut, "/dashboards/dashboard-1", bytes.NewReader([]byte("invalid")))
+	c.Request.Header.Set("Content-Type", "application/json")
+	setTenantID(c, "tenant-1")
+
+	handler.Update(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestHandler_Delete_NoTenant(t *testing.T) {
+	service := &mockService{}
+	handler := NewHandler(service)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "dashboard-1"}}
+	c.Request = httptest.NewRequest(http.MethodDelete, "/dashboards/dashboard-1", nil)
+
+	handler.Delete(c)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestHandler_Update_NotFound(t *testing.T) {
+	service := &mockService{updateErr: assert.AnError}
+	handler := NewHandler(service)
+
+	body := map[string]interface{}{"name": "Updated"}
+	jsonBody, _ := json.Marshal(body)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "not-exist"}}
+	c.Request = httptest.NewRequest(http.MethodPut, "/dashboards/not-exist", bytes.NewReader(jsonBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+	setTenantID(c, "tenant-1")
+
+	handler.Update(c)
+
+	assert.NotEqual(t, http.StatusOK, w.Code)
+}
+
+func TestHandler_Delete_Error(t *testing.T) {
+	service := &mockService{deleteErr: assert.AnError}
+	handler := NewHandler(service)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "dashboard-1"}}
+	c.Request = httptest.NewRequest(http.MethodDelete, "/dashboards/dashboard-1", nil)
+	setTenantID(c, "tenant-1")
+
+	handler.Delete(c)
+
+	assert.NotEqual(t, http.StatusOK, w.Code)
+}
