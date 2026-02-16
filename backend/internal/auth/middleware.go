@@ -79,28 +79,36 @@ func AuthMiddleware() gin.HandlerFunc {
 
 func GetUserID(c *gin.Context) string {
 	if userID, exists := c.Get(string(UserIDKey)); exists {
-		return userID.(string)
+		if id, ok := userID.(string); ok {
+			return id
+		}
 	}
 	return ""
 }
 
 func GetUsername(c *gin.Context) string {
 	if username, exists := c.Get(string(UsernameKey)); exists {
-		return username.(string)
+		if name, ok := username.(string); ok {
+			return name
+		}
 	}
 	return ""
 }
 
 func GetTenantID(c *gin.Context) string {
 	if tenantID, exists := c.Get(string(TenantIDKey)); exists {
-		return tenantID.(string)
+		if tid, ok := tenantID.(string); ok {
+			return tid
+		}
 	}
 	return ""
 }
 
 func GetRoles(c *gin.Context) []string {
 	if roles, exists := c.Get(string(RolesKey)); exists {
-		return roles.([]string)
+		if r, ok := roles.([]string); ok {
+			return r
+		}
 	}
 	return nil
 }
