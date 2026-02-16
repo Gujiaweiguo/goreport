@@ -1,15 +1,18 @@
 # goReport 开发环境 Docker Compose 配置
 # 一键启动完整开发环境：前端 + 后端 + MySQL + Redis
+# 使用外部共享网络 my-net，MySQL 容器名为 mysql8（供多系统共用）
 
 networks:
-  goreport-network:
-    driver: bridge
+  my-net:
+    external: true
 
 services:
-  # MySQL 数据库
+  # MySQL 数据库 (共享容器，容器名为 mysql8)
+  # 注意：此服务定义仅供完整环境启动时使用
+  # 如果 mysql8 容器已存在，可注释掉此服务
   mysql:
     image: mysql:8.0
-    container_name: goreport-mysql
+    container_name: mysql8
     restart: unless-stopped
     ports:
       - "3306:3306"
@@ -29,7 +32,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - goreport-network
+      - my-net
 
   # Redis 缓存
   redis:
@@ -47,7 +50,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - goreport-network
+      - my-net
 
   # Go 后端
   backend:
@@ -63,15 +66,23 @@ services:
       - go-mod-cache:/go/pkg/mod
     environment:
       - SERVER_ADDR=:8085
-      - DB_DSN=root:root@tcp(goreport-mysql:3306)/goreport?charset=utf8mb4&parseTime=True&loc=Local
+      - DB_DSN=root:root@tcp(mysql8:3306)/goreport?charset=utf8mb4&parseTime=True&loc=Local
+      - DATASOURCE_LOCALHOST_ALIAS=host.docker.internal
       - REDIS_ADDR=goreport-redis:6379
       - REDIS_PASSWORD=
       - JWT_SECRET=${JWT_SECRET:-}
       - JWT_ISSUER=goreport
       - JWT_AUDIENCE=goreport
       - GIN_MODE=debug
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
-      - goreport-network
+      - my-net
 
   # Vue 前端
   frontend:
@@ -88,11 +99,11 @@ services:
     environment:
       - VITE_API_BASE_URL=http://localhost:8085
       - VITE_WS_URL=ws://localhost:8085
-      - VITE_PROXY_TARGET=http://backend:8085
+      - VITE_PROXY_TARGET=http://goreport-backend:8085
     depends_on:
       - backend
     networks:
-      - goreport-network
+      - my-net
 
 volumes:
   mysql-data:
