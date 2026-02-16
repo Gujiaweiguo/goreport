@@ -84,7 +84,9 @@ func NewComputedFieldCache() *ComputedFieldCache {
 
 func (c *ComputedFieldCache) GetExpression(fieldID string) (string, bool) {
 	if val, ok := c.expressions.Get(fieldID); ok {
-		return val.(string), true
+		if expr, ok := val.(string); ok {
+			return expr, true
+		}
 	}
 	return "", false
 }
@@ -95,7 +97,9 @@ func (c *ComputedFieldCache) SetExpression(fieldID, expression string, ttl time.
 
 func (c *ComputedFieldCache) GetSQL(fieldID string) (string, bool) {
 	if val, ok := c.sqlCache.Get(fieldID); ok {
-		return val.(string), true
+		if sql, ok := val.(string); ok {
+			return sql, true
+		}
 	}
 	return "", false
 }
