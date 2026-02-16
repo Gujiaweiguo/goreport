@@ -432,7 +432,7 @@ function showEditDialog(row: DataSource) {
   form.port = row.port
   form.database = row.database || ''
   form.username = row.username || ''
-  form.password = ''
+  form.password = ' '  // Placeholder to show password toggle icon
   currentEditId.value = row.id
   dialogVisible.value = true
 }
@@ -621,9 +621,9 @@ async function testConnectionInDialog() {
   try {
     let response
 
-    // If editing and no new password entered, test with saved credentials
+    // If editing and no new password entered (just placeholder), test with saved credentials
     // Otherwise, test with form data (including new password if provided)
-    if (isEdit.value && currentEditId.value && !form.password) {
+    if (isEdit.value && currentEditId.value && !form.password.trim()) {
       response = await datasourceApi.testById(currentEditId.value)
     } else {
       const testData = {
@@ -673,7 +673,7 @@ async function handleSubmit() {
 
   try {
     if (isEdit.value) {
-      // For update: only send password if provided
+      // For update: only send password if provided (not placeholder)
       const updateData: import('@/api/datasource').UpdateDataSourceRequest = {
         name: form.name,
         type: form.type,
@@ -682,7 +682,8 @@ async function handleSubmit() {
         database: form.database,
         username: form.username
       }
-      if (form.password) {
+      // Only include password if it's a real value (not just placeholder whitespace)
+      if (form.password.trim()) {
         updateData.password = form.password
       }
       const response = await datasourceApi.update(currentEditId.value, updateData)
