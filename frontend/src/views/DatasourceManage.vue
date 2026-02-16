@@ -85,10 +85,52 @@
   <el-dialog
     v-model="dialogVisible"
     :title="dialogTitle"
-    width="800px"
+    width="880px"
     @close="handleDialogClose"
   >
+    <el-steps v-if="!isEdit" :active="createStep" simple class="create-steps">
+      <el-step title="选择数据源" />
+      <el-step title="配置信息" />
+    </el-steps>
+
+    <div v-if="!isEdit && createStep === 1" class="source-selector">
+      <div class="source-categories">
+        <button
+          v-for="category in sourceCategories"
+          :key="category.key"
+          type="button"
+          class="category-item"
+          :class="{ active: selectedCategoryKey === category.key }"
+          @click="selectedCategoryKey = category.key"
+        >
+          {{ category.label }}
+        </button>
+      </div>
+      <div class="source-cards">
+        <div class="source-cards-title">{{ activeCategoryLabel }}</div>
+        <div class="source-card-grid">
+          <button
+            v-for="item in activeTemplates"
+            :key="item.key"
+            type="button"
+            class="source-card"
+            :class="{
+              active: selectedTemplateKey === item.key,
+              unsupported: !item.supported
+            }"
+            @click="selectTemplate(item)"
+          >
+            <span>{{ item.label }}</span>
+            <el-tag size="small" :type="item.supported ? 'success' : 'info'">
+              {{ item.supported ? '已支持' : '即将支持' }}
+            </el-tag>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <el-form
+      v-else
       ref="formRef"
       :model="form"
       :rules="formRules"
@@ -99,7 +141,8 @@
       </el-form-item>
 
       <el-form-item label="类型" prop="type">
-        <el-select v-model="form.type" placeholder="请选择数据源类型" @change="handleTypeChange">
+        <el-tag v-if="!isEdit">{{ selectedTypeLabel }}</el-tag>
+        <el-select v-else v-model="form.type" placeholder="请选择数据源类型" @change="handleTypeChange">
           <el-option label="MySQL" value="mysql" />
           <el-option label="PostgreSQL" value="postgres" />
           <el-option label="SQL Server" value="sqlserver" />
@@ -131,6 +174,7 @@
           v-model="form.password"
           type="password"
           :placeholder="isEdit ? '留空则保持原密码不变' : '请输入密码'"
+          @focus="handlePasswordFocus"
           show-password
         />
       </el-form-item>
@@ -193,13 +237,17 @@
     </el-form>
 
     <template #footer>
-      <el-button @click="testConnectionInDialog" :loading="testingInDialog">
-        测试连接
-      </el-button>
       <el-button @click="handleDialogClose">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">
-        {{ isEdit ? '更新' : '创建' }}
-      </el-button>
+      <template v-if="!isEdit && createStep === 1">
+        <el-button type="primary" :disabled="!canGoNext" @click="goNextStep">下一步</el-button>
+      </template>
+      <template v-else>
+        <el-button v-if="!isEdit" @click="createStep = 1">上一步</el-button>
+        <el-button @click="testConnectionInDialog" :loading="testingInDialog">测试连接</el-button>
+        <el-button type="primary" :loading="submitting" @click="handleSubmit">
+          {{ isEdit ? '更新' : '创建' }}
+        </el-button>
+      </template>
     </template>
   </el-dialog>
 
@@ -287,6 +335,10 @@ const datasources = ref<DataSource[]>([])
 const testResult = ref<{ success: boolean; message: string } | null>(null)
 const currentTestDatasourceId = ref('')
 const testingInDialog = ref(false)
+const maskedPassword = '********'
+const createStep = ref(1)
+const selectedCategoryKey = ref('oltp')
+const selectedTemplateKey = ref('mysql')
 
 const sshAuthType = ref<'password' | 'key'>('password')
 const enableSSH = ref(false)
@@ -300,6 +352,67 @@ const renameForm = reactive({
   id: '',
   name: ''
 })
+
+interface SourceCategory {
+  key: string
+  label: string
+}
+
+interface SourceTemplate {
+  key: string
+  label: string
+  supported: boolean
+  backendType?: string
+  defaultPort?: number
+}
+
+const sourceCategories: SourceCategory[] = [
+  { key: 'oltp', label: 'OLTP' },
+  { key: 'olap', label: 'OLAP' },
+  { key: 'lake', label: '数据湖' },
+  { key: 'api', label: 'API数据' },
+  { key: 'file', label: '文件' }
+]
+
+const sourceTemplateMap: Record<string, SourceTemplate[]> = {
+  oltp: [
+    { key: 'db2', label: 'Db2', supported: false },
+    { key: 'mysql', label: 'MySQL', supported: true, backendType: 'mysql', defaultPort: 3306 },
+    { key: 'mariadb', label: 'MariaDB', supported: false },
+    { key: 'mongodb-bi', label: 'Mongodb-BI', supported: true, backendType: 'mongodb', defaultPort: 27017 },
+    { key: 'oracle', label: 'Oracle', supported: false },
+    { key: 'postgres', label: 'PostgreSQL', supported: true, backendType: 'postgres', defaultPort: 5432 },
+    { key: 'sqlserver', label: 'SQL Server', supported: true, backendType: 'sqlserver', defaultPort: 1433 },
+    { key: 'tidb', label: 'TiDB', supported: false }
+  ],
+  olap: [
+    { key: 'impala', label: 'Apache Impala', supported: false },
+    { key: 'doris', label: 'Apache Doris', supported: false },
+    { key: 'clickhouse', label: 'ClickHouse', supported: false },
+    { key: 'elasticsearch', label: 'Elasticsearch', supported: false },
+    { key: 'starrocks', label: 'StarRocks', supported: false }
+  ],
+  lake: [
+    { key: 'redshift', label: 'AWS Redshift', supported: false }
+  ],
+  api: [
+    { key: 'api', label: 'API', supported: true, backendType: 'api' }
+  ],
+  file: [
+    { key: 'excel-local', label: '本地 Excel/CSV', supported: true, backendType: 'excel' },
+    { key: 'excel-remote', label: '远程 Excel/CSV', supported: true, backendType: 'csv' }
+  ]
+}
+
+const datasourceTypeLabelMap: Record<string, string> = {
+  mysql: 'MySQL',
+  postgres: 'PostgreSQL',
+  sqlserver: 'SQL Server',
+  mongodb: 'MongoDB',
+  excel: 'Excel',
+  csv: 'CSV',
+  api: 'API'
+}
 
 interface DataSourceForm {
   name: string
@@ -350,6 +463,26 @@ const formRules = computed<FormRules<DataSourceForm>>(() => ({
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: !isEdit.value, message: '请输入密码', trigger: 'blur' }]
 }))
+
+const activeTemplates = computed(() => {
+  return sourceTemplateMap[selectedCategoryKey.value] || []
+})
+
+const activeCategoryLabel = computed(() => {
+  return sourceCategories.find(category => category.key === selectedCategoryKey.value)?.label || ''
+})
+
+const selectedTemplate = computed(() => {
+  return activeTemplates.value.find(item => item.key === selectedTemplateKey.value) || null
+})
+
+const canGoNext = computed(() => {
+  return Boolean(selectedTemplate.value?.supported && selectedTemplate.value?.backendType)
+})
+
+const selectedTypeLabel = computed(() => {
+  return datasourceTypeLabelMap[form.type] || form.type
+})
 
 const needsDatabase = computed(() => {
   return ['mysql', 'postgres', 'sqlserver', 'mongodb'].includes(form.type)
@@ -416,10 +549,39 @@ function handleRowClick(row: DataSource) {
   // 处理行点击
 }
 
+function applyTemplate(template: SourceTemplate) {
+  if (!template.backendType) return
+  form.type = template.backendType
+  if (template.defaultPort) {
+    form.port = template.defaultPort
+  }
+  handleTypeChange()
+}
+
+function selectTemplate(template: SourceTemplate) {
+  selectedTemplateKey.value = template.key
+  if (template.supported) {
+    applyTemplate(template)
+  }
+}
+
+function goNextStep() {
+  if (!selectedTemplate.value || !selectedTemplate.value.supported || !selectedTemplate.value.backendType) {
+    ElMessage.warning('该数据源即将支持，请选择已支持的数据源')
+    return
+  }
+  applyTemplate(selectedTemplate.value)
+  createStep.value = 2
+}
+
 function showCreateDialog() {
   isEdit.value = false
   dialogTitle.value = '创建数据源'
   resetForm()
+  createStep.value = 1
+  selectedCategoryKey.value = 'oltp'
+  selectedTemplateKey.value = 'mysql'
+  applyTemplate(sourceTemplateMap.oltp[1])
   dialogVisible.value = true
 }
 
@@ -432,8 +594,9 @@ function showEditDialog(row: DataSource) {
   form.port = row.port
   form.database = row.database || ''
   form.username = row.username || ''
-  form.password = ' '  // Placeholder to show password toggle icon
+  form.password = maskedPassword
   currentEditId.value = row.id
+  createStep.value = 2
   dialogVisible.value = true
 }
 
@@ -600,6 +763,9 @@ function resetForm() {
 function handleDialogClose() {
   dialogVisible.value = false
   resetForm()
+  createStep.value = 1
+  selectedCategoryKey.value = 'oltp'
+  selectedTemplateKey.value = 'mysql'
   if (formRef.value) {
     formRef.value.clearValidate()
   }
@@ -615,15 +781,20 @@ function handleTypeChange() {
   }
 }
 
+function handlePasswordFocus() {
+  if (isEdit.value && form.password === maskedPassword) {
+    form.password = ''
+  }
+}
+
 async function testConnectionInDialog() {
   testingInDialog.value = true
 
   try {
     let response
+    const hasRealPassword = form.password.trim() !== '' && form.password !== maskedPassword
 
-    // If editing and no new password entered (just placeholder), test with saved credentials
-    // Otherwise, test with form data (including new password if provided)
-    if (isEdit.value && currentEditId.value && !form.password.trim()) {
+    if (isEdit.value && currentEditId.value && !hasRealPassword) {
       response = await datasourceApi.testById(currentEditId.value)
     } else {
       const testData = {
@@ -633,7 +804,7 @@ async function testConnectionInDialog() {
         port: form.port,
         database: form.database,
         username: form.username,
-        password: form.password,
+        password: hasRealPassword ? form.password : '',
         advanced: enableSSH.value ? {
           sshHost: form.advanced.sshHost,
           sshPort: form.advanced.sshPort,
@@ -673,7 +844,6 @@ async function handleSubmit() {
 
   try {
     if (isEdit.value) {
-      // For update: only send password if provided (not placeholder)
       const updateData: import('@/api/datasource').UpdateDataSourceRequest = {
         name: form.name,
         type: form.type,
@@ -682,8 +852,8 @@ async function handleSubmit() {
         database: form.database,
         username: form.username
       }
-      // Only include password if it's a real value (not just placeholder whitespace)
-      if (form.password.trim()) {
+      const hasRealPassword = form.password.trim() !== '' && form.password !== maskedPassword
+      if (hasRealPassword) {
         updateData.password = form.password
       }
       const response = await datasourceApi.update(currentEditId.value, updateData)
@@ -695,7 +865,6 @@ async function handleSubmit() {
         ElMessage.error(response.data.message || '更新数据源失败')
       }
     } else {
-      // For create: password is required
       const createData: import('@/api/datasource').CreateDataSourceRequest = {
         name: form.name,
         type: form.type,
@@ -771,6 +940,114 @@ onMounted(() => {
 
 .el-form {
   max-width: 400px;
+}
+
+.create-steps {
+  margin-bottom: 16px;
+}
+
+.source-selector {
+  display: flex;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 360px;
+}
+
+.source-categories {
+  width: 160px;
+  background: #f8fafc;
+  border-right: 1px solid #e4e7ed;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.category-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+  color: #606266;
+}
+
+.category-item.active {
+  background: #ecf5ff;
+  color: #409eff;
+  font-weight: 600;
+}
+
+.source-cards {
+  flex: 1;
+  padding: 16px;
+}
+
+.source-cards-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.source-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.source-card {
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.source-card:hover {
+  border-color: #409eff;
+}
+
+.source-card.active {
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.12);
+}
+
+.source-card.unsupported {
+  opacity: 0.7;
+}
+
+.source-card span {
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .source-selector {
+    flex-direction: column;
+  }
+
+  .source-categories {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e4e7ed;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .category-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .source-card-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .el-pagination {

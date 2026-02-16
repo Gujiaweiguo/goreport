@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, config } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import DatasourceManage from './DatasourceManage.vue'
 
@@ -32,10 +32,23 @@ vi.mock('@/api/datasource', () => ({
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { datasourceApi } from '@/api/datasource'
 
+const vLoading = {
+  mounted: () => {},
+  updated: () => {},
+  unmounted: () => {}
+}
+
+config.global.directives = {
+  ...config.global.directives,
+  loading: vLoading
+}
+
 const globalStubs = {
   'el-card': true,
   'el-button': true,
   'el-button-group': true,
+  'el-steps': true,
+  'el-step': true,
   'el-input': true,
   'el-input-number': true,
   'el-select': true,
@@ -119,10 +132,10 @@ describe('DatasourceManage.vue', () => {
       expect(wrapper.vm.needsDatabase).toBe(true)
     })
 
-    it('returns true for postgresql', async () => {
+    it('returns true for postgres', async () => {
       const wrapper = mount(DatasourceManage, { global: { stubs: globalStubs } })
       await nextTick()
-      wrapper.vm.form.type = 'postgresql'
+      wrapper.vm.form.type = 'postgres'
       expect(wrapper.vm.needsDatabase).toBe(true)
     })
 
@@ -170,10 +183,10 @@ describe('DatasourceManage.vue', () => {
       expect(wrapper.vm.needsAuth).toBe(true)
     })
 
-    it('returns true for postgresql', async () => {
+    it('returns true for postgres', async () => {
       const wrapper = mount(DatasourceManage, { global: { stubs: globalStubs } })
       await nextTick()
-      wrapper.vm.form.type = 'postgresql'
+      wrapper.vm.form.type = 'postgres'
       expect(wrapper.vm.needsAuth).toBe(true)
     })
 
@@ -193,10 +206,10 @@ describe('DatasourceManage.vue', () => {
       expect(wrapper.vm.supportsSSH).toBe(true)
     })
 
-    it('returns true for postgresql', async () => {
+    it('returns true for postgres', async () => {
       const wrapper = mount(DatasourceManage, { global: { stubs: globalStubs } })
       await nextTick()
-      wrapper.vm.form.type = 'postgresql'
+      wrapper.vm.form.type = 'postgres'
       expect(wrapper.vm.supportsSSH).toBe(true)
     })
 
@@ -542,7 +555,7 @@ describe('DatasourceManage.vue', () => {
       await nextTick()
       
       wrapper.vm.form.name = 'Modified'
-      wrapper.vm.form.type = 'postgresql'
+      wrapper.vm.form.type = 'postgres'
       wrapper.vm.form.host = 'remote'
       wrapper.vm.form.port = 5432
       
@@ -598,6 +611,151 @@ describe('DatasourceManage.vue', () => {
       
       expect(wrapper.vm.form.username).toBe('')
       expect(wrapper.vm.form.password).toBe('')
+    })
+  })
+
+  describe('wizard and edit credential behaviors', () => {
+    it('showCreateDialog initializes wizard state', async () => {
+      const wrapper = mount(DatasourceManage, { global: { stubs: globalStubs } })
+      await nextTick()
+
+      wrapper.vm.showCreateDialog()
+
+      expect(wrapper.vm.createStep).toBe(1)
+      expect(wrapper.vm.selectedCategoryKey).toBe('oltp')
+      expect(wrapper.vm.selectedTemplateKey).toBe('mysql')
+      expect(wrapper.vm.form.type).toBe('mysql')
+      expect(wrapper.vm.form.port).toBe(3306)
+    })
+
+    it('goNextStep advances for supported template', async () => {
+      const wrapper = mount(DatasourceManage, { global: { stubs: globalStubs } })
+      await nextTick()
+
+      wrapper.vm.selectedCategoryKey = 'api'
+      wrapper.vm.selectTemplate({ key: 'api', label: 'API', supported: true, backendType: 'api' })
+      wrapper.vm.goNextStep()
+
+      expect(wrapper.vm.createStep).toBe(2)
+      expect(wrapper.vm.form.type).toBe('api')
+    })
+
+    it('goNextStep blocks unsupported template', async () => {
+      const wrapper = mount(DatasourceManage, { global: { stubs: globalStubs } })
+      await nextTick()
+
+      wrapper.vm.selectTemplate({ key: 'impala', label: 'Apache Impala', supported: false })
+      wrapper.vm.goNextStep()
+
+      expect(wrapper.vm.createStep).toBe(1)
+      expect(ElMessage.warning).toHaveBeenCalled()
+    })
+
+    it('showEditDialog sets masked password placeholder', async () => {
+      const wrapper = mount(DatasourceManage, { global: { stubs: globalStubs } })
+      await nextTick()
+
+      wrapper.vm.showEditDialog({
+        id: 'ds-1',
+        name: 'Test DS',
+        type: 'mysql',
+        host: 'localhost',
+        port: 3306,
+        database: 'testdb',
+        username: 'root'
+      } as any)
+
+      expect(wrapper.vm.form.password).toBe('********')
+    })
+
+    it('handlePasswordFocus clears masked password in edit mode', async () => {
+      const wrapper = mount(DatasourceManage, { global: { stubs: globalStubs } })
+      await nextTick()
+
+      wrapper.vm.isEdit = true
+      wrapper.vm.form.password = '********'
+      wrapper.vm.handlePasswordFocus()
+
+      expect(wrapper.vm.form.password).toBe('')
+    })
+
+    it('testConnectionInDialog uses testById for unchanged password in edit mode', async () => {
+      const wrapper = mount(DatasourceManage, { global: { stubs: globalStubs } })
+      await nextTick()
+
+      wrapper.vm.isEdit = true
+      wrapper.vm.currentEditId = 'ds-1'
+      wrapper.vm.form.password = '********'
+
+      await wrapper.vm.testConnectionInDialog()
+
+      expect(datasourceApi.testById).toHaveBeenCalledWith('ds-1')
+      expect(datasourceApi.test).not.toHaveBeenCalled()
+    })
+
+    it('testConnectionInDialog uses payload test when new password provided', async () => {
+      const wrapper = mount(DatasourceManage, { global: { stubs: globalStubs } })
+      await nextTick()
+
+      wrapper.vm.isEdit = true
+      wrapper.vm.currentEditId = 'ds-1'
+      wrapper.vm.form.password = 'new-password'
+
+      await wrapper.vm.testConnectionInDialog()
+
+      expect(datasourceApi.test).toHaveBeenCalled()
+    })
+
+    it('handleSubmit omits password for masked edit value', async () => {
+      const wrapper = mount(DatasourceManage, { global: { stubs: globalStubs } })
+      await nextTick()
+
+      wrapper.vm.isEdit = true
+      wrapper.vm.currentEditId = 'ds-1'
+      wrapper.vm.form.name = 'Updated DS'
+      wrapper.vm.form.type = 'mysql'
+      wrapper.vm.form.host = 'localhost'
+      wrapper.vm.form.port = 3306
+      wrapper.vm.form.database = 'testdb'
+      wrapper.vm.form.username = 'root'
+      wrapper.vm.form.password = '********'
+      wrapper.vm.formRef = {
+        validate: vi.fn().mockResolvedValue(undefined),
+        clearValidate: vi.fn()
+      }
+
+      await wrapper.vm.handleSubmit()
+
+      expect(datasourceApi.update).toHaveBeenCalledWith(
+        'ds-1',
+        expect.not.objectContaining({ password: expect.anything() })
+      )
+    })
+
+    it('handleSubmit includes password for real edit value', async () => {
+      const wrapper = mount(DatasourceManage, { global: { stubs: globalStubs } })
+      await nextTick()
+
+      wrapper.vm.isEdit = true
+      wrapper.vm.currentEditId = 'ds-1'
+      wrapper.vm.form.name = 'Updated DS'
+      wrapper.vm.form.type = 'mysql'
+      wrapper.vm.form.host = 'localhost'
+      wrapper.vm.form.port = 3306
+      wrapper.vm.form.database = 'testdb'
+      wrapper.vm.form.username = 'root'
+      wrapper.vm.form.password = 'new-password'
+      wrapper.vm.formRef = {
+        validate: vi.fn().mockResolvedValue(undefined),
+        clearValidate: vi.fn()
+      }
+
+      await wrapper.vm.handleSubmit()
+
+      expect(datasourceApi.update).toHaveBeenCalledWith(
+        'ds-1',
+        expect.objectContaining({ password: 'new-password' })
+      )
     })
   })
 })
