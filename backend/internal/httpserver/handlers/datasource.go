@@ -294,7 +294,7 @@ func (h *DataSourceHandler) TestDatasource(c *gin.Context) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		req.Username,
 		password,
-		req.Host,
+		datasource.ResolveHost(req.Host),
 		req.Port,
 		req.Database,
 	)
@@ -428,7 +428,7 @@ func buildDSN(ds *models.DataSource) string {
 	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		ds.Username,
 		ds.Password,
-		ds.Host,
+		datasource.ResolveHost(ds.Host),
 		port,
 		ds.Database,
 	)
