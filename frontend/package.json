@@ -35,5 +35,8 @@
     "vite-plugin-monaco-editor": "^1.1.0",
     "vitest": "^1.0.0",
     "vue-tsc": "^2.2.12"
+  },
+  "overrides": {
+    "esbuild": "^0.25.0"
   }
 }
