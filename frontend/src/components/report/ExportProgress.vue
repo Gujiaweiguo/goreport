@@ -77,6 +77,7 @@
   import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
   import { ElMessage } from 'element-plus'
   import { Download, Close, CopyDocument } from '@element-plus/icons-vue'
+  import { getErrorMessage } from '@/utils/errorHandling'
 
   interface ExportJob {
     id: string
@@ -148,7 +149,7 @@
       if (data.success) {
         job.value = data.result
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to fetch job status:', error)
     }
   }
@@ -168,8 +169,8 @@
         window.URL.revokeObjectURL(url)
         ElMessage.success('下载成功')
       }
-    } catch (error: any) {
-      ElMessage.error(error.message || '下载失败')
+    } catch (error: unknown) {
+      ElMessage.error(getErrorMessage(error, '下载失败'))
     }
   }
 
@@ -187,8 +188,8 @@
         }
         ElMessage.success('已取消导出')
       }
-    } catch (error: any) {
-      ElMessage.error(error.message || '取消失败')
+    } catch (error: unknown) {
+      ElMessage.error(getErrorMessage(error, '取消失败'))
     } finally {
       cancelling.value = false
     }

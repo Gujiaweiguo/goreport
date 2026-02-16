@@ -50,6 +50,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reportApi, type Report } from '@/api/report'
 import LoadingState from '@/components/common/LoadingState.vue'
+import { getErrorMessage } from '@/utils/errorHandling'
 
 const router = useRouter()
 const loading = ref(false)
@@ -64,8 +65,8 @@ async function loadReports() {
     } else {
       ElMessage.error(response.data.message || '加载报表列表失败')
     }
-  } catch (error: any) {
-    ElMessage.error(error.message || '加载报表列表失败')
+  } catch (error: unknown) {
+    ElMessage.error(getErrorMessage(error, '加载报表列表失败'))
   } finally {
     loading.value = false
   }
@@ -104,7 +105,7 @@ async function handleDelete(row: Report) {
     } else {
       ElMessage.error(response.data.message || '删除报表失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       ElMessage.error('删除报表失败')
     }

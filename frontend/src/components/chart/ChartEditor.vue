@@ -160,7 +160,7 @@ async function loadDatasets() {
     } else {
       ElMessage.error(response.data.message || '加载数据集失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('加载数据集失败')
   }
 }
@@ -176,7 +176,7 @@ async function loadDatasetSchema() {
     } else {
       ElMessage.error(response.data.message || '加载数据集 Schema 失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('加载数据集 Schema 失败')
   }
 }

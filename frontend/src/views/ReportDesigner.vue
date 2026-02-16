@@ -61,6 +61,7 @@ import { ElMessage } from 'element-plus'
 import type { InputInstance } from 'element-plus'
 import { reportApi } from '@/api/report'
 import { datasetApi } from '@/api/dataset'
+import { getErrorMessage } from '@/utils/errorHandling'
 import PropertyPanel from '@/components/report/PropertyPanel.vue'
 
 const route = useRoute()
@@ -454,9 +455,9 @@ async function loadReport(id: string) {
     } else {
       ElMessage.error(response.data.message || '加载报表失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('加载报表失败:', error)
-    ElMessage.error(error.message || '加载报表失败')
+    ElMessage.error(getErrorMessage(error, '加载报表失败'))
   }
 }
 
@@ -487,9 +488,8 @@ async function handlePreviewData() {
       previewData.value = response.data.result?.data || []
       ElMessage.success('数据预览加载成功')
     }
-  } catch (error: any) {
-    const backendMessage = error?.response?.data?.message
-    ElMessage.error(backendMessage || error.message || '数据预览失败')
+  } catch (error: unknown) {
+    ElMessage.error(getErrorMessage(error, '数据预览失败'))
   } finally {
     loadingPreviewData.value = false
   }
@@ -526,8 +526,8 @@ async function handleSave() {
     } else {
       ElMessage.error(response.data.message || '保存失败')
     }
-  } catch (error: any) {
-    ElMessage.error(error?.response?.data?.message || '保存失败')
+  } catch (error: unknown) {
+    ElMessage.error(getErrorMessage(error, '保存失败'))
   } finally {
     saving.value = false
   }

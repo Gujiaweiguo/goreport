@@ -253,6 +253,7 @@ import { Pointer, Connection, View, Document, Warning, CircleCloseFilled } from 
 import { ElMessage } from 'element-plus'
 import { datasourceApi, type SelectOption } from '@/api/datasource'
 import { datasetApi, type Dataset, type DatasetField } from '@/api/dataset'
+import { getErrorMessage } from '@/utils/errorHandling'
 
 type BindingType = 'datasource' | 'dataset'
 type AggregationType = 'SUM' | 'AVG' | 'COUNT' | 'MAX' | 'MIN' | 'none'
@@ -521,7 +522,7 @@ async function handleDataSourceChange() {
     } else {
       ElMessage.error(response.data.message || '加载表列表失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('加载表列表失败')
   } finally {
     loadingFields.value = false
@@ -565,8 +566,8 @@ async function loadDatasets() {
     } else {
       ElMessage.error(response.data.message || '加载数据集失败')
     }
-  } catch (error: any) {
-    ElMessage.error(error?.message || '加载数据集失败')
+  } catch (error: unknown) {
+    ElMessage.error(getErrorMessage(error, '加载数据集失败'))
   } finally {
     loadingDatasets.value = false
   }
@@ -594,8 +595,8 @@ async function handleDatasetChange(shouldEmit: boolean = true) {
     } else {
       ElMessage.error(response.data.message || '加载数据集字段失败')
     }
-  } catch (error: any) {
-    ElMessage.error(error?.message || '加载数据集字段失败')
+  } catch (error: unknown) {
+    ElMessage.error(getErrorMessage(error, '加载数据集字段失败'))
   } finally {
     loadingDatasetSchema.value = false
     if (shouldEmit) {
@@ -639,8 +640,8 @@ async function handleTestConnection() {
       connectionError.value = response.data.message || '连接测试失败'
       ElMessage.error(response.data.message || '连接测试失败')
     }
-  } catch (error: any) {
-    connectionError.value = error.message || '连接测试失败'
+  } catch (error: unknown) {
+    connectionError.value = getErrorMessage(error, '连接测试失败')
     ElMessage.error('连接测试失败')
   } finally {
     testingConnection.value = false
@@ -675,8 +676,8 @@ async function handlePreviewData() {
       previewError.value = response.data.message || '数据预览失败'
       ElMessage.error(response.data.message || '数据预览失败')
     }
-  } catch (error: any) {
-    previewError.value = error.message || '数据预览失败'
+  } catch (error: unknown) {
+    previewError.value = getErrorMessage(error, '数据预览失败')
     ElMessage.error('数据预览失败')
   } finally {
     previewingData.value = false

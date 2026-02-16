@@ -189,6 +189,7 @@ import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { datasourceApi, type DataSource } from '@/api/datasource'
 import { datasetApi, type Dataset, type DatasetField } from '@/api/dataset'
+import { getErrorMessage } from '@/utils/errorHandling'
 
 interface CellStyle {
   fontSize: number
@@ -339,7 +340,7 @@ async function loadDatasources() {
     } else {
       ElMessage.error(response.data.message || '加载数据源失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('加载数据源失败')
   }
 }
@@ -352,7 +353,7 @@ async function loadDatasets() {
     } else {
       ElMessage.error(response.data.message || '加载数据集失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('加载数据集失败')
   }
 }
@@ -371,7 +372,7 @@ async function loadTables() {
     } else {
       ElMessage.error(response.data.message || '加载数据表失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('加载数据表失败')
   } finally {
     tablesLoading.value = false
@@ -392,7 +393,7 @@ async function loadFields() {
     } else {
       ElMessage.error(response.data.message || '加载字段失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('加载字段失败')
   } finally {
     fieldsLoading.value = false
@@ -414,7 +415,7 @@ async function loadDatasetSchema() {
     } else {
       ElMessage.error(response.data.message || '加载数据集 Schema 失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('加载数据集 Schema 失败')
   }
 }
@@ -549,8 +550,8 @@ async function handlePreviewDataset() {
       previewData.value = response.data.result?.data || []
       ElMessage.success('数据预览加载成功')
     }
-  } catch (error: any) {
-    ElMessage.error(error.message || '数据预览失败')
+  } catch (error: unknown) {
+    ElMessage.error(getErrorMessage(error, '数据预览失败'))
   } finally {
     loadingPreviewData.value = false
   }

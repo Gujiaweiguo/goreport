@@ -262,6 +262,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { datasourceApi, type DataSource } from '@/api/datasource'
+import { getErrorMessage } from '@/utils/errorHandling'
 
 const dialogVisible = ref(false)
 const testDialogVisible = ref(false)
@@ -380,7 +381,7 @@ async function loadDatasources() {
     } else {
       ElMessage.error(response.data.message || '加载数据源失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('加载数据源失败')
   } finally {
     loading.value = false
@@ -445,7 +446,7 @@ async function handleCopy(row: DataSource) {
     } else {
       ElMessage.error(response.data.message || '复制数据源失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('复制数据源失败')
   }
 }
@@ -470,7 +471,7 @@ async function handleMoveSubmit() {
     } else {
       ElMessage.error(response.data.message || '移动数据源失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('移动数据源失败')
   }
 }
@@ -495,7 +496,7 @@ async function handleRenameSubmit() {
     } else {
       ElMessage.error(response.data.message || '重命名失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('重命名失败')
   }
 }
@@ -515,7 +516,7 @@ async function handleDelete(row: DataSource) {
     } else {
       ElMessage.error(response.data.message || '删除数据源失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       ElMessage.error('删除数据源失败')
     }
@@ -562,10 +563,9 @@ function runTest() {
       }
     })
     .catch(error => {
-      const backendMessage = error?.response?.data?.message
       testResult.value = {
         success: false,
-        message: backendMessage || error.message || '连接测试失败'
+        message: getErrorMessage(error, '连接测试失败')
       }
     })
     .finally(() => {
@@ -647,7 +647,7 @@ async function handleSubmit() {
         ElMessage.error(response.data.message || '创建数据源失败')
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('操作失败')
   } finally {
     submitting.value = false

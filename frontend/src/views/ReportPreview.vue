@@ -143,6 +143,7 @@
   import ErrorState from '@/components/common/ErrorState.vue'
   import PrintPreview from '@/components/report/PrintPreview.vue'
   import ExportDialog from '@/components/report/ExportDialog.vue'
+  import { getErrorMessage } from '@/utils/errorHandling'
 
   const route = useRoute()
   const renderedHTML = ref('')
@@ -248,9 +249,9 @@
         loadError.value = true
         errorMessage.value = response.data.message || '加载报表失败'
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       loadError.value = true
-      errorMessage.value = error.message || '加载报表失败'
+      errorMessage.value = getErrorMessage(error, '加载报表失败')
     } finally {
       loading.value = false
     }
@@ -330,8 +331,8 @@
       } else {
         throw new Error(response.data.message || '导出失败')
       }
-    } catch (error: any) {
-      ElMessage.error(error.message || '导出失败')
+    } catch (error: unknown) {
+      ElMessage.error(getErrorMessage(error, '导出失败'))
     } finally {
       exporting.value = false
     }
@@ -420,9 +421,9 @@
         loadError.value = true
         errorMessage.value = response.data.message || '预览加载失败'
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       loadError.value = true
-      errorMessage.value = error.message || '预览加载失败'
+      errorMessage.value = getErrorMessage(error, '预览加载失败')
     } finally {
       loading.value = false
     }

@@ -81,7 +81,7 @@ async function loadCharts() {
     if (response.data.success) {
       charts.value = response.data.result || []
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('加载图表列表失败')
   }
 }
@@ -140,7 +140,7 @@ async function handleSaveChart() {
       chartEditor.visible = false
       await loadCharts()
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('保存图表失败')
   }
 }

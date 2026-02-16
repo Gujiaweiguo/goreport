@@ -111,6 +111,7 @@ import type { DashboardComponent } from '@/components/dashboard/PropertyPanel.vu
 import type { LayerItem } from '@/components/dashboard/LayerPanel.vue'
 import { datasourceApi, type SelectOption } from '@/api/datasource'
 import { dashboardApi, type Dashboard, type CreateDashboardRequest } from '@/api/dashboard'
+import { getErrorMessage } from '@/utils/errorHandling'
 
 const activeTab = ref('properties')
 const selectedComponentId = ref<string | null>(null)
@@ -252,7 +253,7 @@ async function loadDataSources() {
     } else {
       ElMessage.error(response.data.message || '加载数据源列表失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ElMessage.error('加载数据源列表失败')
   } finally {
     loadingDataSources.value = false
@@ -461,9 +462,8 @@ async function handleSaveDashboard() {
     } else {
       ElMessage.error(response.data.message || '保存失败')
     }
-  } catch (error: any) {
-    const backendMessage = error?.response?.data?.message
-    ElMessage.error(backendMessage || error.message || '保存失败')
+  } catch (error: unknown) {
+    ElMessage.error(getErrorMessage(error, '保存失败'))
   } finally {
     savingDashboard.value = false
   }
@@ -501,9 +501,8 @@ async function handleLoadDashboard() {
     } else {
       ElMessage.warning('暂无已保存的大屏')
     }
-  } catch (error: any) {
-    const backendMessage = error?.response?.data?.message
-    ElMessage.error(backendMessage || error.message || '加载失败')
+  } catch (error: unknown) {
+    ElMessage.error(getErrorMessage(error, '加载失败'))
   } finally {
     loadingDashboard.value = false
   }
@@ -520,7 +519,7 @@ async function handleClearDashboard() {
     selectedComponentId.value = null
     syncLayersFromComponents()
     ElMessage.success('大屏已清空')
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
     }

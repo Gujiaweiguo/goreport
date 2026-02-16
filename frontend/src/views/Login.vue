@@ -54,6 +54,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { auth } from '@/api/auth'
+import { getErrorMessage } from '@/utils/errorHandling'
 
 const router = useRouter()
 
@@ -119,9 +120,8 @@ async function handleLogin() {
     } else {
       ElMessage.error(result.message || '登录失败，请检查用户名和密码')
     }
-  } catch (error: any) {
-    const message = error.response?.data?.message || error.message || '登录失败，请稍后重试'
-    ElMessage.error(message)
+  } catch (error: unknown) {
+    ElMessage.error(getErrorMessage(error, '登录失败，请稍后重试'))
   } finally {
     loading.value = false
   }
