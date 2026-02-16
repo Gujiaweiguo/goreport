@@ -37,7 +37,7 @@ type CreateRequest struct {
 }
 
 type UpdateRequest struct {
-	ID       string `json:"id" binding:"required"`
+	ID       string `json:"id"` // Set by handler from URL param
 	Name     string `json:"name" binding:"max=255"`
 	Type     string `json:"type" binding:"omitempty,oneof=mysql postgres mongodb excel csv api"`
 	Host     string `json:"host" binding:"omitempty,max=255"`
@@ -45,7 +45,7 @@ type UpdateRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Database string `json:"database"`
-	TenantID string `json:"tenantId" binding:"required"`
+	TenantID string `json:"tenantId"` // Set by handler from auth token
 
 	Advanced *AdvancedConfig `json:"advanced,omitempty"`
 }
