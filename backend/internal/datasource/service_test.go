@@ -263,6 +263,10 @@ func TestService_Update(t *testing.T) {
 		TenantID: "tenant-1",
 		Name:     "Old Name",
 		Type:     "mysql",
+		Host:     "localhost",
+		Port:     3306,
+		Database: "testdb",
+		Password: "old-password",
 	}
 
 	repo := &mockDatasourceRepo{
@@ -284,6 +288,37 @@ func TestService_Update(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, datasource)
 		assert.Equal(t, "Updated Name", datasource.Name)
+	})
+
+	t.Run("未提供新密码时保留原密码", func(t *testing.T) {
+		repo.datasource = &models.DataSource{
+			ID:       "ds-1",
+			TenantID: "tenant-1",
+			Name:     "Keep Password",
+			Type:     "mysql",
+			Host:     "localhost",
+			Port:     3306,
+			Database: "testdb",
+			Password: "old-password",
+		}
+
+		req := &UpdateRequest{
+			ID:       "ds-1",
+			Name:     "Keep Password Updated",
+			Host:     "localhost",
+			Port:     3306,
+			Database: "testdb",
+			Username: "root",
+			Password: "",
+			TenantID: "tenant-1",
+		}
+
+		datasource, err := service.Update(context.Background(), req)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, datasource)
+		assert.Equal(t, "old-password", datasource.Password)
+		assert.Equal(t, "old-password", repo.datasource.Password)
 	})
 
 	t.Run("更新失败", func(t *testing.T) {

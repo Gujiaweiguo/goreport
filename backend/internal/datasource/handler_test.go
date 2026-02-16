@@ -20,6 +20,7 @@ import (
 type mockService struct {
 	datasource  *models.DataSource
 	datasources []*models.DataSource
+	lastUpdate  *UpdateRequest
 	createErr   error
 	getErr      error
 	listErr     error
@@ -56,6 +57,7 @@ func (m *mockService) List(ctx context.Context, tenantID string, page, pageSize 
 }
 
 func (m *mockService) Update(ctx context.Context, req *UpdateRequest) (*models.DataSource, error) {
+	m.lastUpdate = req
 	if m.updateErr != nil {
 		return nil, m.updateErr
 	}
@@ -325,7 +327,7 @@ func TestDatasourceHandler_Update_Success(t *testing.T) {
 		handler.Update(c)
 	})
 
-	body := `{"id":"ds-1","name":"Updated","tenantId":"tenant-1"}`
+	body := `{"name":"Updated"}`
 	req := httptest.NewRequest(http.MethodPut, "/ds-1", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -333,6 +335,11 @@ func TestDatasourceHandler_Update_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), `"success":true`)
+	if assert.NotNil(t, svc.lastUpdate) {
+		assert.Equal(t, "ds-1", svc.lastUpdate.ID)
+		assert.Equal(t, "tenant-1", svc.lastUpdate.TenantID)
+		assert.Equal(t, "Updated", svc.lastUpdate.Name)
+	}
 }
 
 func TestDatasourceHandler_Update_NoID(t *testing.T) {
