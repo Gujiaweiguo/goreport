@@ -617,28 +617,37 @@ function handleTypeChange() {
 
 async function testConnectionInDialog() {
   testingInDialog.value = true
-  const testData = {
-    name: form.name,
-    type: form.type,
-    host: form.host,
-    port: form.port,
-    database: form.database,
-    username: form.username,
-    password: form.password,
-    advanced: enableSSH.value ? {
-      sshHost: form.advanced.sshHost,
-      sshPort: form.advanced.sshPort,
-      sshUsername: form.advanced.sshUsername,
-      sshPassword: form.advanced.sshPassword,
-      sshKey: form.advanced.sshKey,
-      sshKeyPhrase: form.advanced.sshKeyPhrase,
-      maxConnections: form.advanced.maxConnections,
-      queryTimeoutSeconds: form.advanced.queryTimeoutSeconds
-    } : undefined
-  }
 
   try {
-    const response = await datasourceApi.test(testData)
+    let response
+
+    // If editing and no new password entered, test with saved credentials
+    // Otherwise, test with form data (including new password if provided)
+    if (isEdit.value && currentEditId.value && !form.password) {
+      response = await datasourceApi.testById(currentEditId.value)
+    } else {
+      const testData = {
+        name: form.name,
+        type: form.type,
+        host: form.host,
+        port: form.port,
+        database: form.database,
+        username: form.username,
+        password: form.password,
+        advanced: enableSSH.value ? {
+          sshHost: form.advanced.sshHost,
+          sshPort: form.advanced.sshPort,
+          sshUsername: form.advanced.sshUsername,
+          sshPassword: form.advanced.sshPassword,
+          sshKey: form.advanced.sshKey,
+          sshKeyPhrase: form.advanced.sshKeyPhrase,
+          maxConnections: form.advanced.maxConnections,
+          queryTimeoutSeconds: form.advanced.queryTimeoutSeconds
+        } : undefined
+      }
+      response = await datasourceApi.test(testData)
+    }
+
     if (response.data.success) {
       ElMessage.success('连接测试成功')
     } else {
