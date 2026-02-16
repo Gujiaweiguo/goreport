@@ -101,7 +101,7 @@
       <el-form-item label="类型" prop="type">
         <el-select v-model="form.type" placeholder="请选择数据源类型" @change="handleTypeChange">
           <el-option label="MySQL" value="mysql" />
-          <el-option label="PostgreSQL" value="postgresql" />
+          <el-option label="PostgreSQL" value="postgres" />
           <el-option label="SQL Server" value="sqlserver" />
           <el-option label="MongoDB" value="mongodb" />
           <el-option label="Excel" value="excel" />
@@ -130,7 +130,7 @@
         <el-input
           v-model="form.password"
           type="password"
-          placeholder="请输入密码"
+          :placeholder="isEdit ? '留空则保持原密码不变' : '请输入密码'"
           show-password
         />
       </el-form-item>
@@ -193,6 +193,9 @@
     </el-form>
 
     <template #footer>
+      <el-button @click="testConnectionInDialog" :loading="testingInDialog">
+        测试连接
+      </el-button>
       <el-button @click="handleDialogClose">取消</el-button>
       <el-button type="primary" :loading="submitting" @click="handleSubmit">
         {{ isEdit ? '更新' : '创建' }}
@@ -283,6 +286,7 @@ const searchKeyword = ref('')
 const datasources = ref<DataSource[]>([])
 const testResult = ref<{ success: boolean; message: string } | null>(null)
 const currentTestDatasourceId = ref('')
+const testingInDialog = ref(false)
 
 const sshAuthType = ref<'password' | 'key'>('password')
 const enableSSH = ref(false)
@@ -337,26 +341,26 @@ const form = reactive<DataSourceForm>({
   }
 })
 
-const formRules = reactive<FormRules<DataSourceForm>>({
+const formRules = computed<FormRules<DataSourceForm>>(() => ({
   name: [{ required: true, message: '请输入数据源名称', trigger: 'blur' }],
   type: [{ required: true, message: '请选择数据源类型', trigger: 'change' }],
   host: [{ required: true, message: '请输入主机地址', trigger: 'blur' }],
   port: [{ required: true, message: '请输入端口号', trigger: 'blur' }],
   database: [{ required: true, message: '请输入数据库名称', trigger: 'blur' }],
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
-})
+  password: [{ required: !isEdit.value, message: '请输入密码', trigger: 'blur' }]
+}))
 
 const needsDatabase = computed(() => {
-  return ['mysql', 'postgresql', 'sqlserver', 'mongodb'].includes(form.type)
+  return ['mysql', 'postgres', 'sqlserver', 'mongodb'].includes(form.type)
 })
 
 const needsAuth = computed(() => {
-  return ['mysql', 'postgresql', 'sqlserver', 'mongodb'].includes(form.type)
+  return ['mysql', 'postgres', 'sqlserver', 'mongodb'].includes(form.type)
 })
 
 const supportsSSH = computed(() => {
-  return ['mysql', 'postgresql', 'mongodb'].includes(form.type)
+  return ['mysql', 'postgres', 'mongodb'].includes(form.type)
 })
 
 const formatDate = (date?: string) => {
@@ -611,6 +615,42 @@ function handleTypeChange() {
   }
 }
 
+async function testConnectionInDialog() {
+  testingInDialog.value = true
+  const testData = {
+    name: form.name,
+    type: form.type,
+    host: form.host,
+    port: form.port,
+    database: form.database,
+    username: form.username,
+    password: form.password,
+    advanced: enableSSH.value ? {
+      sshHost: form.advanced.sshHost,
+      sshPort: form.advanced.sshPort,
+      sshUsername: form.advanced.sshUsername,
+      sshPassword: form.advanced.sshPassword,
+      sshKey: form.advanced.sshKey,
+      sshKeyPhrase: form.advanced.sshKeyPhrase,
+      maxConnections: form.advanced.maxConnections,
+      queryTimeoutSeconds: form.advanced.queryTimeoutSeconds
+    } : undefined
+  }
+
+  try {
+    const response = await datasourceApi.test(testData)
+    if (response.data.success) {
+      ElMessage.success('连接测试成功')
+    } else {
+      ElMessage.error(response.data.message || '连接测试失败')
+    }
+  } catch (error: unknown) {
+    ElMessage.error(getErrorMessage(error, '连接测试失败'))
+  } finally {
+    testingInDialog.value = false
+  }
+}
+
 async function handleSubmit() {
   if (!formRef.value) return
 
@@ -622,14 +662,21 @@ async function handleSubmit() {
 
   submitting.value = true
 
-  const submitData = {
-    ...form,
-    advanced: enableSSH.value ? form.advanced : undefined
-  }
-
   try {
     if (isEdit.value) {
-      const response = await datasourceApi.update(currentEditId.value, submitData)
+      // For update: only send password if provided
+      const updateData: import('@/api/datasource').UpdateDataSourceRequest = {
+        name: form.name,
+        type: form.type,
+        host: form.host,
+        port: form.port,
+        database: form.database,
+        username: form.username
+      }
+      if (form.password) {
+        updateData.password = form.password
+      }
+      const response = await datasourceApi.update(currentEditId.value, updateData)
       if (response.data.success) {
         ElMessage.success('更新数据源成功')
         await loadDatasources()
@@ -638,7 +685,17 @@ async function handleSubmit() {
         ElMessage.error(response.data.message || '更新数据源失败')
       }
     } else {
-      const response = await datasourceApi.create(submitData)
+      // For create: password is required
+      const createData: import('@/api/datasource').CreateDataSourceRequest = {
+        name: form.name,
+        type: form.type,
+        host: form.host,
+        port: form.port,
+        database: form.database,
+        username: form.username,
+        password: form.password
+      }
+      const response = await datasourceApi.create(createData)
       if (response.data.success) {
         ElMessage.success('创建数据源成功')
         await loadDatasources()
