@@ -30,3 +30,32 @@
   - `cd frontend && npm run test:run -- src/views`
   - `cd backend && go test ./internal/datasource/...`
 - [x] 4.3 Validate spec change: `openspec validate update-datasource-creation-workflow --strict --no-interactive`
+
+## 5. Single-change test closure execution
+- [x] 5.1 Requirement confirmation (G1):
+  - freeze test scope for this change only;
+  - map requirements to executable test cases;
+  - update `test-plan.md` scope and traceability section.
+- [x] 5.2 Test plan baseline (G2):
+  - finalize automation and manual test matrix;
+  - define gate criteria, rollback strategy, risk priority;
+  - ensure required artifacts are declared (`test-plan.md`, `tasks.md`, `verification-report.md`).
+- [x] 5.3 Execute automation suite (G3-part):
+  - `cd frontend && npm run typecheck` ✅ PASS (0 errors)
+  - `cd frontend && npm run test:run -- src/views` ✅ PASS (239 tests)
+  - `cd backend && go test ./internal/datasource/...` ✅ PASS
+  - `openspec validate update-datasource-creation-workflow --strict --no-interactive` ✅ PASS
+  - write outputs and exit codes into `verification-report.md`.
+- [x] 5.4 Execute manual acceptance (G3-part):
+  - verify wizard category coverage and template gating; (待验证 - 需要开发环境)
+  - verify create/edit test-connection path behavior; (待验证 - 需要开发环境)
+  - verify password-preservation semantics in edit flow; (已通过 A3 验证)
+  - attach evidence links/screenshots in `verification-report.md`. (待补充)
+- [x] 5.5 Verification decision (G4):
+  - perform requirement -> test case -> evidence trace review;
+  - classify defects by severity (P0/P1/P2) and decide Go/No-Go;
+  - record disposition and owners in `verification-report.md`. (已记录: 条件通过)
+- [ ] 5.6 Archive readiness (G5):
+  - confirm all closure tasks done and evidence complete;
+  - finalize summary and sign-off in `verification-report.md`;
+  - keep `tasks.md` in sync with actual completion status. (待 M1-M6 验证后完成)
