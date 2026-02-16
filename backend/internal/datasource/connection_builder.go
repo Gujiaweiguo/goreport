@@ -56,10 +56,14 @@ func (b *ConnectionBuilder) BuildDSN(ctx context.Context, ds *models.DataSource)
 	}
 
 	port := strconv.Itoa(ds.Port)
+	effectiveHost := ds.Host
+	if tunnel == nil {
+		effectiveHost = ResolveHost(ds.Host)
+	}
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		ds.Username,
 		ds.Password,
-		ds.Host,
+		effectiveHost,
 		port,
 		ds.Database,
 	)

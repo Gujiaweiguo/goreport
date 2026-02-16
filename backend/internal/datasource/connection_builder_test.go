@@ -120,6 +120,48 @@ func TestConnectionBuilder_BuildDSN_VariousPorts(t *testing.T) {
 	}
 }
 
+func TestConnectionBuilder_BuildDSN_RewriteLocalhostWhenAliasConfigured(t *testing.T) {
+	t.Setenv(datasourceLocalhostAliasEnv, "host.docker.internal")
+
+	builder := NewConnectionBuilder()
+	ctx := context.Background()
+
+	ds := &models.DataSource{
+		Host:     "localhost",
+		Port:     3306,
+		Username: "root",
+		Password: "password",
+		Database: "testdb",
+	}
+
+	dsn, tunnel, err := builder.BuildDSN(ctx, ds)
+
+	assert.NoError(t, err)
+	assert.Nil(t, tunnel)
+	assert.Contains(t, dsn, "host.docker.internal:3306")
+}
+
+func TestConnectionBuilder_BuildDSN_KeepRemoteHostWhenAliasConfigured(t *testing.T) {
+	t.Setenv(datasourceLocalhostAliasEnv, "host.docker.internal")
+
+	builder := NewConnectionBuilder()
+	ctx := context.Background()
+
+	ds := &models.DataSource{
+		Host:     "goreport-mysql",
+		Port:     3306,
+		Username: "root",
+		Password: "password",
+		Database: "testdb",
+	}
+
+	dsn, tunnel, err := builder.BuildDSN(ctx, ds)
+
+	assert.NoError(t, err)
+	assert.Nil(t, tunnel)
+	assert.Contains(t, dsn, "goreport-mysql:3306")
+}
+
 func TestParseHostPort(t *testing.T) {
 	tests := []struct {
 		name        string
