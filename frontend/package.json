@@ -22,7 +22,7 @@
     "monaco-editor": "^0.55.1",
     "pinia": "^3.0.4",
     "vue": "^3.4.0",
-    "vue-router": "^4.2.0"
+    "vue-router": "^5.0.2"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
